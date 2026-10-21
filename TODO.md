@@ -56,7 +56,7 @@ Done when:
 - There are Windows tests for junctions, directory symlinks, hidden/system attributes, paths over 260 characters, and access-denied folders (fixture-created ACLs only).
 - They are green in the CI Windows job.
 
-### T-06 Large-folder discovery · `todo` · P · deps: T-04
+### T-06 Large-folder discovery · `doing (cloud, 2026-10-21)` · P · deps: T-04
 Refs: §5.1 · area: `src/PCHealth.Inventory`
 Done when:
 - Sizes roll up per directory.
