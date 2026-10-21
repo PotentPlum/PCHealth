@@ -36,3 +36,33 @@ public sealed record MeasurementEvidence : Evidence
 
     public MeasuredSize Size { get; }
 }
+
+public enum InaccessibleReason
+{
+    AccessDenied,
+
+    /// <summary>The entry disappeared between being listed and being read.</summary>
+    Vanished,
+    IoError,
+}
+
+/// <summary>A path that could not be read. Recorded so a partial result is never presented as complete.</summary>
+public sealed record InaccessibleEvidence : Evidence
+{
+    public InaccessibleEvidence(string path, InaccessibleReason reason, string description)
+        : base(description)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(path);
+        if (!Enum.IsDefined(reason))
+        {
+            throw new ArgumentOutOfRangeException(nameof(reason));
+        }
+
+        Path = path;
+        Reason = reason;
+    }
+
+    public string Path { get; }
+
+    public InaccessibleReason Reason { get; }
+}
