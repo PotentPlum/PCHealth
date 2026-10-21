@@ -41,9 +41,13 @@ The de facto standard for .NET. Version: `xunit.v3` 4.x (4.0.2 at adoption), pin
 Test projects are dev-only and never ship, so they make no runtime network calls in the product.
 
 ## D-005 Ledger storage: SQLite via Microsoft.Data.Sqlite
-**Provisional** (2026-10-21)
+**Accepted** (2026-10-21, T-20)
 
-Suggested by the spec (Â§6.4). It is durable, local and inspectable. Confirm in T-20.
+Suggested by the spec (§6.4). It is durable, local and inspectable.
+- **Package:** `Microsoft.Data.Sqlite` 10.0.13. It brings the bundled native SQLite (`SQLitePCLRaw.bundle_e_sqlite3`) and makes no network calls.
+- **Durability:** one file, opened with WAL journaling, `synchronous = FULL` and no connection pooling.
+- **Schema version:** kept in `PRAGMA user_version`. A newer or unreadable file is refused, never overwritten.
+- **History:** a saved transaction's purpose, items and recovery terms can't be rewritten; only its progress is updated.
 
 ## D-006 Full-file hash algorithm and collision policy
 **Accepted** (2026-10-21, T-08; was Open)

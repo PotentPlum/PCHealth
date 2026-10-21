@@ -101,14 +101,10 @@ Result: `RecommendationBuilder` withholds excluded findings, strips protected/ex
 
 ### Slice 5: Ledger and quarantine
 
-### T-20 Ledger · `doing (cloud, 2026-10-21)` · P · deps: T-03
-Refs: §6.4 · D-005 · area: `src/PCHealth.Ledger`
-Done when:
-- D-005 is confirmed.
-- The SQLite ledger records every field listed in §6.4 and survives restarts.
-- Tests run on a temp database.
+### T-20 Ledger · `done` · P · deps: T-03
+Result: D-005 accepted (`Microsoft.Data.Sqlite` 10.0.13); `TransactionLedger` stores `LedgerTransaction`s with every §6.4 field (id, time, operation, state/outcome, reason, checks, items with before/after metadata, recovery location and per-item status/error, expected/observed bytes, recovery method/limitations/deadline) in WAL + synchronous=FULL SQLite; terms can't be rewritten, newer or non-ledger files are refused; 7 temp-database tests incl. reopen.
 
-### T-21 Quarantine store · `todo` · P · deps: T-20
+### T-21 Quarantine store · `doing (cloud, 2026-10-21)` · P · deps: T-20
 Refs: §6.4 · area: `src/PCHealth.Ledger`
 Done when:
 - The quarantine layout stores per-item metadata.
