@@ -61,9 +61,35 @@ public sealed class TempRoot : IDisposable
 
     public void Dispose()
     {
-        if (Directory.Exists(Path))
+        if (!Directory.Exists(Path))
         {
-            Directory.Delete(Path, recursive: true);
+            return;
+        }
+
+        if (OperatingSystem.IsWindows())
+        {
+            RemoveDirectoryLinks(new DirectoryInfo(Path));
+        }
+
+        Directory.Delete(Path, recursive: true);
+    }
+
+    /// <summary>
+    /// A recursive delete fails on junctions on Windows (it treats them as volume mount points),
+    /// so remove each directory link first. Deleting a link non-recursively removes only the link, never its target.
+    /// </summary>
+    private static void RemoveDirectoryLinks(DirectoryInfo directory)
+    {
+        foreach (var child in directory.EnumerateDirectories("*", new EnumerationOptions { AttributesToSkip = 0 }))
+        {
+            if (child.Attributes.HasFlag(FileAttributes.ReparsePoint))
+            {
+                child.Delete();
+            }
+            else
+            {
+                RemoveDirectoryLinks(child);
+            }
         }
     }
 }
