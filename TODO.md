@@ -127,7 +127,7 @@ Done when:
 - Restart Manager and process checks block changes to files held open by running processes.
 - A test holds a file open and confirms the block.
 
-### T-27 Undo end to end · `todo` · W · deps: T-24, T-25
+### T-27 Undo end to end · `doing (cloud, 2026-10-21)` · W · deps: T-24, T-25
 Refs: §3.6, §9 · area: `src/PCHealth.Execution.Windows`, `src/PCHealth.Ledger`
 Done when:
 - Undo restores a quarantined item to its original path with its metadata.
