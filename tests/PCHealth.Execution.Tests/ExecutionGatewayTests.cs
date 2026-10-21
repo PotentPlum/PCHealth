@@ -330,6 +330,32 @@ public class ExecutionGatewayTests
     }
 
     [Fact]
+    public void Undo_and_expiry_go_through_the_gateway_and_stop_while_paused()
+    {
+        using var fixture = new Fixture();
+        var folder = fixture.Folder("LocalAppData/OldEditor", ("a", "a"));
+        var recommendation = fixture.Quarantine(folder);
+        var restorer = new Restorer(fixture.Ledger, fixture.Store, clock: fixture.Clock);
+        var gateway = new ExecutionGateway(fixture.Resolver, fixture.Platform, new ProtectionPolicy([]), fixture.Exclusions, fixture.Ledger, fixture.Store, fixture.Pause, fixture.Clock, restorer);
+        var moved = gateway.Execute(recommendation, recommendation.Operations).TransactionId!.Value;
+
+        fixture.Pause.Pause();
+        var refused = gateway.Undo(moved);
+        fixture.Clock.Advance(TimeSpan.FromDays(30));
+        var purge = gateway.PurgeExpired();
+
+        Assert.False(refused.Attempted);
+        Assert.Contains("paused", refused.Support.Limits);
+        Assert.Null(purge);
+        Assert.Single(fixture.Store.List().Entries);
+
+        fixture.Pause.Resume();
+        Assert.Equal(TransactionState.Verified, gateway.Undo(moved).Restore!.State);
+        Assert.True(Directory.Exists(folder));
+        Assert.False(fixture.Gateway().Undo(moved).Attempted);
+    }
+
+    [Fact]
     public void The_pause_survives_a_restart_and_reports_changes()
     {
         using var root = new TempRoot();

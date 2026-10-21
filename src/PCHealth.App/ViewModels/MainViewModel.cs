@@ -61,6 +61,11 @@ public sealed class MainViewModel : ObservableObject
                 throw new ArgumentException("Only the shell's own pages can be shown.", nameof(value));
             }
 
+            if (value is ActivityViewModel activity)
+            {
+                activity.Refresh();
+            }
+
             SetProperty(ref current, value);
         }
     }

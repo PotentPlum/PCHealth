@@ -145,7 +145,7 @@ Done when:
 - The user can adjust the selection or decline.
 - A declined recommendation doesn't come back unless there's new evidence.
 
-### T-32 Activity history and Undo · `todo` · W · deps: T-31, T-27
+### T-32 Activity history and Undo · `doing (cloud, 2026-10-21)` · W · deps: T-31, T-27
 Refs: §3.6, §6.4 · area: `src/PCHealth.App`
 Done when:
 - The user can read what changed, why, and with what outcome.

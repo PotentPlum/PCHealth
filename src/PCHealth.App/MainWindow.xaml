@@ -129,7 +129,43 @@
             </ScrollViewer>
         </DataTemplate>
         <DataTemplate DataType="{x:Type vm:ActivityViewModel}">
-            <TextBlock Margin="24" FontSize="20" Text="{Binding Title}" />
+            <ScrollViewer VerticalScrollBarVisibility="Auto">
+                <StackPanel Margin="24" MaxWidth="820" HorizontalAlignment="Left">
+                    <TextBlock FontSize="24" Text="Activity" />
+                    <TextBlock TextWrapping="Wrap" Margin="0,4,0,8" Text="{Binding Empty}" />
+                    <TextBlock TextWrapping="Wrap" Margin="0,0,0,12" FontWeight="SemiBold" Text="{Binding Message}" />
+                    <ItemsControl ItemsSource="{Binding Entries}">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate DataType="{x:Type vm:ActivityEntryViewModel}">
+                                <Border Margin="0,0,0,12" Padding="16" BorderThickness="1" CornerRadius="6"
+                                        BorderBrush="{DynamicResource {x:Static SystemColors.ActiveBorderBrushKey}}">
+                                    <StackPanel>
+                                        <TextBlock FontSize="16" FontWeight="SemiBold" TextWrapping="Wrap">
+                                            <Run Text="{Binding WhatChanged, Mode=OneWay}" />
+                                            <Run Text=" · " />
+                                            <Run Text="{Binding When, Mode=OneWay}" />
+                                        </TextBlock>
+                                        <TextBlock TextWrapping="Wrap" Margin="0,4,0,0" Text="{Binding Why}" />
+                                        <TextBlock TextWrapping="Wrap" Margin="0,4,0,0" Text="{Binding Outcome}" />
+                                        <ItemsControl Margin="0,6,0,0" ItemsSource="{Binding Items}">
+                                            <ItemsControl.ItemTemplate>
+                                                <DataTemplate>
+                                                    <TextBlock TextWrapping="Wrap" FontSize="12" Text="{Binding}" />
+                                                </DataTemplate>
+                                            </ItemsControl.ItemTemplate>
+                                        </ItemsControl>
+                                        <TextBlock TextWrapping="Wrap" Margin="0,6,0,0" Text="{Binding Deadline}" />
+                                        <TextBlock TextWrapping="Wrap" Margin="0,4,0,0" Text="{Binding UndoTerms}" />
+                                        <Button HorizontalAlignment="Left" Margin="0,8,0,0" Padding="12,4" Content="Undo"
+                                                Visibility="{Binding CanUndo, Converter={StaticResource Visible}}"
+                                                Command="{Binding UndoCommand}" />
+                                    </StackPanel>
+                                </Border>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </StackPanel>
+            </ScrollViewer>
         </DataTemplate>
     </Window.Resources>
     <DockPanel>

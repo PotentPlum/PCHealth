@@ -38,7 +38,8 @@ public static class AppServices
             sp.GetRequiredService<TransactionLedger>(),
             sp.GetRequiredService<QuarantineStore>(),
             sp.GetRequiredService<GlobalPause>(),
-            sp.GetRequiredService<TimeProvider>()));
+            sp.GetRequiredService<TimeProvider>(),
+            sp.GetRequiredService<Restorer>()));
         services.AddSingleton(sp => new Restorer(
             sp.GetRequiredService<TransactionLedger>(), sp.GetRequiredService<QuarantineStore>(), new HandleMove(), sp.GetRequiredService<TimeProvider>()));
         services.AddSingleton(sp => new InterruptedOperations(sp.GetRequiredService<TransactionLedger>(), sp.GetRequiredService<QuarantineStore>()));

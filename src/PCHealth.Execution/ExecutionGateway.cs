@@ -38,7 +38,8 @@ public sealed class ExecutionGateway(
     TransactionLedger ledger,
     QuarantineStore quarantine,
     GlobalPause pause,
-    TimeProvider? clock = null)
+    TimeProvider? clock = null,
+    Restorer? restorer = null)
 {
     public const string NeedsElevationReason = "needs administrator rights, not supported yet.";
 
@@ -170,6 +171,22 @@ public sealed class ExecutionGateway(
         });
         return new ExecutionResult(status, summary, record.Id, outcomes!);
     }
+
+    /// <summary>Undo goes through the gateway too: refused while paused, and only where the operation type supports it.</summary>
+    public RestoreResult Undo(Guid transactionId)
+    {
+        if (pause.IsPaused)
+        {
+            return new RestoreResult(null, new RestoreSupport(false, "Changes are paused, so nothing is undone until you resume."));
+        }
+
+        return restorer is null
+            ? new RestoreResult(null, new RestoreSupport(false, "Undo is not available here."))
+            : restorer.Restore(transactionId);
+    }
+
+    /// <summary>Deletes quarantined items whose retention ended. An automated change, so it never runs while paused (spec §4).</summary>
+    public PurgeResult? PurgeExpired() => pause.IsPaused ? null : quarantine.PurgeExpired(ledger);
 
     private (LedgerItem Item, ItemOutcome Outcome) Run(Guid transactionId, int position, ProposedOperation operation, LedgerItem item)
     {
