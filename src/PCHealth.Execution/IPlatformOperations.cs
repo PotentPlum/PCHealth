@@ -14,6 +14,7 @@ public interface IPlatformOperations
     ItemState? Inspect(string finalPath);
 
     /// <summary>Processes that hold the item open, by user-readable name; empty when none do.</summary>
+    /// <exception cref="IOException">The check could not be made; the gateway then refuses the item.</exception>
     IReadOnlyList<string> ProcessesUsing(string finalPath);
 
     /// <summary>True if changing the item needs administrator rights (D-019: refused in Phase 1).</summary>

@@ -118,13 +118,10 @@ Result: `ExecutionGateway` is the one mutation path: validates the request (Act 
 ### T-24 Windows quarantine move · `done` · W · deps: T-14, T-15, T-23
 Result: `HandleMove` (also the Windows `IFileMover` for restores) opens the source with `FILE_FLAG_OPEN_REPARSE_POINT`, refuses links and kind changes, requires the handle's final path to equal the expected path, and renames on that handle (`FileRenameInfoEx`, no overwrite); Windows tests cover a target and a parent swapped for junctions, an existing destination, and a junction swapped in between the gateway's checks and the move (refused, nothing moved, slot released); CI Windows green (run 39664338415).
 
-### T-25 Recycle Bin deletion · `doing (cloud, 2026-10-21)` · W · deps: T-23
-Refs: §5.1, §6.4 · area: `src/PCHealth.Execution.Windows`
-Done when:
-- Suitable items can go to the Recycle Bin, with a ledger entry.
-- Fixture-file tests cover it.
+### T-25 Recycle Bin deletion · `done` · W · deps: T-23
+Result: the gateway asks `CannotRecycle` before acting and records where each item went; `WindowsRecycleBin` refuses network, non-fixed, turned-off (`NukeOnDelete`) or too-small Recycle Bins, recycles via `SHFileOperationW` with undo and a permanent-deletion warning, then verifies the item by its `$I` record, reporting a permanent deletion as `PermanentlyDeletedException`, never as recoverable; 4 Windows fixture tests (CI-only per D-017, clean up their own items) + 2 gateway tests; CI Windows green (run 39664818249).
 
-### T-26 In-use checks · `todo` · W · deps: T-23
+### T-26 In-use checks · `doing (cloud, 2026-10-21)` · W · deps: T-23
 Refs: §6.3 · area: `src/PCHealth.Execution.Windows`
 Done when:
 - Restart Manager and process checks block changes to files held open by running processes.

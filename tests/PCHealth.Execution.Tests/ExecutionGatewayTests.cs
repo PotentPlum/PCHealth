@@ -263,6 +263,21 @@ public class ExecutionGatewayTests
     }
 
     [Fact]
+    public void A_check_that_cannot_be_made_refuses_the_item()
+    {
+        using var fixture = new Fixture();
+        var a = fixture.File("Temp/a.tmp", "a");
+        fixture.Platform.CannotCheckUse = true;
+        var recommendation = fixture.Recycle(a);
+
+        var result = fixture.Gateway().Execute(recommendation, recommendation.Operations);
+
+        Assert.Equal(ExecutionStatus.Failed, result.Status);
+        Assert.Equal("It could not be checked, so it was left alone: The Restart Manager is unavailable.", result.Items[0].Reason);
+        Assert.True(File.Exists(a));
+    }
+
+    [Fact]
     public void A_failed_move_changes_nothing_and_frees_its_slot()
     {
         using var fixture = new Fixture();
@@ -394,7 +409,10 @@ public class ExecutionGatewayTests
             return f.Exists ? new ItemState(false, f.Length, f.LastWriteTimeUtc, f.CreationTimeUtc, f.Attributes) : null;
         }
 
-        public IReadOnlyList<string> ProcessesUsing(string finalPath) => InUse.GetValueOrDefault(finalPath, []);
+        public bool CannotCheckUse { get; set; }
+
+        public IReadOnlyList<string> ProcessesUsing(string finalPath) =>
+            CannotCheckUse ? throw new IOException("The Restart Manager is unavailable.") : InUse.GetValueOrDefault(finalPath, []);
 
         public bool NeedsElevation(string finalPath) => Elevated.Contains(finalPath);
 

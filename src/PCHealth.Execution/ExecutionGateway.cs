@@ -174,7 +174,18 @@ public sealed class ExecutionGateway(
     private (LedgerItem Item, ItemOutcome Outcome) Run(Guid transactionId, int position, ProposedOperation operation, LedgerItem item)
     {
         // 3. Revalidate right before acting.
-        if (Revalidate(operation) is { } refusal)
+        string? refusal;
+        try
+        {
+            refusal = Revalidate(operation);
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            // A check that cannot be made counts as failed (fail closed).
+            refusal = $"It could not be checked, so it was left alone: {ex.Message}";
+        }
+
+        if (refusal is not null)
         {
             return (item with { Status = ItemStatus.Skipped, Error = refusal }, new ItemOutcome(operation, ItemStatus.Skipped, refusal));
         }
