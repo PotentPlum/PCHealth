@@ -64,11 +64,8 @@ Result: `BackgroundScan` runs on a below-normal-priority background thread (CPU 
 ### T-08 Decide hash algorithm · `done` · P · deps: —
 Result: D-006 accepted: BCL SHA-256 for partial and full hashes (BLAKE3 deferred to T-37 benchmarks); verified = same size + same full hash, hashes tied to size+mtime, byte-for-byte comparison in the gateway before any removal.
 
-### T-09 Candidate stages · `doing (cloud, 2026-10-21)` · P · deps: T-04, T-08
-Refs: §5.1 · area: `src/PCHealth.Duplicates`
-Done when:
-- Files are grouped by size, then by a partial head+tail digest. Zero-byte files are skipped.
-- Tests include same-size, different-content fixtures.
+### T-09 Candidate stages · `done` · P · deps: T-04, T-08
+Result: `CandidateFinder`: size groups (zero-byte, links and repeated paths skipped), then SHA-256 head+tail digest (64 KiB per end); unreadable files become `InaccessibleEvidence`, files changed since the scan (size/mtime) are dropped; 10 tests incl. same-size different-content.
 
 ### T-10 Verified duplicate groups · `todo` · P · deps: T-09
 Refs: §5.1 · area: `src/PCHealth.Duplicates`
