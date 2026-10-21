@@ -50,11 +50,8 @@ Result: `FileEntry`/`DirectoryEntry`, `Finding`, `Evidence` (path, measurement),
 ### T-04 Fallback recursive scanner · `done` · P · deps: T-03
 Result: `IInventoryScanner` + `RecursiveScanner` (metadata-only, records but never follows reparse points, includes hidden/system, `InaccessibleEvidence` for unreadable dirs, cancellable, per-directory progress); 12 tests, access-denied case verified as non-root (skips as root).
 
-### T-05 Scanner on Windows · `doing (cloud, 2026-10-21)` · W · deps: T-04
-Refs: §5.1, §9 · area: Windows-only tests for `PCHealth.Inventory`
-Done when:
-- There are Windows tests for junctions, directory symlinks, hidden/system attributes, paths over 260 characters, and access-denied folders (fixture-created ACLs only).
-- They are green in the CI Windows job.
+### T-05 Scanner on Windows · `done` · W · deps: T-04
+Result: 6 Windows tests in `PCHealth.Inventory.Windows.Tests` (junctions + cycle, dir symlinks, hidden/system, >260-char paths, fixture-ACL access denied); `TempRoot` now unlinks junctions before deleting; CI Windows green (run 39646389836).
 
 ### T-06 Large-folder discovery · `doing (cloud, 2026-10-21)` · P · deps: T-04
 Refs: §5.1 · area: `src/PCHealth.Inventory`
