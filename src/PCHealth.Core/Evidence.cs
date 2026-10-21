@@ -66,3 +66,27 @@ public sealed record InaccessibleEvidence : Evidence
 
     public InaccessibleReason Reason { get; }
 }
+
+/// <summary>A file's identity at the moment its contents were hashed: path, size, last-write time and hash.</summary>
+public sealed record FileContentEvidence : Evidence
+{
+    /// <param name="contentHash">The hash prefixed with its algorithm, e.g. <c>SHA-256:…</c> (D-006).</param>
+    public FileContentEvidence(string path, MeasuredSize size, DateTimeOffset lastWriteTimeUtc, string contentHash)
+        : base($"{path} · {size.Bytes} bytes · modified {lastWriteTimeUtc:u} · {contentHash}")
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(path);
+        ArgumentException.ThrowIfNullOrWhiteSpace(contentHash);
+        Path = path;
+        Size = size;
+        LastWriteTimeUtc = lastWriteTimeUtc;
+        ContentHash = contentHash;
+    }
+
+    public string Path { get; }
+
+    public MeasuredSize Size { get; }
+
+    public DateTimeOffset LastWriteTimeUtc { get; }
+
+    public string ContentHash { get; }
+}

@@ -67,13 +67,8 @@ Result: D-006 accepted: BCL SHA-256 for partial and full hashes (BLAKE3 deferred
 ### T-09 Candidate stages · `done` · P · deps: T-04, T-08
 Result: `CandidateFinder`: size groups (zero-byte, links and repeated paths skipped), then SHA-256 head+tail digest (64 KiB per end); unreadable files become `InaccessibleEvidence`, files changed since the scan (size/mtime) are dropped; 10 tests incl. same-size different-content.
 
-### T-10 Verified duplicate groups · `doing (cloud, 2026-10-21)` · P · deps: T-09
-Refs: §5.1 · area: `src/PCHealth.Duplicates`
-Done when:
-- A full hash runs according to the D-006 policy.
-- Groups carry inspectable evidence: paths, sizes, timestamps and hashes.
-- Only content-verified files count as "verified duplicates".
-- Tests cover it.
+### T-10 Verified duplicate groups · `done` · P · deps: T-09
+Result: `DuplicateVerifier` full-hashes candidates with SHA-256 (size+mtime rechecked before and after); `VerifiedDuplicateGroup` (only the verifier can create one) carries `FileContentEvidence` (path, size, mtime, hash) and Verified confidence; `DuplicateFinder` runs the whole pipeline; 8 tests.
 
 ### T-11 Same-file detection · `todo` · W · deps: T-10
 Refs: §5.1 · area: `src/PCHealth.Duplicates`, `*.Windows`
