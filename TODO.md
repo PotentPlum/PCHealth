@@ -73,48 +73,25 @@ Result: `DuplicateVerifier` full-hashes candidates with SHA-256 (size+mtime rech
 ### T-11 Same-file detection · `done` · W · deps: T-10
 Result: `FileIdentity`/`IFileIdentityProvider` (Core); verified groups need two or more distinct physical files and expose `PhysicalCopies`; `WindowsFileIdentityProvider` reads `FILE_ID_INFO` by handle; 3 portable + 3 Windows hard-link tests; CI Windows green (run 39653855265).
 
-### T-12 Version candidates · `todo` · P · deps: T-10
-Refs: §5.1 · area: `src/PCHealth.Duplicates`
-Done when:
-- Likely versions (by name or metadata similarity) are grouped separately from verified duplicates.
-- That signal alone never marks anything removable.
-- Tests cover it.
+### T-12 Version candidates · `done` · P · deps: T-10
+Result: `VersionCandidates` groups same-extension files whose names match once copy/version/date markers are stripped; `VersionCandidateGroup` is separate from verified duplicates, always `ReviewOnly`, confidence Medium (same folder) or Low; 23 tests.
 
 ### Slice 4: Policy and protection
 
-### T-13 Path canonicalization · `todo` · W · deps: T-02
-Refs: §6.3 · area: `src/PCHealth.Execution`, `src/PCHealth.Execution.Windows`
-Done when:
-- Final paths are resolved by handle.
-- Adversarial tests cover `..`, mixed case, trailing dots and spaces, 8.3 short names, `\\?\` and UNC prefixes, alternate data streams, and reserved device names.
-- Anything unresolvable fails closed.
+### T-13 Path canonicalization · `done` · W · deps: T-02
+Result: `IPathResolver`/`PathResolution` (Execution) and `WindowsPathResolver` (syntax rejection, then `CreateFileW` without following the last link + `GetFinalPathNameByHandleW`); 38 adversarial Windows tests (`..`, case, 8.3, `\\?\`, UNC, ADS, device names, trailing dot/space, long paths); fails closed; CI Windows green (run 39654961964).
 
-### T-14 Reparse-point escape detection · `todo` · W · deps: T-13
-Refs: §6.3 · area: `src/PCHealth.Execution.Windows`
-Done when:
-- A target inside an allowed scope that resolves outside it through a junction, symlink or mount point is rejected.
-- Tests create such links inside the fixture.
+### T-14 Reparse-point escape detection · `done` · W · deps: T-13
+Result: `ScopeValidator` (Execution) rejects targets whose final path leaves the scope and links whose destination is outside or unresolvable; resolver gained `LinkHandling.Follow`; 10 portable + 9 Windows tests with fixture junctions, dir/file symlinks, a dangling link and a volume-GUID (mount-point form) junction; CI Windows green (run 39655668565).
 
-### T-15 Protected locations · `todo` · W · deps: T-13
-Refs: §3.4, §6.3 · area: `src/PCHealth.Policy`, `*.Windows`
-Done when:
-- OS folders, Program Files, application binaries, boot areas and personal document folders (found via known-folder APIs) are protected by default.
-- Every block comes with a user-readable reason.
-- Tests cover it.
+### T-15 Protected locations · `done` · W · deps: T-13
+Result: `ProtectionPolicy` (Policy) blocks OS, Program Files, boot/recovery, personal folders (D-014), folders containing them, drive roots and program binaries, each with a readable reason; `WindowsProtectedLocations` discovers them via `SHGetKnownFolderPath`; 10 portable + 12 Windows tests; CI Windows green (run 39656523422).
 
-### T-16 User exclusions · `todo` · P · deps: T-03
-Refs: §3.2, §6.5 · area: `src/PCHealth.Policy`
-Done when:
-- File, folder and category exclusions are stored locally and applied to findings.
-- Tests cover it.
+### T-16 User exclusions · `done` · P · deps: T-03
+Result: `ExclusionList` (file, folder-and-below, `FindingCategory`) saved atomically as local JSON (System.Text.Json, no new dependency), corrupt files rejected; `IsExcluded` for builders and `Apply` withholds findings by category or any evidence path, with the matching exclusion; `Finding` gained `Category`; 16 tests.
 
-### T-17 Known-cache catalog · `todo` · W · deps: T-06, T-15
-Refs: §5.1 (application residue and cache cleanup) · area: `src/PCHealth.Policy`
-Done when:
-- Data-driven rules cover well-understood regenerable data (user temp, crash dumps and so on).
-- Each rule says what gets rebuilt or downloaded afterwards.
-- The rules produce findings with evidence.
-- Fixture tests cover them.
+### T-17 Known-cache catalog · `done` · W · deps: T-06, T-15
+Result: embedded `known-caches.json` (10 rules, each with rebuild/download text) evaluated by `CacheCatalog` (token locations with one `*` segment, protection + exclusion checks, read-only scan) into `Cache` findings with path/measured-size evidence; `WindowsKnownLocations` via known folders; 13 fixture tests + 7 Windows tests; CI Windows green (run 39657131868).
 
 ### T-18 Orphaned app-data detection · `todo` · W · deps: T-17
 Refs: §5.1 · area: `src/PCHealth.Policy`, `*.Windows`

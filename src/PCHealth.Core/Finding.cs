@@ -1,5 +1,15 @@
 namespace PCHealth.Core;
 
+/// <summary>The kind of finding; users can exclude whole categories (spec §3.2, §6.5).</summary>
+public enum FindingCategory
+{
+    LargeFolder,
+    VerifiedDuplicate,
+    VersionCandidate,
+    Cache,
+    AppResidue,
+}
+
 /// <summary>
 /// One evidence-backed finding (spec §7). Confidence, impact and recovery are kept as separate
 /// properties and are reported side by side, never combined (spec §3.3).
@@ -7,6 +17,7 @@ namespace PCHealth.Core;
 public sealed record Finding
 {
     public Finding(
+        FindingCategory category,
         string title,
         string whyItMatters,
         IReadOnlyList<Evidence> evidence,
@@ -14,6 +25,11 @@ public sealed record Finding
         Impact impact,
         Recovery recovery)
     {
+        if (!Enum.IsDefined(category))
+        {
+            throw new ArgumentOutOfRangeException(nameof(category));
+        }
+
         ArgumentException.ThrowIfNullOrWhiteSpace(title);
         ArgumentException.ThrowIfNullOrWhiteSpace(whyItMatters);
         ArgumentNullException.ThrowIfNull(evidence);
@@ -31,6 +47,7 @@ public sealed record Finding
         ArgumentNullException.ThrowIfNull(impact);
         ArgumentNullException.ThrowIfNull(recovery);
 
+        Category = category;
         Title = title;
         WhyItMatters = whyItMatters;
         Evidence = evidence.ToArray();
@@ -38,6 +55,8 @@ public sealed record Finding
         Impact = impact;
         Recovery = recovery;
     }
+
+    public FindingCategory Category { get; }
 
     /// <summary>What did we find?</summary>
     public string Title { get; }

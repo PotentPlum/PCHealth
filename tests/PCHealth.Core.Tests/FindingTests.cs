@@ -12,7 +12,7 @@ public class FindingTests
     [Fact]
     public void Finding_keeps_confidence_impact_and_recovery_as_separate_parts()
     {
-        var finding = new Finding("Browser cache", "Frees space", [SomeEvidence], HighConfidence, SomeImpact, RecycleBin);
+        var finding = new Finding(FindingCategory.Cache, "Browser cache", "Frees space", [SomeEvidence], HighConfidence, SomeImpact, RecycleBin);
 
         Assert.Same(HighConfidence, finding.Confidence);
         Assert.Same(SomeImpact, finding.Impact);
@@ -26,6 +26,7 @@ public class FindingTests
         var irreversible = new Recovery(RecoveryMethod.None, "Permanently deleted");
 
         var finding = new Finding(
+            FindingCategory.VerifiedDuplicate,
             "Duplicate file",
             "Frees space",
             [SomeEvidence],
@@ -43,22 +44,22 @@ public class FindingTests
         var names = typeof(Finding).GetProperties(BindingFlags.Public | BindingFlags.Instance).Select(p => p.Name);
 
         Assert.Equal(
-            new[] { "Confidence", "Evidence", "Impact", "Recovery", "Title", "WhyItMatters" },
+            new[] { "Category", "Confidence", "Evidence", "Impact", "Recovery", "Title", "WhyItMatters" },
             names.Order());
     }
 
     [Fact]
     public void Finding_requires_evidence()
     {
-        Assert.Throws<ArgumentException>(() => new Finding("t", "w", [], HighConfidence, SomeImpact, RecycleBin));
-        Assert.Throws<ArgumentException>(() => new Finding("t", "w", [null!], HighConfidence, SomeImpact, RecycleBin));
+        Assert.Throws<ArgumentException>(() => new Finding(FindingCategory.Cache, "t", "w", [], HighConfidence, SomeImpact, RecycleBin));
+        Assert.Throws<ArgumentException>(() => new Finding(FindingCategory.Cache, "t", "w", [null!], HighConfidence, SomeImpact, RecycleBin));
     }
 
     [Fact]
     public void Finding_copies_its_evidence_list()
     {
         var list = new List<Evidence> { SomeEvidence };
-        var finding = new Finding("t", "w", list, HighConfidence, SomeImpact, RecycleBin);
+        var finding = new Finding(FindingCategory.Cache, "t", "w", list, HighConfidence, SomeImpact, RecycleBin);
 
         list.Add(new PathEvidence("/x", "late addition"));
 
@@ -68,9 +69,15 @@ public class FindingTests
     [Fact]
     public void Finding_requires_all_three_dimensions()
     {
-        Assert.Throws<ArgumentNullException>(() => new Finding("t", "w", [SomeEvidence], null!, SomeImpact, RecycleBin));
-        Assert.Throws<ArgumentNullException>(() => new Finding("t", "w", [SomeEvidence], HighConfidence, null!, RecycleBin));
-        Assert.Throws<ArgumentNullException>(() => new Finding("t", "w", [SomeEvidence], HighConfidence, SomeImpact, null!));
+        Assert.Throws<ArgumentNullException>(() => new Finding(FindingCategory.Cache, "t", "w", [SomeEvidence], null!, SomeImpact, RecycleBin));
+        Assert.Throws<ArgumentNullException>(() => new Finding(FindingCategory.Cache, "t", "w", [SomeEvidence], HighConfidence, null!, RecycleBin));
+        Assert.Throws<ArgumentNullException>(() => new Finding(FindingCategory.Cache, "t", "w", [SomeEvidence], HighConfidence, SomeImpact, null!));
+    }
+
+    [Fact]
+    public void Finding_rejects_an_undefined_category()
+    {
+        Assert.Throws<ArgumentOutOfRangeException>(() => new Finding((FindingCategory)99, "t", "w", [SomeEvidence], HighConfidence, SomeImpact, RecycleBin));
     }
 
     [Fact]

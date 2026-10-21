@@ -126,3 +126,22 @@ Phase 2 and 3 are listed but deliberately not sliced. They get sliced once Phase
 **Open**
 
 The spec wants separate permission boundaries for read-only inventory, AI inference and elevated execution (Â§6.1, Â§6.5). Open questions: how many processes, the IPC mechanism (named pipes are likely), and how the elevated helper is launched and authenticated. Phase 1 can run unelevated in one process, as long as the gateway is a clean seam. Decide before any operation that needs elevation.
+
+## D-014 Default protected locations
+**Accepted** (2026-10-21, T-15)
+
+Protected by default (spec §3.4, §6.3). Each protection carries a user-readable reason.
+
+- **Operating system:** the Windows, System and SystemX86 known folders.
+- **Program files:** Program Files (x64, x86) and the per-user `%LocalAppData%\Programs`.
+- **Personal folders:** Documents, Desktop, Pictures, Music and Videos. Downloads is not protected, because it is a common, user-visible cleanup area.
+- **Boot and recovery:** `Boot`, `EFI`, `Recovery`, `System Volume Information`, `$WinREAgent`, `bootmgr`, `BOOTNXT`, `pagefile.sys`, `hiberfil.sys` and `swapfile.sys` at the root of the system drive.
+- **Drive roots.**
+- **Program binaries anywhere:** `.exe`, `.dll`, `.sys`, `.drv`, `.ocx`, `.cpl`, `.scr`, `.efi`, `.com` and `.mui`. They may belong to an installed application even outside Program Files. Cleaning up old installers will need an explicit, separately designed opt-in.
+
+How protections apply:
+- A protection covers the location and everything below it.
+- A folder that *contains* a protected location is also blocked. For example, the user profile is blocked because it contains Documents.
+- Folders come from the known-folder API (`SHGetKnownFolderPath`), so redirected and localized folders are found.
+- Checks run on the final path from the path resolver (T-13), so links and 8.3 names can't bypass them.
+- A folder that can't be resolved is still protected under its reported path.
