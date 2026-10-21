@@ -141,11 +141,8 @@ Result: `OverviewViewModel` shows the three most useful recommendations (actions
 ### T-31 Preview and approve · `done` · W · deps: T-30, T-23
 Result: `PreviewViewModel` lists the exact items (each can be left out), what is left alone and why, the expected effect for the current selection, and recovery/retention terms; Approve runs only the selected items through the gateway, Decline records the recommendation, Back changes nothing; `DeclinedRecommendations` (Policy, local JSON) keeps it hidden unless its evidence changes or its estimate at least doubles; keys now use evidence paths only; 5 portable + 4 app tests; CI Windows green (run 39667327100).
 
-### T-32 Activity history and Undo · `doing (cloud, 2026-10-21)` · W · deps: T-31, T-27
-Refs: §3.6, §6.4 · area: `src/PCHealth.App`
-Done when:
-- The user can read what changed, why, and with what outcome.
-- Undo is offered where supported, and limits and deadlines are shown honestly.
+### T-32 Activity history and Undo · `done` · W · deps: T-31, T-27
+Result: `ActivityViewModel` lists every ledger transaction newest first: what changed, why, the outcome per item, the quarantine deadline, and the restore limits for each operation type; Undo is offered only where `Restorer` supports it; Undo and the expiry purge now run through `ExecutionGateway` (refused while paused; startup skips the purge while paused); 5 app tests + 1 gateway test; CI Windows green (run 39667638896).
 
 ### T-33 Storage detail view · `todo` · W · deps: T-30
 Refs: §5.1 · area: `src/PCHealth.App`
