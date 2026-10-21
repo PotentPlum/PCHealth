@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using PCHealth.Core;
 
 namespace PCHealth.Inventory;
@@ -18,10 +19,16 @@ public sealed class RecursiveScanner : IInventoryScanner
         AttributesToSkip = 0,
     };
 
-    public ScanResult Scan(string rootPath, IProgress<ScanProgress>? progress = null, CancellationToken cancellationToken = default)
+    public ScanResult Scan(
+        string rootPath,
+        IProgress<ScanProgress>? progress = null,
+        PauseToken pause = default,
+        CancellationToken cancellationToken = default)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(rootPath);
         cancellationToken.ThrowIfCancellationRequested();
+        var started = Stopwatch.GetTimestamp();
+        var paused = TimeSpan.Zero;
 
         var root = new DirectoryInfo(Path.GetFullPath(rootPath));
         if (!root.Exists)
@@ -45,6 +52,7 @@ public sealed class RecursiveScanner : IInventoryScanner
         while (pending.TryPop(out var directory))
         {
             cancellationToken.ThrowIfCancellationRequested();
+            paused += pause.WaitWhilePaused(cancellationToken);
 
             var children = ListChildren(directory, inaccessible);
             directories++;
@@ -70,10 +78,11 @@ public sealed class RecursiveScanner : IInventoryScanner
                 }
             }
 
-            progress?.Report(new ScanProgress(directories, files, bytes, directory.FullName));
+            progress?.Report(new ScanProgress(directories, files, bytes, directory.FullName, Stopwatch.GetElapsedTime(started)));
         }
 
-        return new ScanResult(entries, inaccessible);
+        var statistics = new ScanStatistics(directories, files, bytes, Stopwatch.GetElapsedTime(started), paused);
+        return new ScanResult(entries, inaccessible, statistics);
     }
 
     private static List<FileSystemInfo> ListChildren(DirectoryInfo directory, List<InaccessibleEvidence> inaccessible)

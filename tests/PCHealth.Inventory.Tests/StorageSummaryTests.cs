@@ -104,7 +104,8 @@ public class StorageSummaryTests
                 new DirectoryEntry(rootWithSeparator, FileAttributes.Directory, Written),
                 new FileEntry(root.Resolve("a.txt"), new MeasuredSize(5), FileAttributes.Normal, Written),
             ],
-            [new InaccessibleEvidence(root.Resolve("locked"), InaccessibleReason.AccessDenied, "denied")]);
+            [new InaccessibleEvidence(root.Resolve("locked"), InaccessibleReason.AccessDenied, "denied")],
+            new ScanStatistics(1, 1, new MeasuredSize(5), TimeSpan.Zero, TimeSpan.Zero));
 
         var summary = StorageSummary.From(scan);
 
@@ -123,7 +124,7 @@ public class StorageSummaryTests
     [Fact]
     public void Rejects_a_scan_without_a_root_directory()
     {
-        Assert.Throws<ArgumentException>(() => StorageSummary.From(new ScanResult([], [])));
+        Assert.Throws<ArgumentException>(() => StorageSummary.From(new ScanResult([], [], new ScanStatistics(0, 0, MeasuredSize.Zero, TimeSpan.Zero, TimeSpan.Zero))));
     }
 
     [Theory]

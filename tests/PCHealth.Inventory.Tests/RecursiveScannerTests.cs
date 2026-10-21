@@ -213,12 +213,12 @@ public class RecursiveScannerTests
                 reports++;
                 cts.Cancel();
             }),
-            cts.Token));
+            cancellationToken: cts.Token));
         Assert.Equal(1, reports);
     }
 
     private ScanResult Scan(string path, IProgress<ScanProgress>? progress = null) =>
-        scanner.Scan(path, progress, TestContext.Current.CancellationToken);
+        scanner.Scan(path, progress, cancellationToken: TestContext.Current.CancellationToken);
 
     private static void CreateDirectoryLinkOrSkip(string linkPath, string target)
     {
