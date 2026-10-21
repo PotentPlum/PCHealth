@@ -87,7 +87,7 @@ Done when:
 - A target inside an allowed scope that resolves outside it through a junction, symlink or mount point is rejected.
 - Tests create such links inside the fixture.
 
-### T-15 Protected locations · `todo` · W · deps: T-13
+### T-15 Protected locations · `doing (cloud, 2026-10-21)` · W · deps: T-13
 Refs: §3.4, §6.3 · area: `src/PCHealth.Policy`, `*.Windows`
 Done when:
 - OS folders, Program Files, application binaries, boot areas and personal document folders (found via known-folder APIs) are protected by default.
