@@ -112,15 +112,10 @@ Result: the ledger enforces pending → applied → verified/failed; `Interrupte
 
 ### Slice 6: Execution gateway
 
-### T-23 Gateway pipeline · `doing (cloud, 2026-10-21)` · P · deps: T-19, T-22
-Refs: §6.3 · CLAUDE.md rules 2–4 · area: `src/PCHealth.Execution`
-Done when:
-- One gateway runs: validate → protected/exclusion checks → revalidate → execute → verify → ledger.
-- It fails closed at every step.
-- The global Pause flag blocks all execution.
-- Tests use a fake platform layer.
+### T-23 Gateway pipeline · `done` · P · deps: T-19, T-22
+Result: `ExecutionGateway` is the one mutation path: validates the request (Act disposition, approved ⊆ recommendation, one kind matching recovery) → protection/exclusion checks → revalidates per item right before acting (final path by handle and unchanged, no links, scope, protection again, size/mtime, open handles, elevation per D-019, same volume per D-016) → executes through `IPlatformOperations` → verifies → ledger (pending first, progress per item, applied, verified/failed); `GlobalPause` (optionally persisted) blocks all and stops queued items; 17 tests on a fake platform and resolver incl. mid-run pause and crash.
 
-### T-24 Windows quarantine move · `todo` · W · deps: T-14, T-15, T-23
+### T-24 Windows quarantine move · `doing (cloud, 2026-10-21)` · W · deps: T-14, T-15, T-23
 Refs: §6.3 · area: `src/PCHealth.Execution.Windows`
 Done when:
 - Files move into quarantine by handle: opened without following reparse points, final path checked, renamed by handle.
