@@ -98,7 +98,7 @@ Done when:
 - Every block comes with a user-readable reason.
 - Tests cover it.
 
-### T-16 User exclusions · `todo` · P · deps: T-03
+### T-16 User exclusions · `doing (cloud, 2026-10-21)` · P · deps: T-03
 Refs: §3.2, §6.5 · area: `src/PCHealth.Policy`
 Done when:
 - File, folder and category exclusions are stored locally and applied to findings.
