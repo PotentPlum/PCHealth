@@ -90,13 +90,8 @@ Result: `ProtectionPolicy` (Policy) blocks OS, Program Files, boot/recovery, per
 ### T-16 User exclusions · `done` · P · deps: T-03
 Result: `ExclusionList` (file, folder-and-below, `FindingCategory`) saved atomically as local JSON (System.Text.Json, no new dependency), corrupt files rejected; `IsExcluded` for builders and `Apply` withholds findings by category or any evidence path, with the matching exclusion; `Finding` gained `Category`; 16 tests.
 
-### T-17 Known-cache catalog · `doing (cloud, 2026-10-21)` · W · deps: T-06, T-15
-Refs: §5.1 (application residue and cache cleanup) · area: `src/PCHealth.Policy`
-Done when:
-- Data-driven rules cover well-understood regenerable data (user temp, crash dumps and so on).
-- Each rule says what gets rebuilt or downloaded afterwards.
-- The rules produce findings with evidence.
-- Fixture tests cover them.
+### T-17 Known-cache catalog · `done` · W · deps: T-06, T-15
+Result: embedded `known-caches.json` (10 rules, each with rebuild/download text) evaluated by `CacheCatalog` (token locations with one `*` segment, protection + exclusion checks, read-only scan) into `Cache` findings with path/measured-size evidence; `WindowsKnownLocations` via known folders; 13 fixture tests + 7 Windows tests; CI Windows green (run 39657131868).
 
 ### T-18 Orphaned app-data detection · `todo` · W · deps: T-17
 Refs: §5.1 · area: `src/PCHealth.Policy`, `*.Windows`
