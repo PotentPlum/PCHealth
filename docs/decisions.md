@@ -39,6 +39,42 @@ Suggested by the spec (§6.4). It is durable, local and inspectable. Confirm in 
 
 BLAKE3 is the spec's candidate (§5.1), but it needs a third-party NuGet package, which must be evaluated for maintenance and provenance. SHA-256 is built into the BCL with hardware acceleration and would be the fallback. A collision-handling policy is also needed, e.g. byte-for-byte comparison before any delete. Decide in slice 3.
 
+## D-008 Claude Code cloud sessions as a fourth environment
+**Accepted** (2026-10-21)
+
+Cloud sessions run on Ubuntu 24.04 and, like the dev container, can build and test portable projects only. The .NET SDK isn't pre-installed there. `scripts/cloud/session-start.sh` (a SessionStart hook in `.claude/settings.json`) installs `dotnet-sdk-10.0` from the Ubuntu archive, because the `dotnet-install.sh` download host isn't on the cloud network allowlist. That gives SDK 10.0.1xx, which satisfies `global.json`. Windows-specific code is verified through the CI Windows job (D-009).
+
+Optional speed-up: paste the same install into the cloud environment's setup script. Setup scripts are cached; hooks rerun on every session.
+
+## D-009 Build and delivery pipeline
+**Accepted** (2026-10-21)
+
+- **CI** (`.github/workflows/ci.yml`): every push and PR runs the full solution on `windows-latest` and the portable filter on `ubuntu-latest`.
+- **Release** (`.github/workflows/release.yml`): a `vX.Y.Z` tag triggers test, self-contained `win-x64` publish, and a Velopack pack (vpk 1.2.161) uploaded to a GitHub Release.
+
+Why Velopack: it gives a one-time install on the other PC, then delta updates pulled from Releases with rollback, and needs no signing certificate (MSIX would). Releases come only from tags, so not every commit reaches the other PC.
+
+Known limits:
+- The repo is private, so Windows Actions minutes count double against the free quota.
+- The exe is unsigned, so SmartScreen warns on first run.
+
+## D-010 Update channel and update UX
+**Open**
+
+Two questions:
+1. **How the other PC reads releases of a private repo:**
+   - (a) A fine-grained, read-only GitHub token stored on that PC. It must never be embedded in the binary.
+   - (b) Make the repo public.
+   - (c) Mirror releases to a shared folder (e.g. OneDrive), which Velopack can read as a local source.
+2. **Update UX:** must be user-visible and user-initiated or confirmed, because an update check is network traffic and the local-first promise requires disclosure (§3.5, §6.2). Silent auto-install is ruled out for a tool that deletes files.
+
+Decide in slice 8.
+
+## D-011 Solution format: .slnx
+**Accepted** (2026-10-21)
+
+`dotnet new sln` produces `.slnx` by default on .NET 10. CI, the cloud hook and CLAUDE.md all refer to `PCHealth.slnx` and `PCHealth.Portable.slnf`.
+
 ## D-007 Process boundaries and IPC
 **Open**
 

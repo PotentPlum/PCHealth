@@ -11,23 +11,33 @@ Local-first Windows utility that finds what wastes storage and system resources,
 
 Out of scope until explicitly reopened: automatic file organization, registry cleaning, Dormant Mode, driver remediation, symlink/junction redirection, unattended destructive actions, anything from Phase 2/3.
 
-## Environments (D-003)
+## Environments (D-003, D-008)
 
 | Where | What builds/tests there | Setup |
 |-|-|-|
 | Windows host | Everything (portable + Windows-specific + UI) | `winget configure -f .config/configuration.winget` |
+| GitHub Actions `windows-latest` | Everything, on every push (`.github/workflows/ci.yml`) | none |
 | Dev container (Linux) | Portable projects only (`net10.0`) | VS Code: "Reopen in Container" |
+| Claude Code cloud session (Ubuntu 24.04) | Portable projects only (`net10.0`) | SessionStart hook installs the SDK (`scripts/cloud/session-start.sh`) |
 
-- In the container, build/test only the portable solution filter: `dotnet test PCHealth.Portable.slnf`.
-- Windows-specific code (`*.Windows` projects, `net10.0-windows`) is only verified when its tests pass **on the Windows host**. When reporting results, say which environment the tests ran in. Never describe Windows code as verified based on a container run.
+- On Linux (container or cloud), build and test only the portable solution filter: `dotnet test PCHealth.Portable.slnf`.
+- Windows-specific code (`*.Windows` projects, `net10.0-windows`) is verified only when its tests pass on the Windows host **or** in the CI Windows job. When reporting results, say which environment the tests ran in. Never describe Windows code as verified based on a Linux run.
+- **Verifying Windows code from Linux:** push the branch, then check the CI run: `gh run list --branch <branch>`, then `gh run view <id> --log-failed`. In cloud sessions, if a `gh` subcommand is rejected by the proxy, use `gh api repos/PotentPlum/PCHealth/actions/runs?branch=<branch>`. Report the slice as done only when the Windows job is green.
 
 ## Commands (once the solution exists)
 
 ```
-dotnet build PCHealth.sln                 # host: full build
-dotnet test PCHealth.sln                  # host: all tests
-dotnet test PCHealth.Portable.slnf        # container or host: portable tests only
+dotnet build PCHealth.slnx                # host: full build
+dotnet test PCHealth.slnx                 # host: all tests
+dotnet test PCHealth.Portable.slnf        # any environment: portable tests only
 ```
+
+## CI and releases (D-009)
+
+- `ci.yml` runs on every push and PR. The Windows job covers the full solution; the Linux job covers the portable filter. Both skip with a notice until the solution exists.
+- `release.yml` runs when a `vX.Y.Z` tag is pushed. It runs the tests, publishes a self-contained `win-x64` build, packs it with Velopack, and attaches the result to a GitHub Release.
+- **Pushing a version tag ships software to the user's other PC.** Never create or push a tag unless the user explicitly asks for that specific release. Tags only go on `main` commits whose CI is green.
+- The Velopack NuGet package the app references must match `VPK_VERSION` in `release.yml`. Bump them together.
 
 ## Planned layout
 
@@ -80,10 +90,11 @@ This tool deletes and moves real files, so development must not:
 
 ### Phase 1 slice order
 
-1. Solution skeleton: projects above, `PCHealth.Portable.slnf`, test projects, build green in both environments
+1. Solution skeleton: projects above, `PCHealth.slnx` + `PCHealth.Portable.slnf`, test projects, both CI jobs green
 2. Read-only inventory using the fallback recursive scanner, with large-folder discovery
 3. Duplicate pipeline (size -> partial digest -> full hash), version candidates kept separate
 4. Policy: exclusions and protected locations, plus Windows path canonicalization with adversarial tests
 5. Ledger and quarantine (SQLite), with retention window and expiry behavior
 6. First mutating action through the gateway (quarantine/Recycle Bin), plus Undo, plus interrupted/partial-failure tests
 7. UI shell: overview with one finding, preview, approve, activity history, global Pause
+8. Delivery: integrate the Velopack library, add a user-visible "Check for updates" (no silent background checks, §3.5), resolve D-010, make the first tagged release

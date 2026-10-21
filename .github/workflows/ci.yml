@@ -1,0 +1,89 @@
+# Build and test on every push and PR (docs/decisions.md D-009).
+# The Windows job is the authority for Windows-specific code; the Linux job mirrors
+# the dev container and Claude Code cloud sessions (portable projects only).
+name: CI
+
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  DOTNET_CLI_TELEMETRY_OPTOUT: "1"
+  DOTNET_NOLOGO: "1"
+
+jobs:
+  windows:
+    name: Windows (full solution)
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Check for solution
+        id: guard
+        shell: bash
+        run: |
+          if [ -f PCHealth.slnx ]; then
+            echo "present=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "::notice::PCHealth.slnx does not exist yet - nothing to build."
+            echo "present=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - uses: actions/setup-dotnet@v6
+        if: steps.guard.outputs.present == 'true'
+        with:
+          global-json-file: global.json
+
+      - name: Restore
+        if: steps.guard.outputs.present == 'true'
+        run: dotnet restore PCHealth.slnx
+
+      - name: Build
+        if: steps.guard.outputs.present == 'true'
+        run: dotnet build PCHealth.slnx -c Release --no-restore
+
+      - name: Test
+        if: steps.guard.outputs.present == 'true'
+        run: dotnet test PCHealth.slnx -c Release --no-build
+
+  linux-portable:
+    name: Linux (portable projects)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Check for portable solution filter
+        id: guard
+        shell: bash
+        run: |
+          if [ -f PCHealth.Portable.slnf ]; then
+            echo "present=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "::notice::PCHealth.Portable.slnf does not exist yet - nothing to build."
+            echo "present=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - uses: actions/setup-dotnet@v6
+        if: steps.guard.outputs.present == 'true'
+        with:
+          global-json-file: global.json
+
+      - name: Restore
+        if: steps.guard.outputs.present == 'true'
+        run: dotnet restore PCHealth.Portable.slnf
+
+      - name: Build
+        if: steps.guard.outputs.present == 'true'
+        run: dotnet build PCHealth.Portable.slnf -c Release --no-restore
+
+      - name: Test
+        if: steps.guard.outputs.present == 'true'
+        run: dotnet test PCHealth.Portable.slnf -c Release --no-build

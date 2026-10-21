@@ -1,4 +1,8 @@
 {
+  "env": {
+    "DOTNET_CLI_TELEMETRY_OPTOUT": "1",
+    "DOTNET_NOLOGO": "1"
+  },
   "permissions": {
     "allow": [
       "Bash(dotnet build *)",
@@ -10,6 +14,9 @@
       "Bash(git diff *)",
       "Bash(git log *)",
       "Bash(git show *)",
+      "Bash(gh run list *)",
+      "Bash(gh run view *)",
+      "Bash(gh run watch *)",
       "PowerShell(dotnet build *)",
       "PowerShell(dotnet test *)",
       "PowerShell(dotnet restore *)",
@@ -18,11 +25,31 @@
       "PowerShell(git status *)",
       "PowerShell(git diff *)",
       "PowerShell(git log *)",
-      "PowerShell(git show *)"
+      "PowerShell(git show *)",
+      "PowerShell(gh run list *)",
+      "PowerShell(gh run view *)",
+      "PowerShell(gh run watch *)"
     ],
     "ask": [
       "Bash(git push *)",
-      "PowerShell(git push *)"
+      "Bash(git tag *)",
+      "PowerShell(git push *)",
+      "PowerShell(git tag *)"
+    ]
+  },
+  "hooks": {
+    "SessionStart": [
+      {
+        "matcher": "startup|resume",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash \"$CLAUDE_PROJECT_DIR\"/scripts/cloud/session-start.sh",
+            "timeout": 300,
+            "statusMessage": "Preparing .NET SDK (cloud sessions only)"
+          }
+        ]
+      }
     ]
   }
 }

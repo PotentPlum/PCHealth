@@ -1,0 +1,73 @@
+# Publish a release when a version tag is pushed (docs/decisions.md D-009).
+#   git tag v0.1.0 && git push origin v0.1.0
+# Produces a Velopack installer + update packages on a GitHub Release.
+# The app picks updates up only once it integrates the Velopack library (planned after slice 7),
+# and the Velopack NuGet version in the app must match VPK_VERSION below.
+name: Release
+
+on:
+  push:
+    tags: ["v*.*.*"]
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+env:
+  DOTNET_CLI_TELEMETRY_OPTOUT: "1"
+  DOTNET_NOLOGO: "1"
+  APP_PROJECT: src/PCHealth.App/PCHealth.App.csproj
+  MAIN_EXE: PCHealth.App.exe
+  PACK_ID: PCHealth
+  VPK_VERSION: 1.2.161
+
+jobs:
+  release:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Check app project exists
+        shell: bash
+        run: |
+          if [ ! -f "$APP_PROJECT" ]; then
+            echo "::error::$APP_PROJECT does not exist yet - nothing to release."
+            exit 1
+          fi
+
+      - name: Derive version from tag
+        id: version
+        shell: bash
+        run: echo "version=${GITHUB_REF_NAME#v}" >> "$GITHUB_OUTPUT"
+
+      - uses: actions/setup-dotnet@v6
+        with:
+          global-json-file: global.json
+
+      # Never ship a build whose tests fail.
+      - name: Test
+        run: dotnet test PCHealth.slnx -c Release
+
+      - name: Publish
+        run: >
+          dotnet publish ${{ env.APP_PROJECT }}
+          -c Release -r win-x64 --self-contained
+          -p:Version=${{ steps.version.outputs.version }}
+          -o publish
+
+      - name: Pack and upload with Velopack
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          dotnet tool install -g vpk --version "$VPK_VERSION"
+          repo="https://github.com/${{ github.repository }}"
+          # Fetch the previous release so vpk can build delta updates.
+          vpk download github --repoUrl "$repo" --token "$GH_TOKEN" -o Releases
+          vpk pack -u "$PACK_ID" -v "$VERSION" -p publish -e "$MAIN_EXE" -o Releases
+          vpk upload github --repoUrl "$repo" --token "$GH_TOKEN" -o Releases \
+            --publish --releaseName "PCHealth $VERSION" --tag "$GITHUB_REF_NAME"
