@@ -53,12 +53,8 @@ Result: `IInventoryScanner` + `RecursiveScanner` (metadata-only, records but nev
 ### T-05 Scanner on Windows · `done` · W · deps: T-04
 Result: 6 Windows tests in `PCHealth.Inventory.Windows.Tests` (junctions + cycle, dir symlinks, hidden/system, >260-char paths, fixture-ACL access denied); `TempRoot` now unlinks junctions before deleting; CI Windows green (run 39646389836).
 
-### T-06 Large-folder discovery · `doing (cloud, 2026-10-21)` · P · deps: T-04
-Refs: §5.1 · area: `src/PCHealth.Inventory`
-Done when:
-- Sizes roll up per directory.
-- It reports the top-N largest folders and file categories from a scan result.
-- Tests cover it.
+### T-06 Large-folder discovery · `done` · P · deps: T-04
+Result: `StorageSummary` rolls measured sizes up per folder (links add nothing, incomplete scans flagged) and ranks top-N folders and `FileCategory` totals; 13 tests.
 
 ### T-07 Low-impact scanning · `todo` · P · deps: T-04
 Refs: §3.5, §6.1 · area: `src/PCHealth.Inventory`
