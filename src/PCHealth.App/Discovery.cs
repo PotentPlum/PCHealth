@@ -78,4 +78,13 @@ public sealed class FindingsStore
         Latest = set ?? throw new ArgumentNullException(nameof(set));
         Updated?.Invoke(this, EventArgs.Empty);
     }
+
+    /// <summary>Drops a recommendation that was acted on; the next discovery measures the new state.</summary>
+    public void Remove(Recommendation recommendation)
+    {
+        if (Latest is { } latest)
+        {
+            Publish(latest with { Recommendations = latest.Recommendations.Where(r => r != recommendation).ToArray() });
+        }
+    }
 }

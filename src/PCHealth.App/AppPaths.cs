@@ -13,6 +13,8 @@ public sealed record AppPaths(string DataRoot)
 
     public string PauseState => Path.Combine(DataRoot, "paused");
 
+    public string Declines => Path.Combine(DataRoot, "declined.json");
+
     /// <summary><c>%LocalAppData%\PCHealth</c>, resolved to its final path so quarantine moves compare like with like.</summary>
     public static AppPaths ForCurrentUser(Execution.IPathResolver resolver)
     {

@@ -7,6 +7,7 @@ using PCHealth.Inventory;
 using PCHealth.Inventory.Windows;
 using PCHealth.Ledger;
 using PCHealth.Policy;
+using PCHealth.Policy.Recommendations;
 
 namespace PCHealth.App;
 
@@ -43,6 +44,13 @@ public static class AppServices
         services.AddSingleton(sp => new InterruptedOperations(sp.GetRequiredService<TransactionLedger>(), sp.GetRequiredService<QuarantineStore>()));
         services.AddSingleton<StartupTasks>();
         services.AddSingleton<FindingsStore>();
+        services.AddSingleton(_ => DeclinedRecommendations.Load(paths.Declines));
+        services.AddSingleton<Func<Recommendation, PreviewViewModel>>(sp => recommendation => new PreviewViewModel(
+            recommendation,
+            sp.GetRequiredService<ExecutionGateway>(),
+            sp.GetRequiredService<DeclinedRecommendations>(),
+            paths,
+            sp.GetRequiredService<TimeProvider>()));
         services.AddSingleton<IDiscovery>(sp => new Discovery(
             new WindowsKnownLocations(sp.GetRequiredService<IPathResolver>()),
             new WindowsAppRegistrations(),

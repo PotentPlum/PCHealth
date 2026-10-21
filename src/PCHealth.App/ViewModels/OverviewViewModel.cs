@@ -15,10 +15,15 @@ public sealed class OverviewViewModel : PageViewModel
     private readonly FindingsStore findings;
     private string summary = "No discovery has run yet.";
 
-    public OverviewViewModel(FindingsStore findings)
+    public OverviewViewModel(FindingsStore findings, DeclinedRecommendations? declines = null)
         : base("Overview")
     {
         this.findings = findings;
+        if (declines is not null)
+        {
+            IsHidden = declines.IsDeclined;
+        }
+
         PreviewCommand = new RelayCommand<RecommendationItemViewModel>(item => PreviewRequested?.Invoke(this, item!.Recommendation), item => item?.IsAction == true);
         findings.Updated += (_, _) => Refresh();
         Refresh();

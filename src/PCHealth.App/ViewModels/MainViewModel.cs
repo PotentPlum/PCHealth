@@ -1,5 +1,6 @@
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using PCHealth.Policy.Recommendations;
 
 namespace PCHealth.App.ViewModels;
 
@@ -8,8 +9,34 @@ public sealed class MainViewModel : ObservableObject
 {
     private PageViewModel current;
 
-    public MainViewModel(FirstRunViewModel firstRun, OverviewViewModel overview, ActivityViewModel activity, PauseViewModel pause, AppPaths paths)
+    private readonly HashSet<PageViewModel> opened = [];
+
+    public MainViewModel(
+        FirstRunViewModel firstRun,
+        OverviewViewModel overview,
+        ActivityViewModel activity,
+        PauseViewModel pause,
+        AppPaths paths,
+        Func<Recommendation, PreviewViewModel> preview,
+        FindingsStore findings)
     {
+        overview.PreviewRequested += (_, recommendation) =>
+        {
+            var page = preview(recommendation);
+            page.Finished += (_, _) =>
+            {
+                if (page.Execution is not null)
+                {
+                    findings.Remove(recommendation);
+                }
+
+                overview.Refresh();
+                opened.Remove(page);
+                Current = overview;
+            };
+            opened.Add(page);
+            Current = page;
+        };
         Pages = [overview, activity];
         FirstRun = firstRun;
         current = FirstRunViewModel.IsNeeded(paths) ? firstRun : overview;
@@ -29,7 +56,7 @@ public sealed class MainViewModel : ObservableObject
         get => current;
         set
         {
-            if (value != FirstRun && !Pages.Contains(value))
+            if (value != FirstRun && !Pages.Contains(value) && !opened.Contains(value))
             {
                 throw new ArgumentException("Only the shell's own pages can be shown.", nameof(value));
             }

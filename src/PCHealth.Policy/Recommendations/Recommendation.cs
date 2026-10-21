@@ -36,7 +36,7 @@ public sealed record Recommendation
         QuarantineRetention = quarantineRetention;
     }
 
-    /// <summary>Stable across scans while the same category and paths are involved.</summary>
+    /// <summary>Stable across scans while the same category, title and evidence paths are involved.</summary>
     public string Key { get; }
 
     public Finding Finding { get; }
@@ -157,9 +157,10 @@ public sealed record Recommendation
             _ => null,
         }).OfType<string>();
 
+    // Evidence paths only: a cache's individual files change between scans, its folder does not.
     private static string KeyFor(Finding finding)
     {
-        var paths = Paths(finding).Concat(finding.Operations.Select(o => o.Path)).Distinct(StringComparer.Ordinal).Order(StringComparer.Ordinal);
+        var paths = Paths(finding).Distinct(StringComparer.Ordinal).Order(StringComparer.Ordinal);
         var text = $"{finding.Category}\n{finding.Title}\n{string.Join('\n', paths)}";
         return $"{finding.Category}:{Convert.ToHexStringLower(SHA256.HashData(Encoding.UTF8.GetBytes(text)))[..16]}";
     }

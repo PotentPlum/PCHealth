@@ -86,6 +86,48 @@
                 </StackPanel>
             </ScrollViewer>
         </DataTemplate>
+        <DataTemplate DataType="{x:Type vm:PreviewViewModel}">
+            <ScrollViewer VerticalScrollBarVisibility="Auto">
+                <StackPanel Margin="24" MaxWidth="820" HorizontalAlignment="Left">
+                    <TextBlock FontSize="24" Text="Preview" />
+                    <TextBlock FontWeight="SemiBold" TextWrapping="Wrap" Margin="0,4,0,12" Text="{Binding WhatWeFound}" />
+                    <TextBlock FontWeight="SemiBold" Text="Exactly what would change (untick to leave an item out)" />
+                    <ItemsControl Margin="0,4,0,12" ItemsSource="{Binding Items}">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate DataType="{x:Type vm:PreviewItemViewModel}">
+                                <CheckBox IsChecked="{Binding IsSelected}" Margin="0,2">
+                                    <TextBlock TextWrapping="Wrap">
+                                        <Run Text="{Binding Path, Mode=OneWay}" />
+                                        <Run Text=" · " />
+                                        <Run Text="{Binding Size, Mode=OneWay}" />
+                                    </TextBlock>
+                                </CheckBox>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                    <TextBlock FontWeight="SemiBold" Text="Left alone" />
+                    <ItemsControl Margin="0,4,0,12" ItemsSource="{Binding LeftAlone}">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <TextBlock TextWrapping="Wrap" Text="{Binding}" />
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                    <TextBlock FontWeight="SemiBold" Text="Expected effect" />
+                    <TextBlock TextWrapping="Wrap" Margin="0,4,0,12" Text="{Binding ExpectedEffect}" />
+                    <TextBlock FontWeight="SemiBold" Text="Afterwards" />
+                    <TextBlock TextWrapping="Wrap" Margin="0,4,0,12" Text="{Binding Afterward}" />
+                    <TextBlock FontWeight="SemiBold" Text="Recovery and retention" />
+                    <TextBlock TextWrapping="Wrap" Margin="0,4,0,16" Text="{Binding RecoveryTerms}" />
+                    <StackPanel Orientation="Horizontal">
+                        <Button Padding="14,6" Content="Approve" Command="{Binding ApproveCommand}" />
+                        <Button Padding="14,6" Margin="8,0,0,0" Content="Decline" Command="{Binding DeclineCommand}" />
+                        <Button Padding="14,6" Margin="8,0,0,0" Content="Back" Command="{Binding BackCommand}" />
+                    </StackPanel>
+                    <TextBlock TextWrapping="Wrap" Margin="0,12,0,0" Text="{Binding Result}" />
+                </StackPanel>
+            </ScrollViewer>
+        </DataTemplate>
         <DataTemplate DataType="{x:Type vm:ActivityViewModel}">
             <TextBlock Margin="24" FontSize="20" Text="{Binding Title}" />
         </DataTemplate>

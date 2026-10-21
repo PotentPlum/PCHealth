@@ -141,7 +141,7 @@ Done when:
 - The overview shows a few prioritized findings, each answering the six §7 questions.
 - Advanced details are available on demand.
 
-### T-31 Preview and approve · `todo` · W · deps: T-30, T-23
+### T-31 Preview and approve · `doing (cloud, 2026-10-21)` · W · deps: T-30, T-23
 Refs: §4, §6.5 · area: `src/PCHealth.App`
 Done when:
 - Before approval, the user sees the exact items, exclusions, expected effect, and recovery/retention terms.
