@@ -24,10 +24,17 @@ Why: the host is Windows 11 Home, which cannot run Windows containers, so a dev 
 
 Consequence: Windows-specific behavior sits behind interfaces in portable projects (see CLAUDE.md layout).
 
-## D-004 Test framework: xUnit
-**Provisional** (2026-10-21)
+## D-004 Test framework: xUnit v3 on Microsoft.Testing.Platform
+**Accepted** (2026-10-21, T-02; was Provisional)
 
-The de facto standard for .NET. Confirm the exact version (v2 vs v3) in T-02.
+The de facto standard for .NET. Version: `xunit.v3` 4.x (4.0.2 at adoption), pinned in `Directory.Packages.props`. v2 is maintenance-only, so a new codebase starts on v3. xUnit v3 4.x runs only on Microsoft.Testing.Platform (MTP), and the .NET 10 SDK refuses MTP projects under the old VSTest `dotnet test`. So:
+
+- `global.json` sets `"test": { "runner": "Microsoft.Testing.Platform" }`. There is no `Microsoft.NET.Test.Sdk` and no `xunit.runner.visualstudio`.
+- Test projects are executables with `UseMicrosoftTestingPlatformRunner`, set once in `tests/Directory.Build.props`.
+- `dotnet test` takes `--solution`/`--project`. A bare solution path or `--nologo` gets forwarded to the test apps, and they fail with exit code 5.
+- Placeholder test projects with no tests would fail with MTP exit code 8, so `tests/Directory.Build.props` passes `--ignore-exit-code 8`.
+
+Test projects are dev-only and never ship, so they make no runtime network calls in the product.
 
 ## D-005 Ledger storage: SQLite via Microsoft.Data.Sqlite
 **Provisional** (2026-10-21)

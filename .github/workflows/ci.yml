@@ -52,7 +52,7 @@ jobs:
 
       - name: Test
         if: steps.guard.outputs.present == 'true'
-        run: dotnet test PCHealth.slnx -c Release --no-build
+        run: dotnet test --solution PCHealth.slnx -c Release --no-build
 
   linux-portable:
     name: Linux (portable projects)
@@ -87,4 +87,4 @@ jobs:
 
       - name: Test
         if: steps.guard.outputs.present == 'true'
-        run: dotnet test PCHealth.Portable.slnf -c Release --no-build
+        run: dotnet test --solution PCHealth.Portable.slnf -c Release --no-build

@@ -49,7 +49,7 @@ jobs:
 
       # Never ship a build whose tests fail.
       - name: Test
-        run: dotnet test PCHealth.slnx -c Release
+        run: dotnet test --solution PCHealth.slnx -c Release
 
       - name: Publish
         run: >
