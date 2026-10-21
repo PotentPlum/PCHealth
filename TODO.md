@@ -47,7 +47,7 @@ Result: xUnit v3 4.0.2 on Microsoft.Testing.Platform (D-004); a test project per
 ### T-03 Core finding model · `done` · P · deps: T-02
 Result: `FileEntry`/`DirectoryEntry`, `Finding`, `Evidence` (path, measurement), separate `Confidence`/`Impact`/`Recovery` with no combined score, distinct `MeasuredSize`/`EstimatedSize`; 23 tests in `PCHealth.Core.Tests`.
 
-### T-04 Fallback recursive scanner · `todo` · P · deps: T-03
+### T-04 Fallback recursive scanner · `doing (cloud, 2026-10-21)` · P · deps: T-03
 Refs: §5.1, §6.1 · area: `src/PCHealth.Inventory`
 Done when:
 - It scans a fixture tree read-only and never follows symlinks or junctions.
