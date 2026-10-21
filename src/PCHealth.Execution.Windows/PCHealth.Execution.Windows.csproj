@@ -6,6 +6,7 @@
 
   <ItemGroup>
     <ProjectReference Include="../PCHealth.Execution/PCHealth.Execution.csproj" />
+    <ProjectReference Include="../PCHealth.Policy/PCHealth.Policy.csproj" />
   </ItemGroup>
 
 </Project>
