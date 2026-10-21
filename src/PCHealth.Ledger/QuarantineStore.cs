@@ -239,6 +239,8 @@ public sealed class QuarantineStore
             }
 
             var allDone = items.All(i => i.Status == ItemStatus.Done);
+            record = record with { State = TransactionState.Applied, Items = items, ObservedBytes = freed };
+            ledger.Save(record);
             ledger.Save(record with
             {
                 State = allDone ? TransactionState.Verified : TransactionState.Failed,

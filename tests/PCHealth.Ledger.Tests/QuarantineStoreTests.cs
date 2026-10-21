@@ -183,7 +183,7 @@ public class QuarantineStoreTests
             var before = new ItemMetadata(contents?.Length ?? 1);
             var id = Guid.NewGuid();
             var entry = Store.Prepare(id, 0, path, isDirectory, before);
-            Ledger.Save(new LedgerTransaction(
+            Ledger.Record(new LedgerTransaction(
                 id, Clock.Now, LedgerOperation.MoveToQuarantine, TransactionState.Verified, "Test move.", [],
                 [new LedgerItem(path, isDirectory, before, RecoveryLocation: entry.ContentPath, Status: ItemStatus.Done)],
                 before.SizeBytes, before.SizeBytes, RecoveryMethod.Quarantine, "Restorable while in quarantine.", entry.DeadlineUtc));

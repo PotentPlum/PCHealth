@@ -107,16 +107,12 @@ Result: D-005 accepted (`Microsoft.Data.Sqlite` 10.0.13); `TransactionLedger` st
 ### T-21 Quarantine store · `done` · P · deps: T-20
 Result: `QuarantineStore` (root per D-016) gives each item a slot `<transaction>/<position>/` with `item.json` (original path, before-metadata, quarantined time, deadline, Prepared/Stored) beside `content`; retention defaults to 14 days and is configurable; `PurgeExpired` deletes only stored items past the later of slot and ledger deadline, never follows links, and records each purge as a `PurgeQuarantine` ledger transaction (pending first, then per-item outcome) linked by `RelatesTo`; ledger gained `LedgerOperation`; 8 + 1 tests on `ManualClock`.
 
-### T-22 Restore and interrupted operations · `doing (cloud, 2026-10-21)` · P · deps: T-21
-Refs: §6.4, §9 · area: `src/PCHealth.Ledger`
-Done when:
-- Operations move through the states pending → applied → verified/failed, so an interrupted operation is detected and resolved at startup.
-- Restore works per operation type, with honest limits.
-- Tests cover success, partial failure and interruption.
+### T-22 Restore and interrupted operations · `done` · P · deps: T-21
+Result: the ledger enforces pending → applied → verified/failed; `InterruptedOperations.Resolve` (startup) settles pending/applied transactions per type from what is on disk (moved, not moved, both, neither), releases empty slots and reports unexplained slots without deleting them; `Restorer` restores quarantine moves through an `IFileMover` (conflict at the original path → item stays in quarantine), re-applies timestamps, records each restore as its own transaction, and states honest limits for Recycle Bin, purge and restore records; 13 tests incl. a simulated crash mid-restore.
 
 ### Slice 6: Execution gateway
 
-### T-23 Gateway pipeline · `todo` · P · deps: T-19, T-22
+### T-23 Gateway pipeline · `doing (cloud, 2026-10-21)` · P · deps: T-19, T-22
 Refs: §6.3 · CLAUDE.md rules 2–4 · area: `src/PCHealth.Execution`
 Done when:
 - One gateway runs: validate → protected/exclusion checks → revalidate → execute → verify → ledger.

@@ -70,7 +70,10 @@ public sealed class TransactionLedger : IDisposable
         }
     }
 
-    /// <summary>Records a new transaction, or the progress of one already recorded.</summary>
+    /// <summary>
+    /// Records a new transaction, which must start <see cref="TransactionState.Pending"/> before anything changes, or the
+    /// progress of one already recorded.
+    /// </summary>
     /// <exception cref="InvalidOperationException">The update tries to change what was recorded about the transaction's purpose or terms.</exception>
     public void Save(LedgerTransaction transaction)
     {
@@ -78,9 +81,17 @@ public sealed class TransactionLedger : IDisposable
         transaction.EnsureValid();
 
         using var tx = connection.BeginTransaction();
-        if (Find(transaction.Id, tx) is { } existing && !SameTerms(existing, transaction))
+        var existing = Find(transaction.Id, tx);
+        if (existing is not null && !SameTerms(existing, transaction))
         {
             throw new InvalidOperationException($"Transaction {transaction.Id} is already recorded with different terms; history cannot be rewritten.");
+        }
+
+        var from = existing?.State;
+        if (!CanMove(from, transaction.State))
+        {
+            throw new InvalidOperationException(
+                $"Transaction {transaction.Id} cannot go from {from?.ToString() ?? "nothing"} to {transaction.State}; states run pending, applied, then verified or failed.");
         }
 
         Execute(
@@ -202,6 +213,17 @@ public sealed class TransactionLedger : IDisposable
 
         return items;
     }
+
+    /// <summary>Pending → applied → verified, with failed reachable from pending or applied. A state can repeat to record progress.</summary>
+    private static bool CanMove(TransactionState? from, TransactionState to) => (from, to) switch
+    {
+        (null, TransactionState.Pending) => true,
+        (null, _) => false,
+        var (a, b) when a == b => true,
+        (TransactionState.Pending, TransactionState.Applied or TransactionState.Failed) => true,
+        (TransactionState.Applied, TransactionState.Verified or TransactionState.Failed) => true,
+        _ => false,
+    };
 
     private static bool SameTerms(LedgerTransaction a, LedgerTransaction b) =>
         a.CreatedUtc == b.CreatedUtc

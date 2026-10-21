@@ -35,7 +35,7 @@ public class TransactionLedgerTests
 
         using (var ledger = TransactionLedger.Open(path))
         {
-            ledger.Save(original);
+            ledger.Record(original);
         }
 
         using var reopened = TransactionLedger.Open(path);
@@ -65,6 +65,7 @@ public class TransactionLedgerTests
         var pending = Sample();
         ledger.Save(pending);
 
+        ledger.Save(pending with { State = TransactionState.Applied });
         ledger.Save(pending with { State = TransactionState.Verified, ObservedBytes = 1000, Outcome = "Moved." });
 
         var loaded = ledger.Find(pending.Id)!;
@@ -87,7 +88,7 @@ public class TransactionLedgerTests
         var older = Sample(Created.AddHours(-1));
         var newer = Sample(Created) with { State = TransactionState.Verified };
         ledger.Save(older);
-        ledger.Save(newer);
+        ledger.Record(newer);
 
         Assert.Equal(new[] { newer.Id, older.Id }, ledger.All().Select(t => t.Id));
         Assert.Equal(older.Id, Assert.Single(ledger.InState(TransactionState.Pending)).Id);
@@ -104,11 +105,31 @@ public class TransactionLedgerTests
             Guid.NewGuid(), Created.AddDays(15), LedgerOperation.PurgeQuarantine, TransactionState.Verified, "Retention ended.", [],
             move.Items, null, 1000, RecoveryMethod.None, "Deleted permanently.") { RelatesTo = move.Id };
         ledger.Save(move);
-        ledger.Save(purge);
+        ledger.Record(purge);
 
         Assert.Equal(move.Id, Assert.Single(ledger.RelatedTo(move.Id)).RelatesTo);
         Assert.Equal(LedgerOperation.PurgeQuarantine, ledger.Find(purge.Id)!.Operation);
         Assert.Equal(LedgerOperation.MoveToQuarantine, LedgerOperations.From(OperationKind.MoveToQuarantine));
+    }
+
+    [Theory]
+    [InlineData(null, TransactionState.Applied)]
+    [InlineData(null, TransactionState.Verified)]
+    [InlineData(TransactionState.Pending, TransactionState.Verified)]
+    [InlineData(TransactionState.Verified, TransactionState.Pending)]
+    [InlineData(TransactionState.Failed, TransactionState.Verified)]
+    [InlineData(TransactionState.Applied, TransactionState.Pending)]
+    public void States_only_move_forward(TransactionState? from, TransactionState to)
+    {
+        using var root = new TempRoot();
+        using var ledger = TransactionLedger.Open(root.Resolve("ledger.db"));
+        var transaction = Sample();
+        if (from is { } state)
+        {
+            ledger.Record(transaction with { State = state });
+        }
+
+        Assert.Throws<InvalidOperationException>(() => ledger.Save(transaction with { State = to }));
     }
 
     [Fact]

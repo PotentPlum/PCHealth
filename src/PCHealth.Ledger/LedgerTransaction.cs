@@ -178,6 +178,26 @@ public sealed record LedgerTransaction
         }
     }
 
+    /// <summary>Value equality, lists included, so a transaction read back from the ledger equals the one saved.</summary>
+    public bool Equals(LedgerTransaction? other) =>
+        other is not null
+        && Id == other.Id
+        && CreatedUtc == other.CreatedUtc
+        && Operation == other.Operation
+        && RelatesTo == other.RelatesTo
+        && State == other.State
+        && Reason == other.Reason
+        && Checks.SequenceEqual(other.Checks)
+        && Items.SequenceEqual(other.Items)
+        && ExpectedBytes == other.ExpectedBytes
+        && ObservedBytes == other.ObservedBytes
+        && RecoveryMethod == other.RecoveryMethod
+        && RecoveryLimitations == other.RecoveryLimitations
+        && RetentionDeadlineUtc == other.RetentionDeadlineUtc
+        && Outcome == other.Outcome;
+
+    public override int GetHashCode() => HashCode.Combine(Id, State, Items.Count);
+
     /// <summary>Items that failed or were skipped.</summary>
     public IReadOnlyList<LedgerItem> FailedSteps => Items.Where(i => i.Status is ItemStatus.Failed or ItemStatus.Skipped).ToArray();
 }
