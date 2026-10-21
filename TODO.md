@@ -78,7 +78,7 @@ Result: `VersionCandidates` groups same-extension files whose names match once c
 
 ### Slice 4: Policy and protection
 
-### T-13 Path canonicalization · `todo` · W · deps: T-02
+### T-13 Path canonicalization · `doing (cloud, 2026-10-21)` · W · deps: T-02
 Refs: §6.3 · area: `src/PCHealth.Execution`, `src/PCHealth.Execution.Windows`
 Done when:
 - Final paths are resolved by handle.
