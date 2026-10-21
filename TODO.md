@@ -39,7 +39,7 @@ Done when: …
 ### T-01 Solution and projects · `done` · W · deps: —
 Result: `PCHealth.slnx` with 9 empty `src/` projects (6 × `net10.0`, 3 × `net10.0-windows` incl. WPF app), `Directory.Build.props`, central package management; CI Windows job green (run 39631188579).
 
-### T-02 Test projects and portable filter · `todo` · W · deps: T-01
+### T-02 Test projects and portable filter · `doing (cloud, 2026-10-21)` · W · deps: T-01
 Refs: D-004 · area: `tests/`, `PCHealth.Portable.slnf`
 Done when:
 - The xUnit version is chosen and recorded in D-004.
