@@ -93,14 +93,10 @@ Result: `ExclusionList` (file, folder-and-below, `FindingCategory`) saved atomic
 ### T-17 Known-cache catalog · `done` · W · deps: T-06, T-15
 Result: embedded `known-caches.json` (10 rules, each with rebuild/download text) evaluated by `CacheCatalog` (token locations with one `*` segment, protection + exclusion checks, read-only scan) into `Cache` findings with path/measured-size evidence; `WindowsKnownLocations` via known folders; 13 fixture tests + 7 Windows tests; CI Windows green (run 39657131868).
 
-### T-18 Orphaned app-data detection · `doing (cloud, 2026-10-21)` · W · deps: T-17
-Refs: §5.1 · area: `src/PCHealth.Policy`, `*.Windows`
-Done when:
-- AppData and ProgramData folders are cross-referenced with uninstall registrations and AppX/MSIX packages.
-- Contradictory or incomplete evidence produces `uncertain`: review only, never bulk cleanup.
-- Tests use fake registrations.
+### T-18 Orphaned app-data detection · `done` · W · deps: T-17
+Result: `ResidueDetector` cross-references top-level AppData/ProgramData folders and `LocalAppData\Packages` data folders with uninstall entries and package families (`WindowsAppRegistrations`, registry, D-015); missing sources, similar names, unreadable parts, program files or recent writes give a Low, `ReviewOnly` finding; `Finding` gained `ReviewOnly`, plus `RegistrationEvidence`/`CheckEvidence`; 18 fake-registration tests + 3 Windows tests; CI Windows green (run 39659085031).
 
-### T-19 Recommendation builder · `todo` · P · deps: T-10, T-16
+### T-19 Recommendation builder · `doing (cloud, 2026-10-21)` · P · deps: T-10, T-16
 Refs: §3.3, §7 · area: `src/PCHealth.Policy`
 Done when:
 - Findings become recommendations that answer the six §7 questions, with separate confidence, impact and recovery.
