@@ -73,12 +73,8 @@ Result: `DuplicateVerifier` full-hashes candidates with SHA-256 (size+mtime rech
 ### T-11 Same-file detection · `done` · W · deps: T-10
 Result: `FileIdentity`/`IFileIdentityProvider` (Core); verified groups need two or more distinct physical files and expose `PhysicalCopies`; `WindowsFileIdentityProvider` reads `FILE_ID_INFO` by handle; 3 portable + 3 Windows hard-link tests; CI Windows green (run 39653855265).
 
-### T-12 Version candidates · `doing (cloud, 2026-10-21)` · P · deps: T-10
-Refs: §5.1 · area: `src/PCHealth.Duplicates`
-Done when:
-- Likely versions (by name or metadata similarity) are grouped separately from verified duplicates.
-- That signal alone never marks anything removable.
-- Tests cover it.
+### T-12 Version candidates · `done` · P · deps: T-10
+Result: `VersionCandidates` groups same-extension files whose names match once copy/version/date markers are stripped; `VersionCandidateGroup` is separate from verified duplicates, always `ReviewOnly`, confidence Medium (same folder) or Low; 23 tests.
 
 ### Slice 4: Policy and protection
 
