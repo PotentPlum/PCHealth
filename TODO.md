@@ -44,7 +44,7 @@ Result: xUnit v3 4.0.2 on Microsoft.Testing.Platform (D-004); a test project per
 
 ### Slice 2: Read-only inventory
 
-### T-03 Core finding model · `todo` · P · deps: T-02
+### T-03 Core finding model · `doing (cloud, 2026-10-21)` · P · deps: T-02
 Refs: §3.3, §7 · area: `src/PCHealth.Core`
 Done when:
 - There are types for file and directory entries, Finding and Evidence.
