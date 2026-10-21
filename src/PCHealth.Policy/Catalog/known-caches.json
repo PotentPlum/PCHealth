@@ -1,0 +1,78 @@
+{
+  "version": 1,
+  "rules": [
+    {
+      "id": "user-temp",
+      "name": "Temporary files",
+      "location": "{Temp}",
+      "minAgeDays": 7,
+      "why": "Apps leave temporary files behind and rarely clean them up.",
+      "rebuild": "Nothing is rebuilt. An app that still needs a temporary file creates a new one."
+    },
+    {
+      "id": "crash-dumps",
+      "name": "Application crash dumps",
+      "location": "{LocalAppData}/CrashDumps",
+      "filePattern": "*.dmp",
+      "why": "Memory dumps written when apps crashed. They are only useful for diagnosing those crashes.",
+      "rebuild": "Nothing is rebuilt. You lose the ability to send these dumps to a developer."
+    },
+    {
+      "id": "wer-archive",
+      "name": "Windows Error Reporting archive",
+      "location": "{LocalAppData}/Microsoft/Windows/WER/ReportArchive",
+      "why": "Copies of error reports that Windows has already processed.",
+      "rebuild": "Nothing is rebuilt. Reliability Monitor may show less detail for past problems."
+    },
+    {
+      "id": "thumbnail-cache",
+      "name": "Explorer thumbnail cache",
+      "location": "{LocalAppData}/Microsoft/Windows/Explorer",
+      "filePattern": "thumbcache_*.db",
+      "why": "Saved previews of pictures and videos shown in File Explorer.",
+      "rebuild": "Explorer recreates thumbnails as you browse folders; the first visit to large folders is slower."
+    },
+    {
+      "id": "directx-shader-cache",
+      "name": "DirectX shader cache",
+      "location": "{LocalAppData}/D3DSCache",
+      "why": "Compiled graphics shaders kept to speed up games and 3D apps.",
+      "rebuild": "Games and apps recompile shaders; their next launches may stutter or load slower."
+    },
+    {
+      "id": "nvidia-dx-cache",
+      "name": "NVIDIA DirectX shader cache",
+      "location": "{LocalAppData}/NVIDIA/DXCache",
+      "why": "Compiled graphics shaders kept by the NVIDIA driver.",
+      "rebuild": "The driver recompiles shaders; the next launches of games may stutter or load slower."
+    },
+    {
+      "id": "chrome-cache",
+      "name": "Google Chrome cache",
+      "location": "{LocalAppData}/Google/Chrome/User Data/*/Cache",
+      "why": "Copies of web pages, images and scripts Chrome has downloaded.",
+      "rebuild": "Chrome downloads pages again as you visit them; sites load slower at first. Sign-ins and history are not stored here."
+    },
+    {
+      "id": "edge-cache",
+      "name": "Microsoft Edge cache",
+      "location": "{LocalAppData}/Microsoft/Edge/User Data/*/Cache",
+      "why": "Copies of web pages, images and scripts Edge has downloaded.",
+      "rebuild": "Edge downloads pages again as you visit them; sites load slower at first. Sign-ins and history are not stored here."
+    },
+    {
+      "id": "npm-cache",
+      "name": "npm package cache",
+      "location": "{LocalAppData}/npm-cache",
+      "why": "Downloaded JavaScript packages kept by npm.",
+      "rebuild": "npm downloads packages again the next time a project installs them, which needs a network connection."
+    },
+    {
+      "id": "nuget-http-cache",
+      "name": "NuGet download cache",
+      "location": "{LocalAppData}/NuGet/v3-cache",
+      "why": "Package metadata and downloads kept by NuGet.",
+      "rebuild": "NuGet downloads them again on the next restore, which needs a network connection."
+    }
+  ]
+}

@@ -6,6 +6,11 @@
 
   <ItemGroup>
     <ProjectReference Include="../PCHealth.Core/PCHealth.Core.csproj" />
+    <ProjectReference Include="../PCHealth.Inventory/PCHealth.Inventory.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <EmbeddedResource Include="Catalog/known-caches.json" LogicalName="PCHealth.Policy.Catalog.known-caches.json" />
   </ItemGroup>
 
 </Project>

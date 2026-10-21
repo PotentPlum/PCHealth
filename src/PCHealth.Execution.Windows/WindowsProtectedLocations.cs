@@ -1,4 +1,3 @@
-using System.Runtime.InteropServices;
 using PCHealth.Policy;
 
 namespace PCHealth.Execution.Windows;
@@ -9,7 +8,7 @@ namespace PCHealth.Execution.Windows;
 /// </summary>
 public static class WindowsProtectedLocations
 {
-    private static readonly (Guid Id, ProtectionKind Kind, string Reason)[] KnownFolders =
+    private static readonly (Guid Id, ProtectionKind Kind, string Reason)[] ProtectedKnownFolders =
     [
         (new("F38BF404-1D43-42F2-9305-67DE0B28FC23"), ProtectionKind.OperatingSystem, "it holds Windows system files."),
         (new("1AC14E77-02E7-4E5D-B744-2EB1AE5198B7"), ProtectionKind.OperatingSystem, "it holds Windows system files."),
@@ -36,15 +35,15 @@ public static class WindowsProtectedLocations
     {
         resolver ??= new WindowsPathResolver();
         var locations = new List<ProtectedLocation>();
-        foreach (var (id, kind, reason) in KnownFolders)
+        foreach (var (id, kind, reason) in ProtectedKnownFolders)
         {
-            if (KnownFolderPath(id) is { } path)
+            if (KnownFolders.Path(id) is { } path)
             {
                 locations.Add(new ProtectedLocation(Canonical(path, resolver), kind, reason));
             }
         }
 
-        var systemRoot = KnownFolderPath(KnownFolders[0].Id) is { } windows ? Path.GetPathRoot(windows) : null;
+        var systemRoot = KnownFolders.Path(ProtectedKnownFolders[0].Id) is { } windows ? Path.GetPathRoot(windows) : null;
         if (systemRoot is not null)
         {
             foreach (var entry in BootEntries)
@@ -64,22 +63,5 @@ public static class WindowsProtectedLocations
     public static ProtectionPolicy CreateDefaultPolicy(IPathResolver? resolver = null) => new(Discover(resolver));
 
     /// <summary>The final path when it resolves; otherwise the path as given, so a missing folder is still protected.</summary>
-    private static string Canonical(string path, IPathResolver resolver) =>
-        resolver.Resolve(path, LinkHandling.Follow) is { IsResolved: true, FinalPath: { } final } ? final : path;
-
-    private static string? KnownFolderPath(Guid id)
-    {
-        var result = SHGetKnownFolderPath(id, 0, IntPtr.Zero, out var pointer);
-        try
-        {
-            return result == 0 ? Marshal.PtrToStringUni(pointer) : null;
-        }
-        finally
-        {
-            Marshal.FreeCoTaskMem(pointer);
-        }
-    }
-
-    [DllImport("shell32.dll")]
-    private static extern int SHGetKnownFolderPath([MarshalAs(UnmanagedType.LPStruct)] Guid rfid, uint dwFlags, IntPtr hToken, out IntPtr ppszPath);
+    private static string Canonical(string path, IPathResolver resolver) => KnownFolders.Canonical(path, resolver) ?? path;
 }
