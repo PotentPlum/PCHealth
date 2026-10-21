@@ -90,3 +90,34 @@ public sealed record FileContentEvidence : Evidence
 
     public string ContentHash { get; }
 }
+
+/// <summary>A software registration (uninstall entry or package) that relates to the finding.</summary>
+public sealed record RegistrationEvidence : Evidence
+{
+    /// <param name="source">Where the registration was read, e.g. "uninstall entry" or "package".</param>
+    public RegistrationEvidence(string source, string name, string description)
+        : base(description)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(source);
+        ArgumentException.ThrowIfNullOrWhiteSpace(name);
+        Source = source;
+        Name = name;
+    }
+
+    public string Source { get; }
+
+    public string Name { get; }
+}
+
+/// <summary>A check that was performed and what it found, e.g. "no registration names this folder".</summary>
+public sealed record CheckEvidence : Evidence
+{
+    public CheckEvidence(string check, string description)
+        : base(description)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(check);
+        Check = check;
+    }
+
+    public string Check { get; }
+}

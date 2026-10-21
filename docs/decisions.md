@@ -145,3 +145,22 @@ How protections apply:
 - Folders come from the known-folder API (`SHGetKnownFolderPath`), so redirected and localized folders are found.
 - Checks run on the final path from the path resolver (T-13), so links and 8.3 names can't bypass them.
 - A folder that can't be resolved is still protected under its reported path.
+
+## D-015 Application ownership evidence for residue detection
+**Accepted** (2026-10-21, T-18)
+
+Residue detection (spec §5.1) decides who owns a folder in AppData or ProgramData from the following sources, all read without changing anything:
+- **Uninstall entries:** `HKLM\…\Uninstall` (64- and 32-bit views) and `HKCU\…\Uninstall`. Each entry gives a display name, publisher and install location.
+- **AppX/MSIX packages:** the package families under the current user's `AppModel\Repository\Families` registry key. This avoids the WinRT `PackageManager` projection and its Windows SDK targeting pack. Package data folders in `%LocalAppData%\Packages` are matched to family names exactly.
+
+Rules:
+- **Owned:** a registration installs into the folder, or a name exactly matches or begins the registration's display name, publisher or install-folder name. Company forms and versions are ignored when comparing.
+- **Uncertain:** the folder is reported for review only and never offered for bulk cleanup when any of these holds:
+  - a registration source is missing or unreadable;
+  - a name only resembles a registration's name;
+  - part of the folder can't be read;
+  - the folder holds program files;
+  - something in it was written in the last 30 days.
+- **Likely orphaned:** confidence is at most Medium, because folder names are only a clue to ownership.
+
+Running processes, open handles, services and scheduled tasks are checked by the gateway right before acting (T-23, T-26), not during discovery.

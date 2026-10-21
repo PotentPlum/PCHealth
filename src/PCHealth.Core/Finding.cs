@@ -23,7 +23,8 @@ public sealed record Finding
         IReadOnlyList<Evidence> evidence,
         Confidence confidence,
         Impact impact,
-        Recovery recovery)
+        Recovery recovery,
+        bool reviewOnly = false)
     {
         if (!Enum.IsDefined(category))
         {
@@ -54,6 +55,7 @@ public sealed record Finding
         Confidence = confidence;
         Impact = impact;
         Recovery = recovery;
+        ReviewOnly = reviewOnly;
     }
 
     public FindingCategory Category { get; }
@@ -71,4 +73,10 @@ public sealed record Finding
     public Impact Impact { get; }
 
     public Recovery Recovery { get; }
+
+    /// <summary>
+    /// The evidence is incomplete or contradictory (spec §5.1): the finding is shown for review and never
+    /// included in bulk cleanup.
+    /// </summary>
+    public bool ReviewOnly { get; }
 }
