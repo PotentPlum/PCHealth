@@ -132,13 +132,10 @@ Result: through the real Windows platform layer, Undo restores a quarantined fil
 ### T-28 App shell · `done` · W · deps: T-02
 Result: D-002 accepted (WPF with its built-in Fluent theme; `Microsoft.Extensions.DependencyInjection` 10.0.13 and `CommunityToolkit.Mvvm` 8.4.2 recorded); `AppServices` composes everything around the one `ExecutionGateway`; `MainViewModel` navigates between pages; `PauseViewModel` shows and changes the gateway's own `GlobalPause` (persisted); `StartupTasks` settles interrupted operations and purges expired quarantine at launch; 5 view-model/composition tests; CI Windows green (run 39665924421). The UI itself has not been looked at on a real desktop yet.
 
-### T-29 First run · `doing (cloud, 2026-10-21)` · W · deps: T-28, T-06
-Refs: §5.1 (first-run value), §3.5 · area: `src/PCHealth.App`
-Done when:
-- First run explains what is inspected, what is stored, and that nothing leaves the PC.
-- It starts read-only discovery and shows one useful finding quickly.
+### T-29 First run · `done` · W · deps: T-28, T-06
+Result: `FirstRunViewModel` states what is inspected, what is stored (the app's data folder) and the D-018 network sentence, then runs `Discovery` (read-only, user folder only): known caches first so a finding shows quickly, then large folders, duplicates of 1 MB or more, version groups and leftover app data; results go to `FindingsStore`, and first run is marked complete only when discovery ends (Stop changes nothing); 4 tests incl. real discovery on a fixture profile that is left unchanged; CI Windows green (run 39666291831).
 
-### T-30 Overview and details · `todo` · W · deps: T-29, T-19
+### T-30 Overview and details · `doing (cloud, 2026-10-21)` · W · deps: T-29, T-19
 Refs: §3.1, §7 · area: `src/PCHealth.App`
 Done when:
 - The overview shows a few prioritized findings, each answering the six §7 questions.

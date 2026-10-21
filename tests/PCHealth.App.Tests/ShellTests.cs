@@ -45,7 +45,7 @@ public sealed class ShellTests : IDisposable
         Assert.Same(activity, main.Current);
         Assert.Contains(nameof(MainViewModel.Current), changed);
         Assert.False(main.NavigateCommand.CanExecute(new ActivityViewModel()));
-        Assert.Throws<ArgumentException>(() => main.Current = new OverviewViewModel());
+        Assert.Throws<ArgumentException>(() => main.Current = new OverviewViewModel(new FindingsStore()));
     }
 
     [Fact]
