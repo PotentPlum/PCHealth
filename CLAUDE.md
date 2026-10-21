@@ -38,6 +38,7 @@ dotnet test PCHealth.Portable.slnf        # any environment: portable tests only
 - `release.yml` runs when a `vX.Y.Z` tag is pushed. It runs the tests, publishes a self-contained `win-x64` build, packs it with Velopack, and attaches the result to a GitHub Release.
 - **Pushing a version tag ships software to the user's other PC.** Never create or push a tag unless the user explicitly asks for that specific release. Tags only go on `main` commits whose CI is green.
 - The Velopack NuGet package the app references must match `VPK_VERSION` in `release.yml`. Bump them together.
+- **The repo is public (D-012).** Everything committed is world-readable, including history. Never commit secrets, tokens, personal data, or real paths and file names from the user's machines; test fixtures use made-up names. Force-pushes to `main` and changes to `v*` tags are blocked by rulesets.
 
 ## Planned layout
 

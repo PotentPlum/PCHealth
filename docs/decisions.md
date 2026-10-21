@@ -59,16 +59,27 @@ Known limits:
 - The exe is unsigned, so SmartScreen warns on first run.
 
 ## D-010 Update channel and update UX
-**Open**
+**Partly decided** (2026-10-21)
 
-Two questions:
-1. **How the other PC reads releases of a private repo:**
-   - (a) A fine-grained, read-only GitHub token stored on that PC. It must never be embedded in the binary.
-   - (b) Make the repo public.
-   - (c) Mirror releases to a shared folder (e.g. OneDrive), which Velopack can read as a local source.
-2. **Update UX:** must be user-visible and user-initiated or confirmed, because an update check is network traffic and the local-first promise requires disclosure (§3.5, §6.2). Silent auto-install is ruled out for a tool that deletes files.
+1. **Channel: public GitHub Releases.** The repo was made public on 2026-10-21, so Velopack can read releases without any token. The earlier options (a token on the other PC, or a shared-folder mirror) are no longer needed.
+2. **Update UX: still open.** Updates must be user-visible and user-initiated or confirmed, because an update check is network traffic and the local-first promise requires disclosure (§3.5, §6.2). Silent auto-install is ruled out for a tool that deletes files. Decide the exact flow in slice 8.
 
-Decide in slice 8.
+## D-012 Public repository hardening
+**Accepted** (2026-10-21)
+
+Settings applied when the repo went public:
+- **Secret scanning and push protection** are on.
+- **Dependabot:** alerts and security updates are on. Weekly version-update PRs cover GitHub Actions and NuGet (`.github/dependabot.yml`). The `global.json` SDK pin is excluded (see that file for why).
+- **Private vulnerability reporting** is on.
+- **Fork pull requests:** CI runs only after approval for every external contributor, not just first-timers.
+- **Default `GITHUB_TOKEN` is read-only.** `release.yml` asks for `contents: write` explicitly.
+- **Rulesets:**
+  - "Protect main" blocks deletion and force-push.
+  - "Protect release tags" (`v*`) blocks deletion, moving and force-push, because a published tag is what the other PC installs.
+  - Neither has a bypass. To force-push deliberately, disable the ruleset in repo settings first.
+- **Removed the CI run** that still referenced a pre-rewrite commit containing the old author email.
+
+Not done (owner decisions): adding a LICENSE (without one the code is all rights reserved), and requiring PRs or green CI before merging to `main`.
 
 ## D-011 Solution format: .slnx
 **Accepted** (2026-10-21)

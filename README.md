@@ -20,7 +20,7 @@ Equivalent without winget configuration: `winget install --id Microsoft.DotNet.S
 
 **Claude Code cloud sessions (portable core only):**
 
-1. Give cloud sessions access to this private repo: install the [Claude GitHub App](https://github.com/apps/claude) on it, or run `/web-setup` in a local Claude Code session.
+1. Give cloud sessions push access to this repo: install the [Claude GitHub App](https://github.com/apps/claude) on it, or run `/web-setup` in a local Claude Code session.
 2. Use an environment with **Trusted** network access (the default).
 3. A SessionStart hook installs the .NET 10 SDK automatically. To make sessions start faster, also put this in the environment's **Setup script** field; setup scripts are cached:
    ```bash
@@ -44,4 +44,4 @@ Linux environments can't build or test Windows-specific code or the UI. CI cover
 Not usable yet; there's nothing to release. Once the first release exists:
 
 1. Download `PCHealth-win-Setup.exe` from the repo's Releases page and run it once. SmartScreen will warn because the exe is unsigned.
-2. After that, the app checks for and installs new releases itself, with your confirmation. How it authenticates to this private repo is still open; see D-010 in [docs/decisions.md](docs/decisions.md).
+2. After that, the app checks for and installs new releases from this repo's public Releases, with your confirmation. No token is needed (D-010 in [docs/decisions.md](docs/decisions.md)).

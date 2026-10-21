@@ -1,0 +1,14 @@
+# Weekly version-update PRs (docs/decisions.md D-012).
+# The SDK pin in global.json is deliberately NOT managed here: cloud sessions install
+# Ubuntu's 10.0.1xx SDK, and bumping the pin to a newer feature band would break them.
+# VPK_VERSION in release.yml is also manual; bump it together with the Velopack package.
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+  - package-ecosystem: nuget
+    directory: /
+    schedule:
+      interval: weekly
