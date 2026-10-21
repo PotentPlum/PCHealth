@@ -5,14 +5,14 @@ Each entry: status (**Accepted**, **Provisional**: revisit before it matters, **
 ## D-001 Language and runtime: all C# on .NET 10 LTS
 **Provisional** (2026-10-21)
 
-C# only. Native Windows APIs (MFT/USN, `GetFinalPathNameByHandle`, reparse points, Recycle Bin) are called via P/Invoke. C++ is added only if a benchmark shows C# cannot meet a defined target (spec §6.1).
+C# only. Native Windows APIs (MFT/USN, `GetFinalPathNameByHandle`, reparse points, Recycle Bin) are called via P/Invoke. C++ is added only if a benchmark shows C# cannot meet a defined target (spec Â§6.1).
 
 .NET 10 because it is the current LTS. .NET 9 is STS and leaves support in November 2026.
 
 ## D-002 UI framework: WPF
 **Provisional** (2026-10-21)
 
-WPF is mature, builds with the plain .NET SDK, and needs no extra workloads. WinUI 3 is the alternative if a modern Fluent look becomes a priority. Revisit before slice 7 (UI shell).
+WPF is mature, builds with the plain .NET SDK, and needs no extra workloads. WinUI 3 is the alternative if a modern Fluent look becomes a priority. Confirm in T-28 (app shell).
 
 ## D-003 Development environment: hybrid
 **Accepted** (2026-10-21)
@@ -27,17 +27,17 @@ Consequence: Windows-specific behavior sits behind interfaces in portable projec
 ## D-004 Test framework: xUnit
 **Provisional** (2026-10-21)
 
-The de facto standard for .NET. Confirm the exact version (v2 vs v3) in slice 1.
+The de facto standard for .NET. Confirm the exact version (v2 vs v3) in T-02.
 
 ## D-005 Ledger storage: SQLite via Microsoft.Data.Sqlite
 **Provisional** (2026-10-21)
 
-Suggested by the spec (§6.4). It is durable, local and inspectable. Confirm in slice 5.
+Suggested by the spec (Â§6.4). It is durable, local and inspectable. Confirm in T-20.
 
 ## D-006 Full-file hash algorithm
 **Open**
 
-BLAKE3 is the spec's candidate (§5.1), but it needs a third-party NuGet package, which must be evaluated for maintenance and provenance. SHA-256 is built into the BCL with hardware acceleration and would be the fallback. A collision-handling policy is also needed, e.g. byte-for-byte comparison before any delete. Decide in slice 3.
+BLAKE3 is the spec's candidate (Â§5.1), but it needs a third-party NuGet package, which must be evaluated for maintenance and provenance. SHA-256 is built into the BCL with hardware acceleration and would be the fallback. A collision-handling policy is also needed, e.g. byte-for-byte comparison before any delete. Decide in T-08.
 
 ## D-008 Claude Code cloud sessions as a fourth environment
 **Accepted** (2026-10-21)
@@ -62,7 +62,7 @@ Known limits:
 **Partly decided** (2026-10-21)
 
 1. **Channel: public GitHub Releases.** The repo was made public on 2026-10-21, so Velopack can read releases without any token. The earlier options (a token on the other PC, or a shared-folder mirror) are no longer needed.
-2. **Update UX: still open.** Updates must be user-visible and user-initiated or confirmed, because an update check is network traffic and the local-first promise requires disclosure (§3.5, §6.2). Silent auto-install is ruled out for a tool that deletes files. Decide the exact flow in slice 8.
+2. **Update UX: still open.** Updates must be user-visible and user-initiated or confirmed, because an update check is network traffic and the local-first promise requires disclosure (Â§3.5, Â§6.2). Silent auto-install is ruled out for a tool that deletes files. Decide the exact flow in T-35.
 
 ## D-012 Public repository hardening
 **Accepted** (2026-10-21)
@@ -86,7 +86,22 @@ Not done (owner decisions): adding a LICENSE (without one the code is all rights
 
 `dotnet new sln` produces `.slnx` by default on .NET 10. CI, the cloud hook and CLAUDE.md all refer to `PCHealth.slnx` and `PCHealth.Portable.slnf`.
 
+## D-013 Task tracking and session protocol
+**Accepted** (2026-10-21)
+
+- **Tracking:** `TODO.md` on `main` is the single source of truth for task status (`todo`, `doing`, `done`, `blocked`). Every environment, whether host, container or cloud, reads the same file.
+- **Sizing:** each task fits in one session and has an explicit "Done when".
+- **Protocol** (CLAUDE.md): one task per session, claimed in its first commit, commits prefixed `T-NN:`, and status set to `done` only once verified.
+
+Why, given the goal of keeping tokens low:
+- Status lines are designed to be found with Grep, so sessions read one task block instead of the whole file.
+- Tasks cite spec sections and D-entries, so the 32 KB spec is never loaded in full.
+- Done tasks shrink to one `Result:` line, so the file doesn't grow with history.
+- Git history (`git log --grep T-NN`) replaces session notes.
+
+Phase 2 and 3 are listed but deliberately not sliced. They get sliced once Phase 1 is done.
+
 ## D-007 Process boundaries and IPC
 **Open**
 
-The spec wants separate permission boundaries for read-only inventory, AI inference and elevated execution (§6.1, §6.5). Open questions: how many processes, the IPC mechanism (named pipes are likely), and how the elevated helper is launched and authenticated. Phase 1 can run unelevated in one process, as long as the gateway is a clean seam. Decide before any operation that needs elevation.
+The spec wants separate permission boundaries for read-only inventory, AI inference and elevated execution (Â§6.1, Â§6.5). Open questions: how many processes, the IPC mechanism (named pipes are likely), and how the elevated helper is launched and authenticated. Phase 1 can run unelevated in one process, as long as the gateway is a clean seam. Decide before any operation that needs elevation.

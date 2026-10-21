@@ -1,101 +1,111 @@
 # PC Health Monitor
 
-Local-first Windows utility that finds what wastes storage and system resources, shows the evidence, and lets the user choose what to change — with a recovery path wherever one can honestly be supported.
+Local-first Windows utility that finds what wastes storage and system resources, shows the evidence, and lets the user choose what to change, with a recovery path wherever one can honestly be supported.
 
-- Full product/technical spec: [docs/spec.md](docs/spec.md) (section numbers below refer to it)
-- Decisions and open questions: [docs/decisions.md](docs/decisions.md)
+**Where things are:**
+- [TODO.md](TODO.md): tasks and their status. This is the source of truth for what's done.
+- [docs/spec.md](docs/spec.md): the product spec. `§` references point at its sections.
+- [docs/decisions.md](docs/decisions.md): decisions `D-NNN`.
 
-## Current status
+## Session protocol
 
-**Phase 1 (spec §8), no code yet.** Next step is the solution skeleton (slice 1 below).
+One session does one task. Follow these steps in order:
 
-Out of scope until explicitly reopened: automatic file organization, registry cleaning, Dormant Mode, driver remediation, symlink/junction redirection, unattended destructive actions, anything from Phase 2/3.
+1. **Sync.** On the host, run `git pull --ff-only`. Cloud sessions start from a fresh clone.
+2. **Pick a task.**
+   - If the user named one, take it.
+   - Otherwise run `grep -nE '^### T-[0-9]+[a-z]? .*`(doing|blocked|todo)`' TODO.md`.
+   - Resume a `doing` task first. If there is none, take the first `todo` whose deps are all `done`.
+   - Skip `U` tasks; they need the user.
+3. **Load only what the task needs.**
+   - The task's block in TODO.md: read it by line range, not the whole file.
+   - The cited spec sections, found with Grep on the heading (e.g. `^#### Verified duplicate`).
+   - The cited D-entries.
+   - Files in the task's area.
+4. **Claim it.** Set the status to `doing (env, YYYY-MM-DD)` in your first commit for the task. `env` is `host`, `cloud` or `container`.
+5. **Build exactly what "Done when" asks.** Nothing more.
+   - New decisions go in docs/decisions.md as part of this task.
+   - If the task turns out too big, split it in TODO.md (T-NNa, T-NNb), finish the first part, and leave the rest `todo`.
+6. **Verify.**
+   - Run the touched test project first, then the portable filter (Linux) or the full solution (host).
+   - **W** tasks also need the CI Windows job green. See "Verifying Windows code from Linux" below.
+7. **Finish.**
+   - Set the status to `done`. Replace the task's Refs and Done when lines with one `Result:` line.
+   - Commit with the message prefix `T-NN:`, push, and check CI.
+   - If you can't finish, leave the status `doing` and add a `Next:` line, or set `blocked` with a `Blocked:` line.
+8. **Report and stop.** Give at most 5 lines: what changed, where it was verified, and anything the user must decide. Don't start the next task unless asked.
+
+### Keeping sessions cheap
+
+- Never read docs/spec.md, TODO.md or decisions.md in full. Grep, then read line ranges.
+- Don't re-read files already in context. Don't do exploratory sweeps of the repo. Don't spawn subagents unless the user asks.
+- Keep builds quiet: `dotnet build -v q --nologo` and `dotnet test --no-build -v q --nologo`. On failure, rerun only the failing project with more detail.
+- Status lives in TODO.md, and history lives in `git log --grep "T-NN"`. Don't write session notes or summaries into files.
 
 ## Environments (D-003, D-008)
 
 | Where | What builds/tests there | Setup |
 |-|-|-|
-| Windows host | Everything (portable + Windows-specific + UI) | `winget configure -f .config/configuration.winget` |
-| GitHub Actions `windows-latest` | Everything, on every push (`.github/workflows/ci.yml`) | none |
-| Dev container (Linux) | Portable projects only (`net10.0`) | VS Code: "Reopen in Container" |
-| Claude Code cloud session (Ubuntu 24.04) | Portable projects only (`net10.0`) | SessionStart hook installs the SDK (`scripts/cloud/session-start.sh`) |
+| Windows host | Everything | README.md |
+| GitHub Actions `windows-latest` | Everything, on every push | none |
+| Dev container (Linux) | Portable projects only (`net10.0`) | README.md |
+| Claude Code cloud (Ubuntu 24.04) | Portable projects only (`net10.0`) | SessionStart hook installs the SDK |
 
-- On Linux (container or cloud), build and test only the portable solution filter: `dotnet test PCHealth.Portable.slnf`.
-- Windows-specific code (`*.Windows` projects, `net10.0-windows`) is verified only when its tests pass on the Windows host **or** in the CI Windows job. When reporting results, say which environment the tests ran in. Never describe Windows code as verified based on a Linux run.
-- **Verifying Windows code from Linux:** push the branch, then check the CI run: `gh run list --branch <branch>`, then `gh run view <id> --log-failed`. In cloud sessions, if a `gh` subcommand is rejected by the proxy, use `gh api repos/PotentPlum/PCHealth/actions/runs?branch=<branch>`. Report the slice as done only when the Windows job is green.
+- On Linux, build and test only `PCHealth.Portable.slnf`.
+- Windows code (`*.Windows`, `net10.0-windows`) counts as verified only on the host or in the CI Windows job. Always say which environment you verified in.
+- **Verifying Windows code from Linux:** push the branch, then run `gh run list --branch <branch>` and `gh run view <id> --log-failed`. If the cloud proxy rejects a `gh` subcommand, use `gh api repos/PotentPlum/PCHealth/actions/runs?branch=<branch>` instead.
 
 ## Commands (once the solution exists)
 
 ```
-dotnet build PCHealth.slnx                # host: full build
-dotnet test PCHealth.slnx                 # host: all tests
-dotnet test PCHealth.Portable.slnf        # any environment: portable tests only
+dotnet build PCHealth.slnx -v q --nologo                 # host: full build
+dotnet test PCHealth.slnx -v q --nologo                  # host: all tests
+dotnet test PCHealth.Portable.slnf -v q --nologo         # any environment: portable tests
 ```
 
-## CI and releases (D-009)
+## Layout
 
-- `ci.yml` runs on every push and PR. The Windows job covers the full solution; the Linux job covers the portable filter. Both skip with a notice until the solution exists.
-- `release.yml` runs when a `vX.Y.Z` tag is pushed. It runs the tests, publishes a self-contained `win-x64` build, packs it with Velopack, and attaches the result to a GitHub Release.
-- **Pushing a version tag ships software to the user's other PC.** Never create or push a tag unless the user explicitly asks for that specific release. Tags only go on `main` commits whose CI is green.
-- The Velopack NuGet package the app references must match `VPK_VERSION` in `release.yml`. Bump them together.
-- **The repo is public (D-012).** Everything committed is world-readable, including history. Never commit secrets, tokens, personal data, or real paths and file names from the user's machines; test fixtures use made-up names. Force-pushes to `main` and changes to `v*` tags are blocked by rulesets.
-
-## Planned layout
-
-Mirrors spec §10. Portable projects must not reference Windows APIs; Windows behavior sits behind interfaces declared in portable projects and is implemented in `*.Windows` projects.
+This mirrors spec §10. Portable projects never reference Windows APIs. Windows behavior sits behind interfaces declared in portable projects and is implemented in `*.Windows` projects.
 
 ```
 src/
-  PCHealth.Core                 net10.0          shared models: findings, evidence, confidence/impact/recovery, proposals
+  PCHealth.Core                 net10.0          findings, evidence, confidence/impact/recovery, proposals
   PCHealth.Inventory            net10.0          inventory abstractions + fallback recursive scanner
-  PCHealth.Inventory.Windows    net10.0-windows  MFT/USN inventory (later in Phase 1 or Phase 2)
+  PCHealth.Inventory.Windows    net10.0-windows  MFT/USN inventory (Phase 2)
   PCHealth.Duplicates           net10.0          size -> partial digest -> full hash pipeline
   PCHealth.Policy               net10.0          exclusions, protected locations, recommendation rules
-  PCHealth.Ledger               net10.0          transaction ledger (SQLite), quarantine records, Undo logic
+  PCHealth.Ledger               net10.0          transaction ledger (SQLite), quarantine, Undo logic
   PCHealth.Execution            net10.0          execution gateway contract + validation pipeline
-  PCHealth.Execution.Windows    net10.0-windows  handle-based path resolution, reparse checks, Recycle Bin, quarantine moves
-  PCHealth.App                  net10.0-windows  WPF UI (provisional, D-002)
+  PCHealth.Execution.Windows    net10.0-windows  handle-based paths, reparse checks, Recycle Bin, quarantine moves
+  PCHealth.App                  net10.0-windows  WPF UI (D-002)
 tests/
-  <Project>.Tests for each src project; adversarial path cases live in PCHealth.Execution.Windows.Tests
+  <Project>.Tests per src project, plus PCHealth.Testing (shared temp-root fixture)
 ```
 
 ## Non-negotiable product rules
 
-These come from the spec and override convenience:
-
-1. **Discovery is read-only.** Inventory, duplicate detection and analysis never modify files (§3.4, §6.5).
-2. **One mutation path.** Every file/system change goes through the execution gateway. No other component deletes, moves, renames or compresses anything (§6.3).
-3. **Fail closed.** If a target path, its ownership or its expected state cannot be validated, the operation is refused (§6.3).
-4. **Revalidate right before acting.** Resolve the final path via handle, reject reparse-point/junction escapes, re-check scope and protected locations immediately before modification (§6.3, TOCTOU).
-5. **AI proposes, never decides.** AI output is a typed, schema-validated proposal with no write/execute authority, and it is always validated by deterministic policy plus user approval (§3.2, §6.2).
-6. **Verified duplicates need full content verification.** Similar names, sizes or versions are never enough to call something a duplicate (§5.1).
-7. **Confidence, impact and recovery stay separate.** Never collapse them into a single "safe" score (§3.3).
-8. **Honest recovery.** Every mutating operation records a ledger transaction, including what can and cannot be restored. Nothing is permanently deleted while the user could reasonably believe it is still recoverable (§3.6, §6.4).
-9. **Measured vs estimated.** "Potentially reclaimable" is never shown as reclaimed. Performance targets are not claimed until benchmarked (§5.1, §6.1).
-10. **No unverified privacy claims.** Product code makes no network calls without a decision entry. New NuGet dependencies are recorded in docs/decisions.md because they affect the local-first claim (§3.5, §6.2).
+1. **Discovery is read-only** (§3.4, §6.5).
+2. **One mutation path.** Every file or system change goes through the execution gateway (§6.3).
+3. **Fail closed.** If a path, its ownership or its expected state can't be validated, refuse (§6.3).
+4. **Revalidate right before acting.** Resolve the final path by handle, reject reparse-point escapes, and re-check scope and protected locations (§6.3).
+5. **AI proposes, never decides.** AI output is a typed proposal, validated by policy and approved by the user (§3.2, §6.2).
+6. **Verified duplicates need full content verification** (§5.1).
+7. **Confidence, impact and recovery stay separate.** Never combine them into one score (§3.3).
+8. **Honest recovery.** Every mutation gets a ledger transaction. Nothing is permanently deleted while the user could believe it's still recoverable (§3.6, §6.4).
+9. **Measured is not estimated.** Make no performance claims before benchmarks exist (§5.1, §6.1).
+10. **No unverified privacy claims.** Product code makes no network calls without a decision. Record every new dependency in decisions.md (§3.5, §6.2).
 
 ## Development safety rules
 
-This tool deletes and moves real files, so development must not:
+- Tests touch only directories they create under the system temp directory, through the `PCHealth.Testing` fixture. Never touch real user folders.
+- Never run mutating features against real user paths. Use generated fixture trees.
+- Never request elevation in tests. Tests that need admin rights are skipped unless explicitly enabled.
+- Never add bypasses of the gateway's validation, not even temporarily.
 
-- Let tests touch anything except directories they create themselves under the system temp directory (and delete afterwards). No test may reference the real user profile, Desktop, Downloads, Documents, AppData, ProgramData, or any path outside its own fixture root.
-- Run mutating features of the app against real user paths during development or manual verification. Use a generated fixture tree.
-- Request elevation in tests. Tests that need admin rights are skipped unless explicitly enabled, and are never run without asking.
-- Add `--force` style bypasses of the gateway's validation, even "temporarily for testing".
+## CI, releases and the public repo (D-009, D-012)
 
-## Way of working
-
-- Build in thin vertical slices. Each slice includes tests and is committed only when its tests pass.
-- Record decisions (and newly discovered open questions) in docs/decisions.md as part of the slice that made them.
-- Prefer the BCL and P/Invoke over new dependencies.
-
-### Phase 1 slice order
-
-1. Solution skeleton: projects above, `PCHealth.slnx` + `PCHealth.Portable.slnf`, test projects, both CI jobs green
-2. Read-only inventory using the fallback recursive scanner, with large-folder discovery
-3. Duplicate pipeline (size -> partial digest -> full hash), version candidates kept separate
-4. Policy: exclusions and protected locations, plus Windows path canonicalization with adversarial tests
-5. Ledger and quarantine (SQLite), with retention window and expiry behavior
-6. First mutating action through the gateway (quarantine/Recycle Bin), plus Undo, plus interrupted/partial-failure tests
-7. UI shell: overview with one finding, preview, approve, activity history, global Pause
-8. Delivery: integrate the Velopack library, add a user-visible "Check for updates" (no silent background checks, §3.5), resolve D-010, make the first tagged release
+- `ci.yml` runs on every push and PR: Windows covers the full solution, Linux covers the portable filter.
+- `release.yml` runs on `vX.Y.Z` tags: test, publish, Velopack pack, then a GitHub Release.
+- **A version tag ships software to the user's other PC.** Never create or push a tag unless the user asks for that specific release, and only from a green `main`.
+- The Velopack NuGet version must match `VPK_VERSION` in `release.yml`.
+- **The repo is public.** Never commit secrets, tokens, personal data, or real paths from the user's machines. Rulesets block force-pushes to `main` and changes to `v*` tags.

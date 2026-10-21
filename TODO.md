@@ -1,0 +1,335 @@
+# TODO
+
+This file is the single source of truth for task status. Every environment reads it from `main`. The work process is in [CLAUDE.md](CLAUDE.md#session-protocol).
+
+**Status values:** `todo` · `doing` · `done` · `blocked`
+
+**Env:**
+- **P**: portable; can be done and verified in any environment.
+- **W**: Windows behavior; can be written anywhere, but is only verified on the Windows host or by the CI Windows job.
+- **U**: needs the user.
+
+**Find work without reading the whole file:**
+
+```
+grep -nE '^### T-[0-9]+[a-z]? .*`(doing|blocked|todo)`' TODO.md
+```
+
+Then read only the block of the chosen task.
+
+**Task format:**
+
+```
+### T-NN Title · `status` · Env · deps: T-xx
+Refs: spec §… · D-… · area: path
+Done when: …
+```
+
+- **Starting:** `doing (env, date)`, where env is `host`, `cloud` or `container`.
+- **Done:** replace the Refs and Done when lines with one `Result:` line. Details live in `git log --grep "T-NN"`.
+- **Blocked:** add a `Blocked:` line with the reason.
+- **Too big for one session:** split the task into T-NNa, T-NNb, and so on.
+
+---
+
+## Phase 1: Establish value and trust (spec §8)
+
+### Slice 1: Skeleton
+
+### T-01 Solution and projects · `todo` · W · deps: —
+Refs: CLAUDE.md layout · D-001, D-002, D-011 · area: repo root, `src/`
+Done when:
+- `PCHealth.slnx` contains every `src/` project from the CLAUDE.md layout, empty, with the correct TFMs.
+- `Directory.Build.props` turns on nullable, warnings-as-errors and implicit usings.
+- `Directory.Packages.props` turns on central package management.
+- The CI Windows job builds it.
+
+### T-02 Test projects and portable filter · `todo` · W · deps: T-01
+Refs: D-004 · area: `tests/`, `PCHealth.Portable.slnf`
+Done when:
+- The xUnit version is chosen and recorded in D-004.
+- There is one test project per `src/` project.
+- `PCHealth.Testing` has a temp-root fixture that creates and deletes its own directory and throws for any path outside it, plus a test proving that.
+- `PCHealth.Portable.slnf` lists only `net10.0` projects.
+- Both CI jobs are green with at least one real test each.
+
+### Slice 2: Read-only inventory
+
+### T-03 Core finding model · `todo` · P · deps: T-02
+Refs: §3.3, §7 · area: `src/PCHealth.Core`
+Done when:
+- There are types for file and directory entries, Finding and Evidence.
+- Confidence, Impact and Recovery are separate types, with no combined "safe" score.
+- Measured and estimated sizes are distinct types.
+- Unit tests cover them.
+
+### T-04 Fallback recursive scanner · `todo` · P · deps: T-03
+Refs: §5.1, §6.1 · area: `src/PCHealth.Inventory`
+Done when:
+- It scans a fixture tree read-only and never follows symlinks or junctions.
+- Access-denied entries are recorded as evidence and the scan continues.
+- The scan is cancellable and reports progress.
+- Tests cover all of this.
+
+### T-05 Scanner on Windows · `todo` · W · deps: T-04
+Refs: §5.1, §9 · area: Windows-only tests for `PCHealth.Inventory`
+Done when:
+- There are Windows tests for junctions, directory symlinks, hidden/system attributes, paths over 260 characters, and access-denied folders (fixture-created ACLs only).
+- They are green in the CI Windows job.
+
+### T-06 Large-folder discovery · `todo` · P · deps: T-04
+Refs: §5.1 · area: `src/PCHealth.Inventory`
+Done when:
+- Sizes roll up per directory.
+- It reports the top-N largest folders and file categories from a scan result.
+- Tests cover it.
+
+### T-07 Low-impact scanning · `todo` · P · deps: T-04
+Refs: §3.5, §6.1 · area: `src/PCHealth.Inventory`
+Done when:
+- The scan runs below normal priority and can be paused, resumed and cancelled.
+- It reports elapsed time and item counts, for later benchmarks.
+- Tests cover it.
+
+### Slice 3: Duplicates
+
+### T-08 Decide hash algorithm · `todo` · P · deps: —
+Refs: §5.1 · D-006
+Done when:
+- D-006 is decided: a vetted BLAKE3 package or SHA-256.
+- The collision policy is decided too, e.g. byte comparison before any removal.
+- This is a decision only; no code.
+
+### T-09 Candidate stages · `todo` · P · deps: T-04, T-08
+Refs: §5.1 · area: `src/PCHealth.Duplicates`
+Done when:
+- Files are grouped by size, then by a partial head+tail digest. Zero-byte files are skipped.
+- Tests include same-size, different-content fixtures.
+
+### T-10 Verified duplicate groups · `todo` · P · deps: T-09
+Refs: §5.1 · area: `src/PCHealth.Duplicates`
+Done when:
+- A full hash runs according to the D-006 policy.
+- Groups carry inspectable evidence: paths, sizes, timestamps and hashes.
+- Only content-verified files count as "verified duplicates".
+- Tests cover it.
+
+### T-11 Same-file detection · `todo` · W · deps: T-10
+Refs: §5.1 · area: `src/PCHealth.Duplicates`, `*.Windows`
+Done when:
+- Hard links, i.e. the same file ID, are never reported as duplicates, since removing one frees no space.
+- This works through a Windows file-ID implementation, with tests on Windows.
+
+### T-12 Version candidates · `todo` · P · deps: T-10
+Refs: §5.1 · area: `src/PCHealth.Duplicates`
+Done when:
+- Likely versions (by name or metadata similarity) are grouped separately from verified duplicates.
+- That signal alone never marks anything removable.
+- Tests cover it.
+
+### Slice 4: Policy and protection
+
+### T-13 Path canonicalization · `todo` · W · deps: T-02
+Refs: §6.3 · area: `src/PCHealth.Execution`, `src/PCHealth.Execution.Windows`
+Done when:
+- Final paths are resolved by handle.
+- Adversarial tests cover `..`, mixed case, trailing dots and spaces, 8.3 short names, `\\?\` and UNC prefixes, alternate data streams, and reserved device names.
+- Anything unresolvable fails closed.
+
+### T-14 Reparse-point escape detection · `todo` · W · deps: T-13
+Refs: §6.3 · area: `src/PCHealth.Execution.Windows`
+Done when:
+- A target inside an allowed scope that resolves outside it through a junction, symlink or mount point is rejected.
+- Tests create such links inside the fixture.
+
+### T-15 Protected locations · `todo` · W · deps: T-13
+Refs: §3.4, §6.3 · area: `src/PCHealth.Policy`, `*.Windows`
+Done when:
+- OS folders, Program Files, application binaries, boot areas and personal document folders (found via known-folder APIs) are protected by default.
+- Every block comes with a user-readable reason.
+- Tests cover it.
+
+### T-16 User exclusions · `todo` · P · deps: T-03
+Refs: §3.2, §6.5 · area: `src/PCHealth.Policy`
+Done when:
+- File, folder and category exclusions are stored locally and applied to findings.
+- Tests cover it.
+
+### T-17 Known-cache catalog · `todo` · W · deps: T-06, T-15
+Refs: §5.1 (application residue and cache cleanup) · area: `src/PCHealth.Policy`
+Done when:
+- Data-driven rules cover well-understood regenerable data (user temp, crash dumps and so on).
+- Each rule says what gets rebuilt or downloaded afterwards.
+- The rules produce findings with evidence.
+- Fixture tests cover them.
+
+### T-18 Orphaned app-data detection · `todo` · W · deps: T-17
+Refs: §5.1 · area: `src/PCHealth.Policy`, `*.Windows`
+Done when:
+- AppData and ProgramData folders are cross-referenced with uninstall registrations and AppX/MSIX packages.
+- Contradictory or incomplete evidence produces `uncertain`: review only, never bulk cleanup.
+- Tests use fake registrations.
+
+### T-19 Recommendation builder · `todo` · P · deps: T-10, T-16
+Refs: §3.3, §7 · area: `src/PCHealth.Policy`
+Done when:
+- Findings become recommendations that answer the six §7 questions, with separate confidence, impact and recovery.
+- Uncertain items go to review.
+- Tests cover it.
+
+### Slice 5: Ledger and quarantine
+
+### T-20 Ledger · `todo` · P · deps: T-03
+Refs: §6.4 · D-005 · area: `src/PCHealth.Ledger`
+Done when:
+- D-005 is confirmed.
+- The SQLite ledger records every field listed in §6.4 and survives restarts.
+- Tests run on a temp database.
+
+### T-21 Quarantine store · `todo` · P · deps: T-20
+Refs: §6.4 · area: `src/PCHealth.Ledger`
+Done when:
+- The quarantine layout stores per-item metadata.
+- Retention defaults to 14 days and is configurable.
+- Expiry purges only items past their deadline and records each purge.
+- Tests use a controlled clock.
+
+### T-22 Restore and interrupted operations · `todo` · P · deps: T-21
+Refs: §6.4, §9 · area: `src/PCHealth.Ledger`
+Done when:
+- Operations move through the states pending → applied → verified/failed, so an interrupted operation is detected and resolved at startup.
+- Restore works per operation type, with honest limits.
+- Tests cover success, partial failure and interruption.
+
+### Slice 6: Execution gateway
+
+### T-23 Gateway pipeline · `todo` · P · deps: T-19, T-22
+Refs: §6.3 · CLAUDE.md rules 2–4 · area: `src/PCHealth.Execution`
+Done when:
+- One gateway runs: validate → protected/exclusion checks → revalidate → execute → verify → ledger.
+- It fails closed at every step.
+- The global Pause flag blocks all execution.
+- Tests use a fake platform layer.
+
+### T-24 Windows quarantine move · `todo` · W · deps: T-14, T-15, T-23
+Refs: §6.3 · area: `src/PCHealth.Execution.Windows`
+Done when:
+- Files move into quarantine by handle: opened without following reparse points, final path checked, renamed by handle.
+- A TOCTOU test swaps the target for a junction between check and act, and the move is refused.
+
+### T-25 Recycle Bin deletion · `todo` · W · deps: T-23
+Refs: §5.1, §6.4 · area: `src/PCHealth.Execution.Windows`
+Done when:
+- Suitable items can go to the Recycle Bin, with a ledger entry.
+- Fixture-file tests cover it.
+
+### T-26 In-use checks · `todo` · W · deps: T-23
+Refs: §6.3 · area: `src/PCHealth.Execution.Windows`
+Done when:
+- Restart Manager and process checks block changes to files held open by running processes.
+- A test holds a file open and confirms the block.
+
+### T-27 Undo end to end · `todo` · W · deps: T-24, T-25
+Refs: §3.6, §9 · area: `src/PCHealth.Execution.Windows`, `src/PCHealth.Ledger`
+Done when:
+- Undo restores a quarantined item to its original path with its metadata.
+- A conflict at the original path fails safely.
+- Interrupted-operation recovery is verified on Windows.
+
+### Slice 7: UI shell (WPF)
+
+### T-28 App shell · `todo` · W · deps: T-02
+Refs: D-002 · area: `src/PCHealth.App`
+Done when:
+- D-002 is confirmed.
+- The WPF shell has navigation and dependency injection.
+- The global Pause control is bound to the gateway's Pause state.
+- View-model tests pass.
+
+### T-29 First run · `todo` · W · deps: T-28, T-06
+Refs: §5.1 (first-run value), §3.5 · area: `src/PCHealth.App`
+Done when:
+- First run explains what is inspected, what is stored, and that nothing leaves the PC.
+- It starts read-only discovery and shows one useful finding quickly.
+
+### T-30 Overview and details · `todo` · W · deps: T-29, T-19
+Refs: §3.1, §7 · area: `src/PCHealth.App`
+Done when:
+- The overview shows a few prioritized findings, each answering the six §7 questions.
+- Advanced details are available on demand.
+
+### T-31 Preview and approve · `todo` · W · deps: T-30, T-23
+Refs: §4, §6.5 · area: `src/PCHealth.App`
+Done when:
+- Before approval, the user sees the exact items, exclusions, expected effect, and recovery/retention terms.
+- The user can adjust the selection or decline.
+- A declined recommendation doesn't come back unless there's new evidence.
+
+### T-32 Activity history and Undo · `todo` · W · deps: T-31, T-27
+Refs: §3.6, §6.4 · area: `src/PCHealth.App`
+Done when:
+- The user can read what changed, why, and with what outcome.
+- Undo is offered where supported, and limits and deadlines are shown honestly.
+
+### T-33 Storage detail view · `todo` · W · deps: T-30
+Refs: §5.1 · area: `src/PCHealth.App`
+Done when:
+- There is a large-folders view with drill-down.
+- Measured and estimated figures are labeled distinctly.
+- Treemap and other visualizations are optional extras, not required.
+
+### T-34 Settings and local data · `todo` · W · deps: T-28
+Refs: §6.5 · area: `src/PCHealth.App`
+Done when:
+- Settings cover the retention window and exclusions.
+- The user can inspect and clear the product's locally stored data.
+
+### Slice 8: Delivery and Phase 1 exit
+
+### T-35 Update flow · `todo` · W · deps: T-28
+Refs: §3.5 · D-009, D-010 · area: `src/PCHealth.App`
+Done when:
+- The Velopack library is integrated, at the same version as `VPK_VERSION`.
+- "Check for updates" is user-initiated and disclosed.
+- The D-010 UX question is decided.
+
+### T-36 Privacy check · `todo` · W · deps: T-35
+Refs: §3.5, §9
+Done when:
+- The app's observed network behavior matches what it discloses: only the update check, only when the user starts it.
+- The result is recorded in `docs/`.
+
+### T-37 Performance baseline · `todo` · W · deps: T-07
+Refs: §6.1, §9
+Done when:
+- Scan time, CPU and RAM are measured on the host for a representative fixture tree.
+- Results are recorded in `docs/benchmarks.md` as measurements, not guarantees.
+
+### T-38 First release · `todo` · U · deps: T-32, T-35, T-36
+Refs: D-009 · CLAUDE.md "CI and releases"
+Done when:
+- The user asks for v0.1.0.
+- The tag is pushed from a green `main`.
+- The app is installed on the second PC.
+- The update path is proven with v0.1.1.
+
+---
+
+## Later phases (not sliced yet)
+
+Slice these into tasks only after Phase 1 is done. Until then they're out of scope.
+
+- **Phase 2** (§8):
+  - MFT/USN inventory
+  - file triage and project grouping
+  - dependency-aware move previews
+  - optional compression
+  - more application-specific caches
+  - startup/background resource analysis
+  - diagnostic timelines
+- **Phase 3** (§8):
+  - developer artifacts
+  - WSL2/Docker virtual disks
+  - creative caches and local AI model inventory
+  - advanced diagnostics
+- **Deferred** (§8): see the spec. Never start these without an explicit decision.
