@@ -43,7 +43,7 @@ public class TransactionLedgerTests
 
         Assert.Equal(original.Id, loaded.Id);
         Assert.Equal(original.CreatedUtc, loaded.CreatedUtc);
-        Assert.Equal(OperationKind.MoveToQuarantine, loaded.Operation);
+        Assert.Equal(LedgerOperation.MoveToQuarantine, loaded.Operation);
         Assert.Equal(TransactionState.Failed, loaded.State);
         Assert.Equal(original.Reason, loaded.Reason);
         Assert.Equal(original.Checks, loaded.Checks);
@@ -95,6 +95,23 @@ public class TransactionLedgerTests
     }
 
     [Fact]
+    public void Follow_up_transactions_point_at_the_one_they_belong_to()
+    {
+        using var root = new TempRoot();
+        using var ledger = TransactionLedger.Open(root.Resolve("ledger.db"));
+        var move = Sample();
+        var purge = new LedgerTransaction(
+            Guid.NewGuid(), Created.AddDays(15), LedgerOperation.PurgeQuarantine, TransactionState.Verified, "Retention ended.", [],
+            move.Items, null, 1000, RecoveryMethod.None, "Deleted permanently.") { RelatesTo = move.Id };
+        ledger.Save(move);
+        ledger.Save(purge);
+
+        Assert.Equal(move.Id, Assert.Single(ledger.RelatedTo(move.Id)).RelatesTo);
+        Assert.Equal(LedgerOperation.PurgeQuarantine, ledger.Find(purge.Id)!.Operation);
+        Assert.Equal(LedgerOperation.MoveToQuarantine, LedgerOperations.From(OperationKind.MoveToQuarantine));
+    }
+
+    [Fact]
     public void Invalid_transactions_are_never_saved()
     {
         using var root = new TempRoot();
@@ -103,9 +120,9 @@ public class TransactionLedgerTests
         Assert.Throws<ArgumentException>(() => ledger.Save(Sample() with { Items = [] }));
         Assert.Throws<ArgumentException>(() => ledger.Save(Sample() with { Checks = [" "] }));
         Assert.Throws<ArgumentException>(() => new LedgerTransaction(
-            Guid.Empty, Created, OperationKind.MoveToRecycleBin, TransactionState.Pending, "r", [], Sample().Items, null, null, RecoveryMethod.RecycleBin, "l"));
+            Guid.Empty, Created, LedgerOperation.MoveToRecycleBin, TransactionState.Pending, "r", [], Sample().Items, null, null, RecoveryMethod.RecycleBin, "l"));
         Assert.Throws<ArgumentException>(() => new LedgerTransaction(
-            Guid.NewGuid(), Created, OperationKind.MoveToRecycleBin, TransactionState.Pending, "r", [], Sample().Items, null, null, RecoveryMethod.None, "l", Created));
+            Guid.NewGuid(), Created, LedgerOperation.MoveToRecycleBin, TransactionState.Pending, "r", [], Sample().Items, null, null, RecoveryMethod.None, "l", Created));
         Assert.Empty(ledger.All());
     }
 
@@ -145,7 +162,7 @@ public class TransactionLedgerTests
     private static LedgerTransaction Sample(DateTimeOffset? created = null) => new(
         Guid.NewGuid(),
         created ?? Created,
-        OperationKind.MoveToQuarantine,
+        LedgerOperation.MoveToQuarantine,
         TransactionState.Pending,
         "Possible leftover data: OldEditor. No installed application claims it.",
         ["path resolved by handle", "not protected", "not excluded"],

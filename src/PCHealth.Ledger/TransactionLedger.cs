@@ -85,9 +85,9 @@ public sealed class TransactionLedger : IDisposable
 
         Execute(
             """
-            INSERT INTO transactions (id, created_utc, operation, state, reason, checks, expected_bytes, observed_bytes,
+            INSERT INTO transactions (id, created_utc, operation, relates_to, state, reason, checks, expected_bytes, observed_bytes,
                                       recovery_method, recovery_limitations, retention_deadline_utc, outcome)
-            VALUES ($id, $created, $operation, $state, $reason, $checks, $expected, $observed,
+            VALUES ($id, $created, $operation, $relates, $state, $reason, $checks, $expected, $observed,
                     $method, $limitations, $deadline, $outcome)
             ON CONFLICT (id) DO UPDATE SET state = excluded.state, checks = excluded.checks,
                 observed_bytes = excluded.observed_bytes, retention_deadline_utc = excluded.retention_deadline_utc,
@@ -98,6 +98,7 @@ public sealed class TransactionLedger : IDisposable
             ("$id", transaction.Id.ToString("D")),
             ("$created", Time(transaction.CreatedUtc)),
             ("$operation", transaction.Operation.ToString()),
+            ("$relates", transaction.RelatesTo?.ToString("D")),
             ("$state", transaction.State.ToString()),
             ("$reason", transaction.Reason),
             ("$checks", JsonSerializer.Serialize(transaction.Checks, Json)),
@@ -136,6 +137,10 @@ public sealed class TransactionLedger : IDisposable
     /// <summary>Every transaction, newest first.</summary>
     public IReadOnlyList<LedgerTransaction> All() => Query("SELECT * FROM transactions ORDER BY created_utc DESC, id;");
 
+    /// <summary>Transactions that follow up <paramref name="id"/>, oldest first.</summary>
+    public IReadOnlyList<LedgerTransaction> RelatedTo(Guid id) =>
+        Query("SELECT * FROM transactions WHERE relates_to = $id ORDER BY created_utc, id;", ("$id", id.ToString("D")));
+
     public IReadOnlyList<LedgerTransaction> InState(TransactionState state) =>
         Query("SELECT * FROM transactions WHERE state = $state ORDER BY created_utc, id;", ("$state", state.ToString()));
 
@@ -156,7 +161,8 @@ public sealed class TransactionLedger : IDisposable
             {
                 var id = reader.GetString(reader.GetOrdinal("id"));
                 var created = ParseTime(reader.GetString(reader.GetOrdinal("created_utc")));
-                var operation = Parse<OperationKind>(reader.GetString(reader.GetOrdinal("operation")));
+                var operation = Parse<LedgerOperation>(reader.GetString(reader.GetOrdinal("operation")));
+                var relatesTo = NullableString(reader, "relates_to") is { } r ? Guid.ParseExact(r, "D") : (Guid?)null;
                 var state = Parse<TransactionState>(reader.GetString(reader.GetOrdinal("state")));
                 var reason = reader.GetString(reader.GetOrdinal("reason"));
                 var checks = JsonSerializer.Deserialize<string[]>(reader.GetString(reader.GetOrdinal("checks")), Json) ?? [];
@@ -167,7 +173,10 @@ public sealed class TransactionLedger : IDisposable
                 var deadline = NullableString(reader, "retention_deadline_utc") is { } d ? ParseTime(d) : (DateTimeOffset?)null;
                 var outcome = NullableString(reader, "outcome");
                 rows.Add((id, items => new LedgerTransaction(
-                    Guid.ParseExact(id, "D"), created, operation, state, reason, checks, items, expected, observed, method, limitations, deadline, outcome)));
+                    Guid.ParseExact(id, "D"), created, operation, state, reason, checks, items, expected, observed, method, limitations, deadline, outcome)
+                {
+                    RelatesTo = relatesTo,
+                }));
             }
         }
 
@@ -197,6 +206,7 @@ public sealed class TransactionLedger : IDisposable
     private static bool SameTerms(LedgerTransaction a, LedgerTransaction b) =>
         a.CreatedUtc == b.CreatedUtc
         && a.Operation == b.Operation
+        && a.RelatesTo == b.RelatesTo
         && a.Reason == b.Reason
         && a.ExpectedBytes == b.ExpectedBytes
         && a.RecoveryMethod == b.RecoveryMethod
@@ -213,6 +223,7 @@ public sealed class TransactionLedger : IDisposable
                 id TEXT PRIMARY KEY NOT NULL,
                 created_utc TEXT NOT NULL,
                 operation TEXT NOT NULL,
+                relates_to TEXT REFERENCES transactions (id),
                 state TEXT NOT NULL,
                 reason TEXT NOT NULL,
                 checks TEXT NOT NULL,
@@ -236,6 +247,7 @@ public sealed class TransactionLedger : IDisposable
                 PRIMARY KEY (transaction_id, position)
             );
             CREATE INDEX transactions_state ON transactions (state);
+            CREATE INDEX transactions_relates_to ON transactions (relates_to);
             PRAGMA user_version = {SchemaVersion};
             """,
             tx);

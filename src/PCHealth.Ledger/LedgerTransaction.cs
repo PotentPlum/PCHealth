@@ -2,6 +2,29 @@ using PCHealth.Core;
 
 namespace PCHealth.Ledger;
 
+/// <summary>Every kind of change the ledger records: the operations findings propose, plus the product's own follow-ups.</summary>
+public enum LedgerOperation
+{
+    MoveToRecycleBin,
+    MoveToQuarantine,
+
+    /// <summary>Quarantined items deleted permanently because their retention period ended.</summary>
+    PurgeQuarantine,
+
+    /// <summary>Items put back where they came from.</summary>
+    Restore,
+}
+
+public static class LedgerOperations
+{
+    public static LedgerOperation From(OperationKind kind) => kind switch
+    {
+        OperationKind.MoveToRecycleBin => LedgerOperation.MoveToRecycleBin,
+        OperationKind.MoveToQuarantine => LedgerOperation.MoveToQuarantine,
+        _ => throw new ArgumentOutOfRangeException(nameof(kind)),
+    };
+}
+
 /// <summary>Where a transaction is in its life (spec §6.4, §9). Only <see cref="Verified"/> means the change is confirmed.</summary>
 public enum TransactionState
 {
@@ -57,7 +80,7 @@ public sealed record LedgerTransaction
     public LedgerTransaction(
         Guid id,
         DateTimeOffset createdUtc,
-        OperationKind operation,
+        LedgerOperation operation,
         TransactionState state,
         string reason,
         IReadOnlyList<string> checks,
@@ -89,7 +112,10 @@ public sealed record LedgerTransaction
 
     public DateTimeOffset CreatedUtc { get; }
 
-    public OperationKind Operation { get; }
+    public LedgerOperation Operation { get; }
+
+    /// <summary>The earlier transaction this one follows up, e.g. the quarantine move a purge or restore belongs to.</summary>
+    public Guid? RelatesTo { get; init; }
 
     public TransactionState State { get; init; }
 

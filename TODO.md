@@ -104,15 +104,10 @@ Result: `RecommendationBuilder` withholds excluded findings, strips protected/ex
 ### T-20 Ledger · `done` · P · deps: T-03
 Result: D-005 accepted (`Microsoft.Data.Sqlite` 10.0.13); `TransactionLedger` stores `LedgerTransaction`s with every §6.4 field (id, time, operation, state/outcome, reason, checks, items with before/after metadata, recovery location and per-item status/error, expected/observed bytes, recovery method/limitations/deadline) in WAL + synchronous=FULL SQLite; terms can't be rewritten, newer or non-ledger files are refused; 7 temp-database tests incl. reopen.
 
-### T-21 Quarantine store · `doing (cloud, 2026-10-21)` · P · deps: T-20
-Refs: §6.4 · area: `src/PCHealth.Ledger`
-Done when:
-- The quarantine layout stores per-item metadata.
-- Retention defaults to 14 days and is configurable.
-- Expiry purges only items past their deadline and records each purge.
-- Tests use a controlled clock.
+### T-21 Quarantine store · `done` · P · deps: T-20
+Result: `QuarantineStore` (root per D-016) gives each item a slot `<transaction>/<position>/` with `item.json` (original path, before-metadata, quarantined time, deadline, Prepared/Stored) beside `content`; retention defaults to 14 days and is configurable; `PurgeExpired` deletes only stored items past the later of slot and ledger deadline, never follows links, and records each purge as a `PurgeQuarantine` ledger transaction (pending first, then per-item outcome) linked by `RelatesTo`; ledger gained `LedgerOperation`; 8 + 1 tests on `ManualClock`.
 
-### T-22 Restore and interrupted operations · `todo` · P · deps: T-21
+### T-22 Restore and interrupted operations · `doing (cloud, 2026-10-21)` · P · deps: T-21
 Refs: §6.4, §9 · area: `src/PCHealth.Ledger`
 Done when:
 - Operations move through the states pending → applied → verified/failed, so an interrupted operation is detected and resolved at startup.
