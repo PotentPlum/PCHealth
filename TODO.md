@@ -138,12 +138,8 @@ Result: `FirstRunViewModel` states what is inspected, what is stored (the app's 
 ### T-30 Overview and details · `done` · W · deps: T-29, T-19
 Result: `OverviewViewModel` shows the three most useful recommendations (actions first, largest estimate first) and counts the rest; each `RecommendationItemViewModel` answers the six §7 questions and shows confidence, impact and recovery as separate lines, with rationale, evidence, exact operations and left-alone items behind Details; sizes are labeled measured or estimated; 5 tests; CI Windows green (run 39667002052).
 
-### T-31 Preview and approve · `doing (cloud, 2026-10-21)` · W · deps: T-30, T-23
-Refs: §4, §6.5 · area: `src/PCHealth.App`
-Done when:
-- Before approval, the user sees the exact items, exclusions, expected effect, and recovery/retention terms.
-- The user can adjust the selection or decline.
-- A declined recommendation doesn't come back unless there's new evidence.
+### T-31 Preview and approve · `done` · W · deps: T-30, T-23
+Result: `PreviewViewModel` lists the exact items (each can be left out), what is left alone and why, the expected effect for the current selection, and recovery/retention terms; Approve runs only the selected items through the gateway, Decline records the recommendation, Back changes nothing; `DeclinedRecommendations` (Policy, local JSON) keeps it hidden unless its evidence changes or its estimate at least doubles; keys now use evidence paths only; 5 portable + 4 app tests; CI Windows green (run 39667327100).
 
 ### T-32 Activity history and Undo · `doing (cloud, 2026-10-21)` · W · deps: T-31, T-27
 Refs: §3.6, §6.4 · area: `src/PCHealth.App`
