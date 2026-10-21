@@ -101,7 +101,7 @@ Result: `RecommendationBuilder` withholds excluded findings, strips protected/ex
 
 ### Slice 5: Ledger and quarantine
 
-### T-20 Ledger · `todo` · P · deps: T-03
+### T-20 Ledger · `doing (cloud, 2026-10-21)` · P · deps: T-03
 Refs: §6.4 · D-005 · area: `src/PCHealth.Ledger`
 Done when:
 - D-005 is confirmed.
