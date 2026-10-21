@@ -135,11 +135,8 @@ Result: D-002 accepted (WPF with its built-in Fluent theme; `Microsoft.Extension
 ### T-29 First run · `done` · W · deps: T-28, T-06
 Result: `FirstRunViewModel` states what is inspected, what is stored (the app's data folder) and the D-018 network sentence, then runs `Discovery` (read-only, user folder only): known caches first so a finding shows quickly, then large folders, duplicates of 1 MB or more, version groups and leftover app data; results go to `FindingsStore`, and first run is marked complete only when discovery ends (Stop changes nothing); 4 tests incl. real discovery on a fixture profile that is left unchanged; CI Windows green (run 39666291831).
 
-### T-30 Overview and details · `doing (cloud, 2026-10-21)` · W · deps: T-29, T-19
-Refs: §3.1, §7 · area: `src/PCHealth.App`
-Done when:
-- The overview shows a few prioritized findings, each answering the six §7 questions.
-- Advanced details are available on demand.
+### T-30 Overview and details · `done` · W · deps: T-29, T-19
+Result: `OverviewViewModel` shows the three most useful recommendations (actions first, largest estimate first) and counts the rest; each `RecommendationItemViewModel` answers the six §7 questions and shows confidence, impact and recovery as separate lines, with rationale, evidence, exact operations and left-alone items behind Details; sizes are labeled measured or estimated; 5 tests; CI Windows green (run 39667002052).
 
 ### T-31 Preview and approve · `doing (cloud, 2026-10-21)` · W · deps: T-30, T-23
 Refs: §4, §6.5 · area: `src/PCHealth.App`
