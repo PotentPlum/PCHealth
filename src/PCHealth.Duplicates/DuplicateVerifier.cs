@@ -3,39 +3,61 @@ using PCHealth.Core;
 namespace PCHealth.Duplicates;
 
 /// <summary>A file and the full-content hash read from it while it still matched its scanned size and last-write time.</summary>
-public sealed record HashedFile(FileEntry File, string ContentHash);
+/// <param name="Identity">The physical file, when the file system reports one; hard links share it.</param>
+public sealed record HashedFile(FileEntry File, string ContentHash, FileIdentity? Identity = null);
 
 /// <summary>
 /// Files whose entire contents hashed the same (spec §5.1, D-006). Only <see cref="DuplicateVerifier"/> creates these,
 /// so nothing else can call a group "verified". Removal still requires the gateway's byte comparison (D-006).
+/// A group always holds at least two distinct physical files; hard links to one file are never a group on their own.
 /// </summary>
 public sealed record VerifiedDuplicateGroup
 {
     internal VerifiedDuplicateGroup(MeasuredSize fileSize, string contentHash, IReadOnlyList<HashedFile> files)
     {
-        if (files.Count < 2 || files.Any(f => f.ContentHash != contentHash || f.File.Size != fileSize))
+        if (files.Any(f => f.ContentHash != contentHash || f.File.Size != fileSize))
         {
-            throw new ArgumentException("A verified group needs two or more files with the same size and content hash.", nameof(files));
+            throw new ArgumentException("Every file in a verified group has the same size and content hash.", nameof(files));
+        }
+
+        var copies = PhysicalFiles(files);
+        if (copies.Count < 2)
+        {
+            throw new ArgumentException("A verified group needs two or more distinct physical files.", nameof(files));
         }
 
         FileSize = fileSize;
         ContentHash = contentHash;
         Files = files;
+        PhysicalCopies = copies;
     }
 
     public MeasuredSize FileSize { get; }
 
     public string ContentHash { get; }
 
+    /// <summary>Every path with this content, hard links included.</summary>
     public IReadOnlyList<HashedFile> Files { get; }
+
+    /// <summary>
+    /// The paths grouped by physical file. Hard links to one file form one entry; removing one of its paths frees nothing.
+    /// </summary>
+    public IReadOnlyList<IReadOnlyList<HashedFile>> PhysicalCopies { get; }
 
     public Confidence Confidence => new(
         ConfidenceLevel.Verified,
-        $"All {Files.Count} files are {FileSize.Bytes} bytes with the same full-content {ContentReader.Algorithm} hash.");
+        $"All {PhysicalCopies.Count} files are {FileSize.Bytes} bytes with the same full-content {ContentReader.Algorithm} hash.");
 
     /// <summary>One inspectable record per file: path, size, timestamp and hash.</summary>
     public IReadOnlyList<Evidence> Evidence =>
         Files.Select(f => (Evidence)new FileContentEvidence(f.File.FullPath, f.File.Size, f.File.LastWriteTimeUtc, f.ContentHash)).ToArray();
+
+    /// <summary>Groups paths by identity; a path without a known identity counts as its own physical file.</summary>
+    internal static IReadOnlyList<IReadOnlyList<HashedFile>> PhysicalFiles(IEnumerable<HashedFile> files) =>
+        files
+            .GroupBy(f => f.Identity is { } id ? (object)id : f)
+            .Select(g => (IReadOnlyList<HashedFile>)g.ToArray())
+            .ToArray();
 }
 
 public sealed record VerificationResult(
@@ -44,7 +66,8 @@ public sealed record VerificationResult(
     IReadOnlyList<FileEntry> ChangedSinceScan);
 
 /// <summary>The final stage: full-content SHA-256 of every candidate (D-006).</summary>
-public sealed class DuplicateVerifier
+/// <param name="identities">Reports physical file identities so hard links are not mistaken for copies; null treats every path as distinct.</param>
+public sealed class DuplicateVerifier(IFileIdentityProvider? identities = null)
 {
     public VerificationResult Verify(IEnumerable<CandidateGroup> candidates, CancellationToken cancellationToken = default)
     {
@@ -77,7 +100,8 @@ public sealed class DuplicateVerifier
                         continue;
                     }
 
-                    hashed.Add(new HashedFile(file, $"{ContentReader.Algorithm}:{Convert.ToHexStringLower(digest)}"));
+                    var identity = identities?.TryGetIdentity(handle, file.FullPath);
+                    hashed.Add(new HashedFile(file, $"{ContentReader.Algorithm}:{Convert.ToHexStringLower(digest)}", identity));
                 }
                 catch (FileChangedException)
                 {
@@ -91,7 +115,7 @@ public sealed class DuplicateVerifier
 
             groups.AddRange(hashed
                 .GroupBy(h => h.ContentHash, StringComparer.Ordinal)
-                .Where(g => g.Count() > 1)
+                .Where(g => VerifiedDuplicateGroup.PhysicalFiles(g).Count > 1)
                 .OrderBy(g => g.Key, StringComparer.Ordinal)
                 .Select(g => new VerifiedDuplicateGroup(candidate.Size, g.Key, g.ToArray())));
         }
@@ -103,8 +127,8 @@ public sealed class DuplicateVerifier
 /// <summary>The whole pipeline: size, then partial digest, then full hash (spec §5.1).</summary>
 public sealed class DuplicateFinder(CandidateFinder candidates, DuplicateVerifier verifier)
 {
-    public DuplicateFinder()
-        : this(new CandidateFinder(), new DuplicateVerifier())
+    public DuplicateFinder(IFileIdentityProvider? identities = null)
+        : this(new CandidateFinder(), new DuplicateVerifier(identities))
     {
     }
 
