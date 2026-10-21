@@ -56,7 +56,7 @@ Result: 6 Windows tests in `PCHealth.Inventory.Windows.Tests` (junctions + cycle
 ### T-06 Large-folder discovery · `done` · P · deps: T-04
 Result: `StorageSummary` rolls measured sizes up per folder (links add nothing, incomplete scans flagged) and ranks top-N folders and `FileCategory` totals; 13 tests.
 
-### T-07 Low-impact scanning · `todo` · P · deps: T-04
+### T-07 Low-impact scanning · `doing (cloud, 2026-10-21)` · P · deps: T-04
 Refs: §3.5, §6.1 · area: `src/PCHealth.Inventory`
 Done when:
 - The scan runs below normal priority and can be paused, resumed and cancelled.
