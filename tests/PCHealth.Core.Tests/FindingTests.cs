@@ -44,7 +44,7 @@ public class FindingTests
         var names = typeof(Finding).GetProperties(BindingFlags.Public | BindingFlags.Instance).Select(p => p.Name);
 
         Assert.Equal(
-            new[] { "Category", "Confidence", "Evidence", "Impact", "Recovery", "Title", "WhyItMatters" },
+            new[] { "Category", "Confidence", "Evidence", "Impact", "Recovery", "ReviewOnly", "Title", "WhyItMatters" },
             names.Order());
     }
 
