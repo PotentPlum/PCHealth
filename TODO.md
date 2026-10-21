@@ -44,13 +44,8 @@ Result: xUnit v3 4.0.2 on Microsoft.Testing.Platform (D-004); a test project per
 
 ### Slice 2: Read-only inventory
 
-### T-03 Core finding model · `doing (cloud, 2026-10-21)` · P · deps: T-02
-Refs: §3.3, §7 · area: `src/PCHealth.Core`
-Done when:
-- There are types for file and directory entries, Finding and Evidence.
-- Confidence, Impact and Recovery are separate types, with no combined "safe" score.
-- Measured and estimated sizes are distinct types.
-- Unit tests cover them.
+### T-03 Core finding model · `done` · P · deps: T-02
+Result: `FileEntry`/`DirectoryEntry`, `Finding`, `Evidence` (path, measurement), separate `Confidence`/`Impact`/`Recovery` with no combined score, distinct `MeasuredSize`/`EstimatedSize`; 23 tests in `PCHealth.Core.Tests`.
 
 ### T-04 Fallback recursive scanner · `todo` · P · deps: T-03
 Refs: §5.1, §6.1 · area: `src/PCHealth.Inventory`
