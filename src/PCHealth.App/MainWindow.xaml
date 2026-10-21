@@ -4,6 +4,43 @@
         xmlns:vm="clr-namespace:PCHealth.App.ViewModels"
         Title="PC Health Monitor" Width="960" Height="640" MinWidth="640" MinHeight="420">
     <Window.Resources>
+        <DataTemplate DataType="{x:Type vm:FirstRunViewModel}">
+            <ScrollViewer VerticalScrollBarVisibility="Auto">
+                <StackPanel Margin="24" MaxWidth="720" HorizontalAlignment="Left">
+                    <TextBlock FontSize="24" Text="Welcome to PC Health Monitor" Margin="0,0,0,16" />
+                    <TextBlock FontWeight="SemiBold" Text="What is inspected" />
+                    <TextBlock TextWrapping="Wrap" Margin="0,4,0,12" Text="{Binding WhatWeInspect}" />
+                    <TextBlock FontWeight="SemiBold" Text="What is stored" />
+                    <TextBlock TextWrapping="Wrap" Margin="0,4,0,12" Text="{Binding WhatWeStore}" />
+                    <TextBlock FontWeight="SemiBold" Text="Network" />
+                    <TextBlock TextWrapping="Wrap" Margin="0,4,0,16" Text="{Binding Network}" />
+                    <StackPanel Orientation="Horizontal" Margin="0,0,0,12">
+                        <Button Padding="14,6" Content="Look for wasted space" Command="{Binding StartCommand}" />
+                        <Button Padding="14,6" Margin="8,0,0,0" Content="Stop" Command="{Binding CancelCommand}" />
+                    </StackPanel>
+                    <TextBlock TextWrapping="Wrap" Text="{Binding Status}" />
+                    <Border Margin="0,16,0,0" Padding="16" BorderThickness="1" CornerRadius="6"
+                            BorderBrush="{DynamicResource {x:Static SystemColors.ActiveBorderBrushKey}}"
+                            DataContext="{Binding FirstFinding}">
+                        <Border.Style>
+                            <Style TargetType="Border">
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding}" Value="{x:Null}">
+                                        <Setter Property="Visibility" Value="Collapsed" />
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </Border.Style>
+                        <StackPanel>
+                            <TextBlock FontWeight="SemiBold" TextWrapping="Wrap" Text="{Binding WhatWeFound}" />
+                            <TextBlock TextWrapping="Wrap" Margin="0,4,0,0" Text="{Binding WhyItMatters}" />
+                            <TextBlock TextWrapping="Wrap" Margin="0,4,0,0" Text="{Binding Impact.PotentiallyReclaimable}" />
+                            <TextBlock TextWrapping="Wrap" Margin="0,4,0,0" Text="{Binding CanIRecover}" />
+                        </StackPanel>
+                    </Border>
+                </StackPanel>
+            </ScrollViewer>
+        </DataTemplate>
         <DataTemplate DataType="{x:Type vm:OverviewViewModel}">
             <TextBlock Margin="24" FontSize="20" Text="{Binding Title}" />
         </DataTemplate>

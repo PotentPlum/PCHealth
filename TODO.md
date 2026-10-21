@@ -121,30 +121,18 @@ Result: `HandleMove` (also the Windows `IFileMover` for restores) opens the sour
 ### T-25 Recycle Bin deletion · `done` · W · deps: T-23
 Result: the gateway asks `CannotRecycle` before acting and records where each item went; `WindowsRecycleBin` refuses network, non-fixed, turned-off (`NukeOnDelete`) or too-small Recycle Bins, recycles via `SHFileOperationW` with undo and a permanent-deletion warning, then verifies the item by its `$I` record, reporting a permanent deletion as `PermanentlyDeletedException`, never as recoverable; 4 Windows fixture tests (CI-only per D-017, clean up their own items) + 2 gateway tests; CI Windows green (run 39664818249).
 
-### T-26 In-use checks · `doing (cloud, 2026-10-21)` · W · deps: T-23
-Refs: §6.3 · area: `src/PCHealth.Execution.Windows`
-Done when:
-- Restart Manager and process checks block changes to files held open by running processes.
-- A test holds a file open and confirms the block.
+### T-26 In-use checks · `done` · W · deps: T-23
+Result: `InUseCheck` asks Restart Manager which processes hold a file, or any file in a folder, open and lists programs started from inside a folder; `WindowsPlatformOperations` combines handle moves, the Recycle Bin, in-use, elevation (DELETE-access probe, D-019) and same-volume (volume serial by handle) checks; a check that cannot be made makes the gateway refuse the item; 4 Windows tests hold fixture files open from the test process, incl. the gateway blocking one; CI Windows green (run 39665924421).
 
-### T-27 Undo end to end · `doing (cloud, 2026-10-21)` · W · deps: T-24, T-25
-Refs: §3.6, §9 · area: `src/PCHealth.Execution.Windows`, `src/PCHealth.Ledger`
-Done when:
-- Undo restores a quarantined item to its original path with its metadata.
-- A conflict at the original path fails safely.
-- Interrupted-operation recovery is verified on Windows.
+### T-27 Undo end to end · `done` · W · deps: T-24, T-25
+Result: through the real Windows platform layer, Undo restores a quarantined file to its original path with its timestamps and attributes and a folder with its contents; a conflict at the original path leaves the item in quarantine; an interrupted quarantine run and an interrupted Undo are recovered at startup and the rest can then be undone; `TempRoot` now clears read-only files on cleanup; 5 Windows tests; CI Windows green (run 39665924421).
 
 ### Slice 7: UI shell (WPF)
 
-### T-28 App shell · `doing (cloud, 2026-10-21)` · W · deps: T-02
-Refs: D-002 · area: `src/PCHealth.App`
-Done when:
-- D-002 is confirmed.
-- The WPF shell has navigation and dependency injection.
-- The global Pause control is bound to the gateway's Pause state.
-- View-model tests pass.
+### T-28 App shell · `done` · W · deps: T-02
+Result: D-002 accepted (WPF with its built-in Fluent theme; `Microsoft.Extensions.DependencyInjection` 10.0.13 and `CommunityToolkit.Mvvm` 8.4.2 recorded); `AppServices` composes everything around the one `ExecutionGateway`; `MainViewModel` navigates between pages; `PauseViewModel` shows and changes the gateway's own `GlobalPause` (persisted); `StartupTasks` settles interrupted operations and purges expired quarantine at launch; 5 view-model/composition tests; CI Windows green (run 39665924421). The UI itself has not been looked at on a real desktop yet.
 
-### T-29 First run · `todo` · W · deps: T-28, T-06
+### T-29 First run · `doing (cloud, 2026-10-21)` · W · deps: T-28, T-06
 Refs: §5.1 (first-run value), §3.5 · area: `src/PCHealth.App`
 Done when:
 - First run explains what is inspected, what is stored, and that nothing leaves the PC.

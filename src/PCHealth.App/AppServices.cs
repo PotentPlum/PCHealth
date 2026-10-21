@@ -3,6 +3,8 @@ using Microsoft.Extensions.DependencyInjection;
 using PCHealth.App.ViewModels;
 using PCHealth.Execution;
 using PCHealth.Execution.Windows;
+using PCHealth.Inventory;
+using PCHealth.Inventory.Windows;
 using PCHealth.Ledger;
 using PCHealth.Policy;
 
@@ -40,8 +42,19 @@ public static class AppServices
             sp.GetRequiredService<TransactionLedger>(), sp.GetRequiredService<QuarantineStore>(), new HandleMove(), sp.GetRequiredService<TimeProvider>()));
         services.AddSingleton(sp => new InterruptedOperations(sp.GetRequiredService<TransactionLedger>(), sp.GetRequiredService<QuarantineStore>()));
         services.AddSingleton<StartupTasks>();
+        services.AddSingleton<FindingsStore>();
+        services.AddSingleton<IDiscovery>(sp => new Discovery(
+            new WindowsKnownLocations(sp.GetRequiredService<IPathResolver>()),
+            new WindowsAppRegistrations(),
+            new RecursiveScanner(),
+            new WindowsFileIdentityProvider(),
+            sp.GetRequiredService<ProtectionPolicy>(),
+            sp.GetRequiredService<ExclusionList>(),
+            Environment.GetFolderPath(Environment.SpecialFolder.UserProfile),
+            sp.GetRequiredService<TimeProvider>()));
 
         services.AddSingleton<PauseViewModel>();
+        services.AddSingleton<FirstRunViewModel>();
         services.AddSingleton<OverviewViewModel>();
         services.AddSingleton<ActivityViewModel>();
         services.AddSingleton<MainViewModel>();

@@ -22,11 +22,11 @@ public sealed class ShellTests : IDisposable
     }
 
     [Fact]
-    public void Every_service_resolves_and_the_shell_starts_on_the_overview()
+    public void Every_service_resolves_and_the_shell_starts_with_the_first_run()
     {
         var main = services.GetRequiredService<MainViewModel>();
 
-        Assert.IsType<OverviewViewModel>(main.Current);
+        Assert.IsType<FirstRunViewModel>(main.Current);
         Assert.Equal(new[] { "Overview", "Activity" }, main.Pages.Select(p => p.Title));
         Assert.NotNull(services.GetRequiredService<ExecutionGateway>());
         Assert.NotNull(services.GetRequiredService<Restorer>());
