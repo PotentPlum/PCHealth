@@ -70,7 +70,7 @@ Result: `CandidateFinder`: size groups (zero-byte, links and repeated paths skip
 ### T-10 Verified duplicate groups · `done` · P · deps: T-09
 Result: `DuplicateVerifier` full-hashes candidates with SHA-256 (size+mtime rechecked before and after); `VerifiedDuplicateGroup` (only the verifier can create one) carries `FileContentEvidence` (path, size, mtime, hash) and Verified confidence; `DuplicateFinder` runs the whole pipeline; 8 tests.
 
-### T-11 Same-file detection · `todo` · W · deps: T-10
+### T-11 Same-file detection · `doing (cloud, 2026-10-21)` · W · deps: T-10
 Refs: §5.1 · area: `src/PCHealth.Duplicates`, `*.Windows`
 Done when:
 - Hard links, i.e. the same file ID, are never reported as duplicates, since removing one frees no space.
