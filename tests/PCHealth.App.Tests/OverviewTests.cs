@@ -65,7 +65,7 @@ public class OverviewTests
 
         Assert.True(item.ShowDetails);
         Assert.Contains(item.Details, d => d.StartsWith("Confidence rationale: Known location.", StringComparison.Ordinal));
-        Assert.Contains(item.Details, d => d.StartsWith($"Would move to the Recycle Bin: {P("cache/a.tmp")}", StringComparison.Ordinal));
+        Assert.Contains(item.Details, d => d.StartsWith($"Would move to the Recycle Bin: {Path.Combine(P("cache"), "a.tmp")}", StringComparison.Ordinal));
         Assert.Contains(item.Details, d => d == "Evidence: Known cache location.");
     }
 
