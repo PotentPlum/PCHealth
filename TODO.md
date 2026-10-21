@@ -61,7 +61,7 @@ Result: `BackgroundScan` runs on a below-normal-priority background thread (CPU 
 
 ### Slice 3: Duplicates
 
-### T-08 Decide hash algorithm · `todo` · P · deps: —
+### T-08 Decide hash algorithm · `doing (cloud, 2026-10-21)` · P · deps: —
 Refs: §5.1 · D-006
 Done when:
 - D-006 is decided: a vetted BLAKE3 package or SHA-256.
