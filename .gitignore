@@ -1,0 +1,22 @@
+# Build output
+bin/
+obj/
+artifacts/
+
+# IDE
+.vs/
+*.user
+*.suo
+
+# Tests
+TestResults/
+coverage*/
+
+# Local dev data (ledger databases, quarantine folders created by manual runs)
+*.db
+*.db-shm
+*.db-wal
+.devdata/
+
+# Claude Code personal overrides
+.claude/settings.local.json

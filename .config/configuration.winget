@@ -1,0 +1,22 @@
+# yaml-language-server: $schema=https://aka.ms/configuration-dsc-schema/0.2
+# Windows host toolchain. Apply with:  winget configure -f .config/configuration.winget
+# C++ Build Tools are intentionally not included (all-C# for now, see docs/decisions.md D-001).
+properties:
+  configurationVersion: 0.2.0
+  resources:
+    - resource: Microsoft.WinGet.DSC/WinGetPackage
+      id: dotnet-sdk-10
+      directives:
+        description: Install the .NET 10 SDK (LTS)
+        allowPrerelease: false
+      settings:
+        id: Microsoft.DotNet.SDK.10
+        source: winget
+    - resource: Microsoft.WinGet.DSC/WinGetPackage
+      id: git
+      directives:
+        description: Install Git
+        allowPrerelease: false
+      settings:
+        id: Git.Git
+        source: winget

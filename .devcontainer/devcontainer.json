@@ -1,0 +1,23 @@
+// Linux dev container for the PORTABLE core only (see docs/decisions.md, D-003).
+// Windows-specific projects (net10.0-windows) and the UI cannot be built or tested here;
+// use the Windows host for those (.config/configuration.winget).
+{
+  "name": "PCHealth (portable core)",
+  // Floating 10.0 tag: the versioned "1-10.0-noble" tag is stale and still ships an RC SDK.
+  "image": "mcr.microsoft.com/devcontainers/dotnet:10.0",
+  "containerEnv": {
+    "DOTNET_CLI_TELEMETRY_OPTOUT": "1",
+    "DOTNET_NOLOGO": "1"
+  },
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "ms-dotnettools.csdevkit",
+        "EditorConfig.EditorConfig",
+        "anthropic.claude-code"
+      ]
+    }
+  },
+  "postCreateCommand": "dotnet --info",
+  "remoteUser": "vscode"
+}

@@ -1,0 +1,28 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(dotnet build *)",
+      "Bash(dotnet test *)",
+      "Bash(dotnet restore *)",
+      "Bash(dotnet --info)",
+      "Bash(dotnet --list-sdks)",
+      "Bash(git status *)",
+      "Bash(git diff *)",
+      "Bash(git log *)",
+      "Bash(git show *)",
+      "PowerShell(dotnet build *)",
+      "PowerShell(dotnet test *)",
+      "PowerShell(dotnet restore *)",
+      "PowerShell(dotnet --info)",
+      "PowerShell(dotnet --list-sdks)",
+      "PowerShell(git status *)",
+      "PowerShell(git diff *)",
+      "PowerShell(git log *)",
+      "PowerShell(git show *)"
+    ],
+    "ask": [
+      "Bash(git push *)",
+      "PowerShell(git push *)"
+    ]
+  }
+}
