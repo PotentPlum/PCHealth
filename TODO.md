@@ -84,12 +84,8 @@ Result: `IPathResolver`/`PathResolution` (Execution) and `WindowsPathResolver` (
 ### T-14 Reparse-point escape detection · `done` · W · deps: T-13
 Result: `ScopeValidator` (Execution) rejects targets whose final path leaves the scope and links whose destination is outside or unresolvable; resolver gained `LinkHandling.Follow`; 10 portable + 9 Windows tests with fixture junctions, dir/file symlinks, a dangling link and a volume-GUID (mount-point form) junction; CI Windows green (run 39655668565).
 
-### T-15 Protected locations · `doing (cloud, 2026-10-21)` · W · deps: T-13
-Refs: §3.4, §6.3 · area: `src/PCHealth.Policy`, `*.Windows`
-Done when:
-- OS folders, Program Files, application binaries, boot areas and personal document folders (found via known-folder APIs) are protected by default.
-- Every block comes with a user-readable reason.
-- Tests cover it.
+### T-15 Protected locations · `done` · W · deps: T-13
+Result: `ProtectionPolicy` (Policy) blocks OS, Program Files, boot/recovery, personal folders (D-014), folders containing them, drive roots and program binaries, each with a readable reason; `WindowsProtectedLocations` discovers them via `SHGetKnownFolderPath`; 10 portable + 12 Windows tests; CI Windows green (run 39656523422).
 
 ### T-16 User exclusions · `done` · P · deps: T-03
 Result: `ExclusionList` (file, folder-and-below, `FindingCategory`) saved atomically as local JSON (System.Text.Json, no new dependency), corrupt files rejected; `IsExcluded` for builders and `Apply` withholds findings by category or any evidence path, with the matching exclusion; `Finding` gained `Category`; 16 tests.
