@@ -10,9 +10,13 @@ C# only. Native Windows APIs (MFT/USN, `GetFinalPathNameByHandle`, reparse point
 .NET 10 because it is the current LTS. .NET 9 is STS and leaves support in November 2026.
 
 ## D-002 UI framework: WPF
-**Provisional** (2026-10-21)
+**Accepted** (2026-10-21, user decision; built in T-28)
 
-WPF is mature, builds with the plain .NET SDK, and needs no extra workloads. WinUI 3 is the alternative if a modern Fluent look becomes a priority. Confirm in T-28 (app shell).
+WPF is mature, builds with the plain .NET SDK, and needs no extra workloads. On .NET 10 it has a built-in Fluent theme, so a modern look doesn't need WinUI 3. Two UI dependencies are approved:
+- `Microsoft.Extensions.DependencyInjection` for composition;
+- `CommunityToolkit.Mvvm` for view models.
+
+Versions are pinned in `Directory.Packages.props` when T-28 adds them.
 
 ## D-003 Development environment: hybrid
 **Accepted** (2026-10-21)
@@ -164,3 +168,30 @@ Rules:
 - **Likely orphaned:** confidence is at most Medium, because folder names are only a clue to ownership.
 
 Running processes, open handles, services and scheduled tasks are checked by the gateway right before acting (T-23, T-26), not during discovery.
+
+## D-016 Quarantine location
+**Accepted** (2026-10-21, user decision; T-21, T-24)
+
+- Quarantine lives in one folder: `%LocalAppData%\PCHealth\Quarantine`.
+- Items go in only by a same-volume rename by handle. An item on another volume is never copied into quarantine. Its finding offers the Recycle Bin instead, or nothing if the Recycle Bin is not suitable.
+- Per-drive quarantine folders were considered and rejected, because they would leave a hidden folder on every drive.
+
+## D-017 Recycle Bin tests run only in CI
+**Accepted** (2026-10-21, user decision; T-25, T-27)
+
+- Tests that send fixture files to the Recycle Bin put them in the real Recycle Bin of the machine running the tests.
+- They therefore run only when `PCHEALTH_RECYCLE_BIN_TESTS=1` is set. The CI Windows job sets it; a host run skips them with that reason.
+- The tests still use only fixture files created by `PCHealth.Testing`.
+
+## D-018 First run: disclosure and scope
+**Accepted** (2026-10-21, user decision; T-29)
+
+- No automatic network calls before the update flow is decided (D-010, T-35).
+- First run says: "Nothing leaves this PC. Checking for updates contacts GitHub only when you ask."
+- First-run discovery is read-only and scans the user profile, not the whole drive, so the first finding arrives quickly.
+
+## D-019 Phase 1 runs unelevated
+**Accepted** (2026-10-21, user decision)
+
+- The app never requests elevation in Phase 1, and D-007 stays open.
+- A target that needs administrator rights to change, such as most of ProgramData, is still shown. The gateway refuses it with "needs administrator rights, not supported yet".
