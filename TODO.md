@@ -81,7 +81,7 @@ Result: `VersionCandidates` groups same-extension files whose names match once c
 ### T-13 Path canonicalization · `done` · W · deps: T-02
 Result: `IPathResolver`/`PathResolution` (Execution) and `WindowsPathResolver` (syntax rejection, then `CreateFileW` without following the last link + `GetFinalPathNameByHandleW`); 38 adversarial Windows tests (`..`, case, 8.3, `\\?\`, UNC, ADS, device names, trailing dot/space, long paths); fails closed; CI Windows green (run 39654961964).
 
-### T-14 Reparse-point escape detection · `todo` · W · deps: T-13
+### T-14 Reparse-point escape detection · `doing (cloud, 2026-10-21)` · W · deps: T-13
 Refs: §6.3 · area: `src/PCHealth.Execution.Windows`
 Done when:
 - A target inside an allowed scope that resolves outside it through a junction, symlink or mount point is rejected.
