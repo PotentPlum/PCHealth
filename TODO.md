@@ -94,11 +94,8 @@ Done when:
 - Every block comes with a user-readable reason.
 - Tests cover it.
 
-### T-16 User exclusions · `doing (cloud, 2026-10-21)` · P · deps: T-03
-Refs: §3.2, §6.5 · area: `src/PCHealth.Policy`
-Done when:
-- File, folder and category exclusions are stored locally and applied to findings.
-- Tests cover it.
+### T-16 User exclusions · `done` · P · deps: T-03
+Result: `ExclusionList` (file, folder-and-below, `FindingCategory`) saved atomically as local JSON (System.Text.Json, no new dependency), corrupt files rejected; `IsExcluded` for builders and `Apply` withholds findings by category or any evidence path, with the matching exclusion; `Finding` gained `Category`; 16 tests.
 
 ### T-17 Known-cache catalog · `todo` · W · deps: T-06, T-15
 Refs: §5.1 (application residue and cache cleanup) · area: `src/PCHealth.Policy`
