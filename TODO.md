@@ -64,7 +64,7 @@ Result: `BackgroundScan` runs on a below-normal-priority background thread (CPU 
 ### T-08 Decide hash algorithm · `done` · P · deps: —
 Result: D-006 accepted: BCL SHA-256 for partial and full hashes (BLAKE3 deferred to T-37 benchmarks); verified = same size + same full hash, hashes tied to size+mtime, byte-for-byte comparison in the gateway before any removal.
 
-### T-09 Candidate stages · `todo` · P · deps: T-04, T-08
+### T-09 Candidate stages · `doing (cloud, 2026-10-21)` · P · deps: T-04, T-08
 Refs: §5.1 · area: `src/PCHealth.Duplicates`
 Done when:
 - Files are grouped by size, then by a partial head+tail digest. Zero-byte files are skipped.
