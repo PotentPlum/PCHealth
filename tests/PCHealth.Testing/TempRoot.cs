@@ -69,9 +69,22 @@ public sealed class TempRoot : IDisposable
         if (OperatingSystem.IsWindows())
         {
             RemoveDirectoryLinks(new DirectoryInfo(Path));
+            ClearReadOnly(new DirectoryInfo(Path));
         }
 
         Directory.Delete(Path, recursive: true);
+    }
+
+    /// <summary>Windows refuses to delete read-only files, which tests create when they check attributes survive.</summary>
+    private static void ClearReadOnly(DirectoryInfo directory)
+    {
+        foreach (var file in directory.EnumerateFiles("*", new EnumerationOptions { RecurseSubdirectories = true, AttributesToSkip = FileAttributes.ReparsePoint }))
+        {
+            if (file.Attributes.HasFlag(FileAttributes.ReadOnly))
+            {
+                file.Attributes &= ~FileAttributes.ReadOnly;
+            }
+        }
     }
 
     /// <summary>
