@@ -1,0 +1,13 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/PCHealth.App/PCHealth.App.csproj" />
+    <Project Path="src/PCHealth.Core/PCHealth.Core.csproj" />
+    <Project Path="src/PCHealth.Duplicates/PCHealth.Duplicates.csproj" />
+    <Project Path="src/PCHealth.Execution.Windows/PCHealth.Execution.Windows.csproj" />
+    <Project Path="src/PCHealth.Execution/PCHealth.Execution.csproj" />
+    <Project Path="src/PCHealth.Inventory.Windows/PCHealth.Inventory.Windows.csproj" />
+    <Project Path="src/PCHealth.Inventory/PCHealth.Inventory.csproj" />
+    <Project Path="src/PCHealth.Ledger/PCHealth.Ledger.csproj" />
+    <Project Path="src/PCHealth.Policy/PCHealth.Policy.csproj" />
+  </Folder>
+</Solution>
