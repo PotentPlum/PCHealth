@@ -90,7 +90,7 @@ Result: `ProtectionPolicy` (Policy) blocks OS, Program Files, boot/recovery, per
 ### T-16 User exclusions · `done` · P · deps: T-03
 Result: `ExclusionList` (file, folder-and-below, `FindingCategory`) saved atomically as local JSON (System.Text.Json, no new dependency), corrupt files rejected; `IsExcluded` for builders and `Apply` withholds findings by category or any evidence path, with the matching exclusion; `Finding` gained `Category`; 16 tests.
 
-### T-17 Known-cache catalog · `todo` · W · deps: T-06, T-15
+### T-17 Known-cache catalog · `doing (cloud, 2026-10-21)` · W · deps: T-06, T-15
 Refs: §5.1 (application residue and cache cleanup) · area: `src/PCHealth.Policy`
 Done when:
 - Data-driven rules cover well-understood regenerable data (user temp, crash dumps and so on).
