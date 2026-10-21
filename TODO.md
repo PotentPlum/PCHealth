@@ -36,7 +36,7 @@ Done when: …
 
 ### Slice 1: Skeleton
 
-### T-01 Solution and projects · `todo` · W · deps: —
+### T-01 Solution and projects · `doing (cloud, 2026-10-21)` · W · deps: —
 Refs: CLAUDE.md layout · D-001, D-002, D-011 · area: repo root, `src/`
 Done when:
 - `PCHealth.slnx` contains every `src/` project from the CLAUDE.md layout, empty, with the correct TFMs.
