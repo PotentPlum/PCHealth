@@ -39,81 +39,39 @@ Done when: …
 ### T-01 Solution and projects · `done` · W · deps: —
 Result: `PCHealth.slnx` with 9 empty `src/` projects (6 × `net10.0`, 3 × `net10.0-windows` incl. WPF app), `Directory.Build.props`, central package management; CI Windows job green (run 39631188579).
 
-### T-02 Test projects and portable filter · `todo` · W · deps: T-01
-Refs: D-004 · area: `tests/`, `PCHealth.Portable.slnf`
-Done when:
-- The xUnit version is chosen and recorded in D-004.
-- There is one test project per `src/` project.
-- `PCHealth.Testing` has a temp-root fixture that creates and deletes its own directory and throws for any path outside it, plus a test proving that.
-- `PCHealth.Portable.slnf` lists only `net10.0` projects.
-- Both CI jobs are green with at least one real test each.
+### T-02 Test projects and portable filter · `done` · W · deps: T-01
+Result: xUnit v3 4.0.2 on Microsoft.Testing.Platform (D-004); a test project per `src/` project plus `PCHealth.Testing` (`TempRoot`) with 11 fixture tests; `PCHealth.Portable.slnf`; both CI jobs green (run 39634392911).
 
 ### Slice 2: Read-only inventory
 
-### T-03 Core finding model · `todo` · P · deps: T-02
-Refs: §3.3, §7 · area: `src/PCHealth.Core`
-Done when:
-- There are types for file and directory entries, Finding and Evidence.
-- Confidence, Impact and Recovery are separate types, with no combined "safe" score.
-- Measured and estimated sizes are distinct types.
-- Unit tests cover them.
+### T-03 Core finding model · `done` · P · deps: T-02
+Result: `FileEntry`/`DirectoryEntry`, `Finding`, `Evidence` (path, measurement), separate `Confidence`/`Impact`/`Recovery` with no combined score, distinct `MeasuredSize`/`EstimatedSize`; 23 tests in `PCHealth.Core.Tests`.
 
-### T-04 Fallback recursive scanner · `todo` · P · deps: T-03
-Refs: §5.1, §6.1 · area: `src/PCHealth.Inventory`
-Done when:
-- It scans a fixture tree read-only and never follows symlinks or junctions.
-- Access-denied entries are recorded as evidence and the scan continues.
-- The scan is cancellable and reports progress.
-- Tests cover all of this.
+### T-04 Fallback recursive scanner · `done` · P · deps: T-03
+Result: `IInventoryScanner` + `RecursiveScanner` (metadata-only, records but never follows reparse points, includes hidden/system, `InaccessibleEvidence` for unreadable dirs, cancellable, per-directory progress); 12 tests, access-denied case verified as non-root (skips as root).
 
-### T-05 Scanner on Windows · `todo` · W · deps: T-04
-Refs: §5.1, §9 · area: Windows-only tests for `PCHealth.Inventory`
-Done when:
-- There are Windows tests for junctions, directory symlinks, hidden/system attributes, paths over 260 characters, and access-denied folders (fixture-created ACLs only).
-- They are green in the CI Windows job.
+### T-05 Scanner on Windows · `done` · W · deps: T-04
+Result: 6 Windows tests in `PCHealth.Inventory.Windows.Tests` (junctions + cycle, dir symlinks, hidden/system, >260-char paths, fixture-ACL access denied); `TempRoot` now unlinks junctions before deleting; CI Windows green (run 39646389836).
 
-### T-06 Large-folder discovery · `todo` · P · deps: T-04
-Refs: §5.1 · area: `src/PCHealth.Inventory`
-Done when:
-- Sizes roll up per directory.
-- It reports the top-N largest folders and file categories from a scan result.
-- Tests cover it.
+### T-06 Large-folder discovery · `done` · P · deps: T-04
+Result: `StorageSummary` rolls measured sizes up per folder (links add nothing, incomplete scans flagged) and ranks top-N folders and `FileCategory` totals; 13 tests.
 
-### T-07 Low-impact scanning · `todo` · P · deps: T-04
-Refs: §3.5, §6.1 · area: `src/PCHealth.Inventory`
-Done when:
-- The scan runs below normal priority and can be paused, resumed and cancelled.
-- It reports elapsed time and item counts, for later benchmarks.
-- Tests cover it.
+### T-07 Low-impact scanning · `done` · P · deps: T-04
+Result: `BackgroundScan` runs on a below-normal-priority background thread (CPU only; I/O priority is a later Windows concern) with pause/resume/cancel via `PauseToken`; `ScanStatistics` and progress report counts, elapsed and paused time; 6 tests.
 
 ### Slice 3: Duplicates
 
-### T-08 Decide hash algorithm · `todo` · P · deps: —
-Refs: §5.1 · D-006
-Done when:
-- D-006 is decided: a vetted BLAKE3 package or SHA-256.
-- The collision policy is decided too, e.g. byte comparison before any removal.
-- This is a decision only; no code.
+### T-08 Decide hash algorithm · `done` · P · deps: —
+Result: D-006 accepted: BCL SHA-256 for partial and full hashes (BLAKE3 deferred to T-37 benchmarks); verified = same size + same full hash, hashes tied to size+mtime, byte-for-byte comparison in the gateway before any removal.
 
-### T-09 Candidate stages · `todo` · P · deps: T-04, T-08
-Refs: §5.1 · area: `src/PCHealth.Duplicates`
-Done when:
-- Files are grouped by size, then by a partial head+tail digest. Zero-byte files are skipped.
-- Tests include same-size, different-content fixtures.
+### T-09 Candidate stages · `done` · P · deps: T-04, T-08
+Result: `CandidateFinder`: size groups (zero-byte, links and repeated paths skipped), then SHA-256 head+tail digest (64 KiB per end); unreadable files become `InaccessibleEvidence`, files changed since the scan (size/mtime) are dropped; 10 tests incl. same-size different-content.
 
-### T-10 Verified duplicate groups · `todo` · P · deps: T-09
-Refs: §5.1 · area: `src/PCHealth.Duplicates`
-Done when:
-- A full hash runs according to the D-006 policy.
-- Groups carry inspectable evidence: paths, sizes, timestamps and hashes.
-- Only content-verified files count as "verified duplicates".
-- Tests cover it.
+### T-10 Verified duplicate groups · `done` · P · deps: T-09
+Result: `DuplicateVerifier` full-hashes candidates with SHA-256 (size+mtime rechecked before and after); `VerifiedDuplicateGroup` (only the verifier can create one) carries `FileContentEvidence` (path, size, mtime, hash) and Verified confidence; `DuplicateFinder` runs the whole pipeline; 8 tests.
 
-### T-11 Same-file detection · `todo` · W · deps: T-10
-Refs: §5.1 · area: `src/PCHealth.Duplicates`, `*.Windows`
-Done when:
-- Hard links, i.e. the same file ID, are never reported as duplicates, since removing one frees no space.
-- This works through a Windows file-ID implementation, with tests on Windows.
+### T-11 Same-file detection · `done` · W · deps: T-10
+Result: `FileIdentity`/`IFileIdentityProvider` (Core); verified groups need two or more distinct physical files and expose `PhysicalCopies`; `WindowsFileIdentityProvider` reads `FILE_ID_INFO` by handle; 3 portable + 3 Windows hard-link tests; CI Windows green (run 39653855265).
 
 ### T-12 Version candidates · `todo` · P · deps: T-10
 Refs: §5.1 · area: `src/PCHealth.Duplicates`

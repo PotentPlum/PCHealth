@@ -39,7 +39,7 @@ One session does one task. Follow these steps in order:
 
 - Never read docs/spec.md, TODO.md or decisions.md in full. Grep, then read line ranges.
 - Don't re-read files already in context. Don't do exploratory sweeps of the repo. Don't spawn subagents unless the user asks.
-- Keep builds quiet: `dotnet build -v q --nologo` and `dotnet test --no-build -v q --nologo`. On failure, rerun only the failing project with more detail.
+- Keep builds quiet: `dotnet build -v q --nologo` and `dotnet test --solution <sln> --no-build -v q`. Tests run on Microsoft.Testing.Platform (D-004): `dotnet test` needs `--solution`/`--project` and rejects `--nologo`. On failure, rerun only the failing project with more detail.
 - Status lives in TODO.md, and history lives in `git log --grep "T-NN"`. Don't write session notes or summaries into files.
 
 ## Environments (D-003, D-008)
@@ -59,8 +59,8 @@ One session does one task. Follow these steps in order:
 
 ```
 dotnet build PCHealth.slnx -v q --nologo                 # host: full build
-dotnet test PCHealth.slnx -v q --nologo                  # host: all tests
-dotnet test PCHealth.Portable.slnf -v q --nologo         # any environment: portable tests
+dotnet test --solution PCHealth.slnx -v q                 # host: all tests
+dotnet test --solution PCHealth.Portable.slnf -v q        # any environment: portable tests
 ```
 
 ## Layout

@@ -24,20 +24,41 @@ Why: the host is Windows 11 Home, which cannot run Windows containers, so a dev 
 
 Consequence: Windows-specific behavior sits behind interfaces in portable projects (see CLAUDE.md layout).
 
-## D-004 Test framework: xUnit
-**Provisional** (2026-10-21)
+## D-004 Test framework: xUnit v3 on Microsoft.Testing.Platform
+**Accepted** (2026-10-21, T-02; was Provisional)
 
-The de facto standard for .NET. Confirm the exact version (v2 vs v3) in T-02.
+The de facto standard for .NET. Version: `xunit.v3` 4.x (4.0.2 at adoption), pinned in `Directory.Packages.props`. v2 is maintenance-only, so a new codebase starts on v3. xUnit v3 4.x runs only on Microsoft.Testing.Platform (MTP), and the .NET 10 SDK refuses MTP projects under the old VSTest `dotnet test`. So:
+
+- `global.json` sets `"test": { "runner": "Microsoft.Testing.Platform" }`. There is no `Microsoft.NET.Test.Sdk` and no `xunit.runner.visualstudio`.
+- Test projects are executables with `UseMicrosoftTestingPlatformRunner`, set once in `tests/Directory.Build.props`.
+- `dotnet test` takes `--solution`/`--project`. A bare solution path or `--nologo` gets forwarded to the test apps, and they fail with exit code 5.
+- Placeholder test projects with no tests would fail with MTP exit code 8, so `tests/Directory.Build.props` passes `--ignore-exit-code 8`.
+
+Test projects are dev-only and never ship, so they make no runtime network calls in the product.
 
 ## D-005 Ledger storage: SQLite via Microsoft.Data.Sqlite
 **Provisional** (2026-10-21)
 
 Suggested by the spec (Â§6.4). It is durable, local and inspectable. Confirm in T-20.
 
-## D-006 Full-file hash algorithm
-**Open**
+## D-006 Full-file hash algorithm and collision policy
+**Accepted** (2026-10-21, T-08; was Open)
 
-BLAKE3 is the spec's candidate (Â§5.1), but it needs a third-party NuGet package, which must be evaluated for maintenance and provenance. SHA-256 is built into the BCL with hardware acceleration and would be the fallback. A collision-handling policy is also needed, e.g. byte-for-byte comparison before any delete. Decide in T-08.
+**Algorithm: SHA-256 from the BCL** (`System.Security.Cryptography.SHA256`/`IncrementalHash`) for the full-file hash and for the partial head+tail digest.
+
+Why not BLAKE3 now:
+- The only established .NET package, `Blake3` (xoofx, BSD-2-Clause, 3.0.2 in 2026-07), wraps the Rust implementation through prebuilt native binaries.
+- It has a single maintainer and isn't a verified NuGet publisher.
+- Shipping third-party native code costs us provenance review, a supply-chain surface and per-RID binaries.
+- SHA-256 needs no dependency and uses OS crypto on Windows, which is hardware-accelerated on CPUs with SHA extensions.
+- We have no benchmark showing hashing to be the bottleneck rather than disk reads (rule 9).
+- Revisit BLAKE3 only if T-37's benchmark shows full hashing is CPU-bound on target hardware. Switching then is a contained change, since stored hashes record their algorithm name.
+
+**Collision and staleness policy:**
+1. **Verified duplicates.** A group is "verified duplicates" only when every member has the same size and the same full-file SHA-256. A partial digest or size match never counts as verified.
+2. **Hashes are tied to state.** Each hash records the file's size and last-write time when it was hashed. If either has changed, the hash is stale and the file drops back to unverified until rehashed.
+3. **Byte comparison before removal.** The execution gateway compares a duplicate byte-for-byte against the copy being kept immediately before removing or quarantining it, as part of revalidation (spec §6.3). A mismatch refuses the action. This also covers a SHA-256 collision, however improbable.
+4. **Evidence shows the algorithm.** Evidence names the algorithm next to each hash (e.g. `SHA-256:…`).
 
 ## D-008 Claude Code cloud sessions as a fourth environment
 **Accepted** (2026-10-21)

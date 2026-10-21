@@ -1,0 +1,21 @@
+{
+  "solution": {
+    "path": "PCHealth.slnx",
+    "projects": [
+      "src/PCHealth.Core/PCHealth.Core.csproj",
+      "src/PCHealth.Duplicates/PCHealth.Duplicates.csproj",
+      "src/PCHealth.Execution/PCHealth.Execution.csproj",
+      "src/PCHealth.Inventory/PCHealth.Inventory.csproj",
+      "src/PCHealth.Ledger/PCHealth.Ledger.csproj",
+      "src/PCHealth.Policy/PCHealth.Policy.csproj",
+      "tests/PCHealth.Core.Tests/PCHealth.Core.Tests.csproj",
+      "tests/PCHealth.Duplicates.Tests/PCHealth.Duplicates.Tests.csproj",
+      "tests/PCHealth.Execution.Tests/PCHealth.Execution.Tests.csproj",
+      "tests/PCHealth.Inventory.Tests/PCHealth.Inventory.Tests.csproj",
+      "tests/PCHealth.Ledger.Tests/PCHealth.Ledger.Tests.csproj",
+      "tests/PCHealth.Policy.Tests/PCHealth.Policy.Tests.csproj",
+      "tests/PCHealth.Testing.Tests/PCHealth.Testing.Tests.csproj",
+      "tests/PCHealth.Testing/PCHealth.Testing.csproj"
+    ]
+  }
+}

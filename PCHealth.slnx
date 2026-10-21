@@ -10,4 +10,17 @@
     <Project Path="src/PCHealth.Ledger/PCHealth.Ledger.csproj" />
     <Project Path="src/PCHealth.Policy/PCHealth.Policy.csproj" />
   </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/PCHealth.App.Tests/PCHealth.App.Tests.csproj" />
+    <Project Path="tests/PCHealth.Core.Tests/PCHealth.Core.Tests.csproj" />
+    <Project Path="tests/PCHealth.Duplicates.Tests/PCHealth.Duplicates.Tests.csproj" />
+    <Project Path="tests/PCHealth.Execution.Tests/PCHealth.Execution.Tests.csproj" />
+    <Project Path="tests/PCHealth.Execution.Windows.Tests/PCHealth.Execution.Windows.Tests.csproj" />
+    <Project Path="tests/PCHealth.Inventory.Tests/PCHealth.Inventory.Tests.csproj" />
+    <Project Path="tests/PCHealth.Inventory.Windows.Tests/PCHealth.Inventory.Windows.Tests.csproj" />
+    <Project Path="tests/PCHealth.Ledger.Tests/PCHealth.Ledger.Tests.csproj" />
+    <Project Path="tests/PCHealth.Policy.Tests/PCHealth.Policy.Tests.csproj" />
+    <Project Path="tests/PCHealth.Testing.Tests/PCHealth.Testing.Tests.csproj" />
+    <Project Path="tests/PCHealth.Testing/PCHealth.Testing.csproj" />
+  </Folder>
 </Solution>
