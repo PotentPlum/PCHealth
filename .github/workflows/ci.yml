@@ -52,6 +52,9 @@ jobs:
 
       - name: Test
         if: steps.guard.outputs.present == 'true'
+        env:
+          # Recycle Bin tests put fixture files in the runner's real Recycle Bin, so they run only here (D-017).
+          PCHEALTH_RECYCLE_BIN_TESTS: "1"
         run: dotnet test --solution PCHealth.slnx -c Release --no-build
 
   linux-portable:

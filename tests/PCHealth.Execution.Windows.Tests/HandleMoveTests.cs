@@ -179,7 +179,9 @@ public class HandleMoveTests
 
         public bool SameVolume(string path, string otherPath) => true;
 
-        public void MoveToRecycleBin(string finalPath, bool isDirectory) => throw new IOException("Not used here.");
+        public string? CannotRecycle(string finalPath, long sizeBytes) => "not used here.";
+
+        public string MoveToRecycleBin(string finalPath, bool isDirectory) => throw new IOException("Not used here.");
 
         public void MoveToQuarantine(string finalPath, string destination, bool isDirectory)
         {

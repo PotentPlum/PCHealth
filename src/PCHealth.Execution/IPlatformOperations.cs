@@ -22,10 +22,18 @@ public interface IPlatformOperations
     /// <summary>True if both paths are on the same volume, so a move is a rename and not a copy (D-016).</summary>
     bool SameVolume(string path, string otherPath);
 
+    /// <summary>Why the Recycle Bin is not suitable for this item (it would be deleted permanently, or does not fit); null when it is.</summary>
+    string? CannotRecycle(string finalPath, long sizeBytes);
+
+    /// <returns>Where the item is now inside the Recycle Bin.</returns>
+    /// <exception cref="PermanentlyDeletedException">The system deleted the item permanently instead of recycling it.</exception>
     /// <exception cref="IOException">The item could not be moved; nothing changed.</exception>
-    void MoveToRecycleBin(string finalPath, bool isDirectory);
+    string MoveToRecycleBin(string finalPath, bool isDirectory);
 
     /// <summary>Moves the item into <paramref name="destination"/> by handle, without following links (T-24).</summary>
     /// <exception cref="IOException">The item could not be moved; nothing changed.</exception>
     void MoveToQuarantine(string finalPath, string destination, bool isDirectory);
 }
+
+/// <summary>An item meant for the Recycle Bin was deleted permanently instead. Reported to the user as such, never as recoverable.</summary>
+public sealed class PermanentlyDeletedException(string message) : IOException(message);

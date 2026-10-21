@@ -51,7 +51,7 @@ public class ExecutionGatewayTests
         Assert.Equal(2, fixture.Platform.Recycled.Count);
         var record = fixture.Ledger.Find(result.TransactionId!.Value)!;
         Assert.Equal(5, record.ObservedBytes);
-        Assert.All(record.Items, i => Assert.Equal("Recycle Bin", i.RecoveryLocation));
+        Assert.All(record.Items, i => Assert.True(File.Exists(i.RecoveryLocation)));
         Assert.Null(record.RetentionDeadlineUtc);
     }
 
@@ -231,6 +231,38 @@ public class ExecutionGatewayTests
     }
 
     [Fact]
+    public void An_item_the_recycle_bin_cannot_take_is_refused_before_acting()
+    {
+        using var fixture = new Fixture();
+        var a = fixture.File("Temp/a.tmp", "a");
+        fixture.Platform.Unrecyclable = "this drive has no Recycle Bin.";
+        var recommendation = fixture.Recycle(a);
+
+        var result = fixture.Gateway().Execute(recommendation, recommendation.Operations);
+
+        Assert.Equal(ExecutionStatus.Failed, result.Status);
+        Assert.Equal("The Recycle Bin is not suitable for it: this drive has no Recycle Bin.", result.Items[0].Reason);
+        Assert.True(File.Exists(a));
+    }
+
+    [Fact]
+    public void A_permanent_deletion_instead_of_recycling_is_reported_as_such()
+    {
+        using var fixture = new Fixture();
+        var a = fixture.File("Temp/a.tmp", "a");
+        fixture.Platform.NukeInstead = true;
+        var recommendation = fixture.Recycle(a);
+
+        var result = fixture.Gateway().Execute(recommendation, recommendation.Operations);
+
+        Assert.Equal(ExecutionStatus.Failed, result.Status);
+        Assert.StartsWith("It was deleted permanently", result.Items[0].Reason);
+        var item = Assert.Single(fixture.Ledger.Find(result.TransactionId!.Value)!.Items);
+        Assert.Equal(ItemStatus.Failed, item.Status);
+        Assert.Null(item.RecoveryLocation);
+    }
+
+    [Fact]
     public void A_failed_move_changes_nothing_and_frees_its_slot()
     {
         using var fixture = new Fixture();
@@ -368,8 +400,24 @@ public class ExecutionGatewayTests
 
         public bool SameVolume(string path, string otherPath) => SameVolumeResult;
 
-        public void MoveToRecycleBin(string finalPath, bool isDirectory) =>
-            Move(finalPath, root.Resolve($"recycle/{Guid.NewGuid():N}"), isDirectory, Recycled);
+        public string? Unrecyclable { get; set; }
+
+        public bool NukeInstead { get; set; }
+
+        public string? CannotRecycle(string finalPath, long sizeBytes) => Unrecyclable;
+
+        public string MoveToRecycleBin(string finalPath, bool isDirectory)
+        {
+            var destination = root.Resolve($"recycle/{Guid.NewGuid():N}");
+            if (NukeInstead)
+            {
+                System.IO.File.Delete(finalPath);
+                throw new PermanentlyDeletedException("The drive has no Recycle Bin.");
+            }
+
+            Move(finalPath, destination, isDirectory, Recycled);
+            return destination;
+        }
 
         public void MoveToQuarantine(string finalPath, string destination, bool isDirectory) => Move(finalPath, destination, isDirectory, null);
 

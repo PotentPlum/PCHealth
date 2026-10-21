@@ -52,6 +52,7 @@ public sealed class ExecutionGateway(
         "not in use by a running process",
         "no administrator rights needed",
         "quarantine on the same volume",
+        "Recycle Bin suitable: local drive, turned on, large enough",
     ];
 
     private static readonly StringComparison PathComparison =
@@ -180,6 +181,7 @@ public sealed class ExecutionGateway(
 
         // 4. Execute.
         QuarantineEntry? slot = null;
+        string? recycledTo = null;
         try
         {
             if (operation.Kind == OperationKind.MoveToQuarantine)
@@ -189,8 +191,12 @@ public sealed class ExecutionGateway(
             }
             else
             {
-                platform.MoveToRecycleBin(operation.Path, operation.IsDirectory);
+                recycledTo = platform.MoveToRecycleBin(operation.Path, operation.IsDirectory);
             }
+        }
+        catch (PermanentlyDeletedException ex)
+        {
+            return Failed(operation, item with { RecoveryLocation = null }, $"It was deleted permanently instead of going to the Recycle Bin, so it cannot be restored. {ex.Message}");
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or InvalidOperationException)
         {
@@ -220,7 +226,7 @@ public sealed class ExecutionGateway(
         }
         else
         {
-            item = item with { RecoveryLocation = "Recycle Bin" };
+            item = item with { RecoveryLocation = recycledTo };
         }
 
         return (item with { Status = ItemStatus.Done }, new ItemOutcome(operation, ItemStatus.Done, null));
@@ -296,6 +302,12 @@ public sealed class ExecutionGateway(
         if (platform.NeedsElevation(resolved.FinalPath!))
         {
             return $"Changing it {NeedsElevationReason}";
+        }
+
+        if (operation.Kind == OperationKind.MoveToRecycleBin
+            && platform.CannotRecycle(resolved.FinalPath!, operation.IsDirectory ? operation.ExpectedSize.Bytes : state.SizeBytes) is { } unsuitable)
+        {
+            return $"The Recycle Bin is not suitable for it: {unsuitable}";
         }
 
         if (operation.Kind == OperationKind.MoveToQuarantine && !platform.SameVolume(resolved.FinalPath!, quarantine.Root))

@@ -115,13 +115,10 @@ Result: the ledger enforces pending → applied → verified/failed; `Interrupte
 ### T-23 Gateway pipeline · `done` · P · deps: T-19, T-22
 Result: `ExecutionGateway` is the one mutation path: validates the request (Act disposition, approved ⊆ recommendation, one kind matching recovery) → protection/exclusion checks → revalidates per item right before acting (final path by handle and unchanged, no links, scope, protection again, size/mtime, open handles, elevation per D-019, same volume per D-016) → executes through `IPlatformOperations` → verifies → ledger (pending first, progress per item, applied, verified/failed); `GlobalPause` (optionally persisted) blocks all and stops queued items; 17 tests on a fake platform and resolver incl. mid-run pause and crash.
 
-### T-24 Windows quarantine move · `doing (cloud, 2026-10-21)` · W · deps: T-14, T-15, T-23
-Refs: §6.3 · area: `src/PCHealth.Execution.Windows`
-Done when:
-- Files move into quarantine by handle: opened without following reparse points, final path checked, renamed by handle.
-- A TOCTOU test swaps the target for a junction between check and act, and the move is refused.
+### T-24 Windows quarantine move · `done` · W · deps: T-14, T-15, T-23
+Result: `HandleMove` (also the Windows `IFileMover` for restores) opens the source with `FILE_FLAG_OPEN_REPARSE_POINT`, refuses links and kind changes, requires the handle's final path to equal the expected path, and renames on that handle (`FileRenameInfoEx`, no overwrite); Windows tests cover a target and a parent swapped for junctions, an existing destination, and a junction swapped in between the gateway's checks and the move (refused, nothing moved, slot released); CI Windows green (run 39664338415).
 
-### T-25 Recycle Bin deletion · `todo` · W · deps: T-23
+### T-25 Recycle Bin deletion · `doing (cloud, 2026-10-21)` · W · deps: T-23
 Refs: §5.1, §6.4 · area: `src/PCHealth.Execution.Windows`
 Done when:
 - Suitable items can go to the Recycle Bin, with a ledger entry.
