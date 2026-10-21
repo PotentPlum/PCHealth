@@ -16,7 +16,7 @@ WPF is mature, builds with the plain .NET SDK, and needs no extra workloads. On 
 - `Microsoft.Extensions.DependencyInjection` for composition;
 - `CommunityToolkit.Mvvm` for view models.
 
-Versions are pinned in `Directory.Packages.props` when T-28 adds them.
+Pinned in `Directory.Packages.props` by T-28: `Microsoft.Extensions.DependencyInjection` 10.0.13 and `CommunityToolkit.Mvvm` 8.4.2. Only the toolkit's `ObservableObject` and `RelayCommand` are used, not its source generators. Neither package makes network calls.
 
 ## D-003 Development environment: hybrid
 **Accepted** (2026-10-21)

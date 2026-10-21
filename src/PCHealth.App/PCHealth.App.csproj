@@ -6,4 +6,14 @@
     <UseWPF>true</UseWPF>
   </PropertyGroup>
 
+  <ItemGroup>
+    <ProjectReference Include="../PCHealth.Execution.Windows/PCHealth.Execution.Windows.csproj" />
+    <ProjectReference Include="../PCHealth.Inventory.Windows/PCHealth.Inventory.Windows.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="CommunityToolkit.Mvvm" />
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection" />
+  </ItemGroup>
+
 </Project>

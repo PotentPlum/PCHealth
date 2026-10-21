@@ -136,7 +136,7 @@ Done when:
 
 ### Slice 7: UI shell (WPF)
 
-### T-28 App shell · `todo` · W · deps: T-02
+### T-28 App shell · `doing (cloud, 2026-10-21)` · W · deps: T-02
 Refs: D-002 · area: `src/PCHealth.App`
 Done when:
 - D-002 is confirmed.

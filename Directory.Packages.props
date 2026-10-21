@@ -5,6 +5,10 @@
   <ItemGroup Label="Ledger (D-005)">
     <PackageVersion Include="Microsoft.Data.Sqlite" Version="10.0.13" />
   </ItemGroup>
+  <ItemGroup Label="UI (D-002)">
+    <PackageVersion Include="CommunityToolkit.Mvvm" Version="8.4.2" />
+    <PackageVersion Include="Microsoft.Extensions.DependencyInjection" Version="10.0.13" />
+  </ItemGroup>
   <ItemGroup Label="Tests (D-004)">
     <PackageVersion Include="xunit.v3" Version="4.0.2" />
   </ItemGroup>
