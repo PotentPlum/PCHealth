@@ -61,12 +61,8 @@ Result: `BackgroundScan` runs on a below-normal-priority background thread (CPU 
 
 ### Slice 3: Duplicates
 
-### T-08 Decide hash algorithm · `doing (cloud, 2026-10-21)` · P · deps: —
-Refs: §5.1 · D-006
-Done when:
-- D-006 is decided: a vetted BLAKE3 package or SHA-256.
-- The collision policy is decided too, e.g. byte comparison before any removal.
-- This is a decision only; no code.
+### T-08 Decide hash algorithm · `done` · P · deps: —
+Result: D-006 accepted: BCL SHA-256 for partial and full hashes (BLAKE3 deferred to T-37 benchmarks); verified = same size + same full hash, hashes tied to size+mtime, byte-for-byte comparison in the gateway before any removal.
 
 ### T-09 Candidate stages · `todo` · P · deps: T-04, T-08
 Refs: §5.1 · area: `src/PCHealth.Duplicates`
