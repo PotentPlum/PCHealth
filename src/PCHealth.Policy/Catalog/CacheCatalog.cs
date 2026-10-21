@@ -169,7 +169,8 @@ public sealed class CacheCatalog
                 $"Moves {files.Length} files{(filter.Length > 0 ? $" ({filter})" : "")} in '{folder}' to the Recycle Bin.",
                 new EstimatedSize(bytes.Bytes, "sum of the matching files' sizes; space returns when the Recycle Bin is emptied"),
                 rule.Rebuild),
-            new Recovery(RecoveryMethod.RecycleBin, "Files can be restored from the Recycle Bin until it is emptied. Files in use are skipped."));
+            new Recovery(RecoveryMethod.RecycleBin, "Files can be restored from the Recycle Bin until it is emptied. Files in use are skipped."),
+            operations: files.Select(f => new ProposedOperation(OperationKind.MoveToRecycleBin, f.FullPath, isDirectory: false, f.Size, f.LastWriteTimeUtc)).ToArray());
     }
 
     /// <summary>Expands the rule's location into existing folders; a single <c>*</c> segment matches each subfolder that is not a link.</summary>

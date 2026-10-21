@@ -70,7 +70,7 @@ public class ResidueDetectorTests
         Assert.Contains("Fabrikam Photo Studio", finding.Confidence.Rationale);
         Assert.Contains(finding.Evidence, e => e is RegistrationEvidence { Name: "Fabrikam Photo Studio" });
         Assert.StartsWith("Unclear ownership", finding.Title);
-        Assert.StartsWith("Nothing is selected for cleanup", finding.Impact.WhatChanges);
+        Assert.Equal(OperationKind.MoveToQuarantine, Assert.Single(finding.Operations).Kind);
     }
 
     [Fact]

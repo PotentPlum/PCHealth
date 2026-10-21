@@ -44,7 +44,7 @@ public class FindingTests
         var names = typeof(Finding).GetProperties(BindingFlags.Public | BindingFlags.Instance).Select(p => p.Name);
 
         Assert.Equal(
-            new[] { "Category", "Confidence", "Evidence", "Impact", "Recovery", "ReviewOnly", "Title", "WhyItMatters" },
+            new[] { "Category", "Confidence", "Evidence", "Impact", "Operations", "Recovery", "ReviewOnly", "Title", "WhyItMatters" },
             names.Order());
     }
 
@@ -110,5 +110,28 @@ public class FindingTests
         Assert.Throws<ArgumentException>(() => new Confidence(ConfidenceLevel.Low, " "));
         Assert.Throws<ArgumentException>(() => new Impact(""));
         Assert.Throws<ArgumentException>(() => new Recovery(RecoveryMethod.RecycleBin, ""));
+    }
+
+    [Fact]
+    public void Proposed_operations_must_provide_the_recovery_the_finding_promises()
+    {
+        var path = Path.GetFullPath(Path.Combine(Path.GetTempPath(), "x.tmp"));
+        var recycle = new ProposedOperation(OperationKind.MoveToRecycleBin, path, isDirectory: false, new MeasuredSize(1));
+        var quarantine = new ProposedOperation(OperationKind.MoveToQuarantine, path, isDirectory: false, new MeasuredSize(1));
+
+        var finding = new Finding(FindingCategory.Cache, "Cache", "Frees space", [SomeEvidence], HighConfidence, SomeImpact, RecycleBin, operations: [recycle]);
+
+        Assert.Equal([recycle], finding.Operations);
+        Assert.Throws<ArgumentException>(() => new Finding(FindingCategory.Cache, "Cache", "Frees space", [SomeEvidence], HighConfidence, SomeImpact, RecycleBin, operations: [quarantine]));
+        Assert.Throws<ArgumentException>(() => new Finding(
+            FindingCategory.Cache, "Cache", "Frees space", [SomeEvidence], HighConfidence, SomeImpact,
+            new Recovery(RecoveryMethod.None, "Irreversible"), operations: [recycle]));
+    }
+
+    [Fact]
+    public void Proposed_operations_need_a_full_path()
+    {
+        Assert.Throws<ArgumentException>(() => new ProposedOperation(OperationKind.MoveToRecycleBin, "relative/x.tmp", isDirectory: false, MeasuredSize.Zero));
+        Assert.Throws<ArgumentOutOfRangeException>(() => new ProposedOperation((OperationKind)9, Path.GetTempPath(), isDirectory: true, MeasuredSize.Zero));
     }
 }

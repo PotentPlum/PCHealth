@@ -206,6 +206,7 @@ public static partial class ResidueDetector
             var recovery = new Recovery(
                 RecoveryMethod.Quarantine,
                 "The folder can be restored to its original path while it is in quarantine, unless something new has been created there.");
+            var operation = new[] { new ProposedOperation(OperationKind.MoveToQuarantine, folder, isDirectory: true, bytes) };
             const string Aftereffects = "If an application still uses this data, it may lose its settings or have to recreate them.";
 
             if (doubts.Count > 0)
@@ -216,9 +217,10 @@ public static partial class ResidueDetector
                     "This folder may be left over from uninstalled software, but the evidence is incomplete or contradictory, so it is listed for review only.",
                     evidence,
                     new Confidence(ConfidenceLevel.Low, "Uncertain. " + string.Join(" ", doubts)),
-                    new Impact($"Nothing is selected for cleanup. If you choose to remove '{folder}' after reviewing it, it is moved to quarantine.", estimate, Aftereffects),
+                    new Impact($"Moves the folder '{folder}' ({files.Length} files) to quarantine.", estimate, Aftereffects),
                     recovery,
-                    reviewOnly: true);
+                    reviewOnly: true,
+                    operations: operation);
             }
 
             return new Finding(
@@ -230,7 +232,8 @@ public static partial class ResidueDetector
                     ConfidenceLevel.Medium,
                     $"No uninstall entry or package claims '{name}', nothing in it was written in the last {RecentActivityDays} days, and it holds no program files. Folder names are only a clue to ownership, so this is not certain."),
                 new Impact($"Moves the folder '{folder}' ({files.Length} files) to quarantine.", estimate, Aftereffects),
-                recovery);
+                recovery,
+                operations: operation);
         }
     }
 

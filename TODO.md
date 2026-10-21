@@ -96,12 +96,8 @@ Result: embedded `known-caches.json` (10 rules, each with rebuild/download text)
 ### T-18 Orphaned app-data detection · `done` · W · deps: T-17
 Result: `ResidueDetector` cross-references top-level AppData/ProgramData folders and `LocalAppData\Packages` data folders with uninstall entries and package families (`WindowsAppRegistrations`, registry, D-015); missing sources, similar names, unreadable parts, program files or recent writes give a Low, `ReviewOnly` finding; `Finding` gained `ReviewOnly`, plus `RegistrationEvidence`/`CheckEvidence`; 18 fake-registration tests + 3 Windows tests; CI Windows green (run 39659085031).
 
-### T-19 Recommendation builder · `doing (cloud, 2026-10-21)` · P · deps: T-10, T-16
-Refs: §3.3, §7 · area: `src/PCHealth.Policy`
-Done when:
-- Findings become recommendations that answer the six §7 questions, with separate confidence, impact and recovery.
-- Uncertain items go to review.
-- Tests cover it.
+### T-19 Recommendation builder · `done` · P · deps: T-10, T-16
+Result: `RecommendationBuilder` withholds excluded findings, strips protected/excluded `ProposedOperation`s (new Core type; findings now carry typed operations that must match their recovery) and answers the six §7 questions per `Recommendation` with confidence/impact/recovery kept separate; review-only, Low-confidence, informative or fully blocked findings get `Disposition.Review` with a reason; `FindingSources` turns verified duplicates (keeps protected, then oldest copy), version groups and large folders into findings; 11 + 2 tests.
 
 ### Slice 5: Ledger and quarantine
 
