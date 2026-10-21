@@ -23,7 +23,9 @@ public sealed record Finding
         IReadOnlyList<Evidence> evidence,
         Confidence confidence,
         Impact impact,
-        Recovery recovery)
+        Recovery recovery,
+        bool reviewOnly = false,
+        IReadOnlyList<ProposedOperation>? operations = null)
     {
         if (!Enum.IsDefined(category))
         {
@@ -46,6 +48,11 @@ public sealed record Finding
         ArgumentNullException.ThrowIfNull(confidence);
         ArgumentNullException.ThrowIfNull(impact);
         ArgumentNullException.ThrowIfNull(recovery);
+        operations ??= [];
+        if (operations.Any(o => o is null || ProposedOperation.RecoveryFor(o.Kind) != recovery.Method))
+        {
+            throw new ArgumentException("Every proposed operation must provide the recovery the finding promises.", nameof(operations));
+        }
 
         Category = category;
         Title = title;
@@ -54,6 +61,8 @@ public sealed record Finding
         Confidence = confidence;
         Impact = impact;
         Recovery = recovery;
+        ReviewOnly = reviewOnly;
+        Operations = operations.ToArray();
     }
 
     public FindingCategory Category { get; }
@@ -71,4 +80,13 @@ public sealed record Finding
     public Impact Impact { get; }
 
     public Recovery Recovery { get; }
+
+    /// <summary>
+    /// The evidence is incomplete or contradictory (spec §5.1): the finding is shown for review and never
+    /// included in bulk cleanup.
+    /// </summary>
+    public bool ReviewOnly { get; }
+
+    /// <summary>The exact changes this finding proposes, if acted on; empty for findings that are only informative.</summary>
+    public IReadOnlyList<ProposedOperation> Operations { get; }
 }

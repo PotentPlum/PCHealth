@@ -93,113 +93,56 @@ Result: `ExclusionList` (file, folder-and-below, `FindingCategory`) saved atomic
 ### T-17 Known-cache catalog · `done` · W · deps: T-06, T-15
 Result: embedded `known-caches.json` (10 rules, each with rebuild/download text) evaluated by `CacheCatalog` (token locations with one `*` segment, protection + exclusion checks, read-only scan) into `Cache` findings with path/measured-size evidence; `WindowsKnownLocations` via known folders; 13 fixture tests + 7 Windows tests; CI Windows green (run 39657131868).
 
-### T-18 Orphaned app-data detection · `todo` · W · deps: T-17
-Refs: §5.1 · area: `src/PCHealth.Policy`, `*.Windows`
-Done when:
-- AppData and ProgramData folders are cross-referenced with uninstall registrations and AppX/MSIX packages.
-- Contradictory or incomplete evidence produces `uncertain`: review only, never bulk cleanup.
-- Tests use fake registrations.
+### T-18 Orphaned app-data detection · `done` · W · deps: T-17
+Result: `ResidueDetector` cross-references top-level AppData/ProgramData folders and `LocalAppData\Packages` data folders with uninstall entries and package families (`WindowsAppRegistrations`, registry, D-015); missing sources, similar names, unreadable parts, program files or recent writes give a Low, `ReviewOnly` finding; `Finding` gained `ReviewOnly`, plus `RegistrationEvidence`/`CheckEvidence`; 18 fake-registration tests + 3 Windows tests; CI Windows green (run 39659085031).
 
-### T-19 Recommendation builder · `todo` · P · deps: T-10, T-16
-Refs: §3.3, §7 · area: `src/PCHealth.Policy`
-Done when:
-- Findings become recommendations that answer the six §7 questions, with separate confidence, impact and recovery.
-- Uncertain items go to review.
-- Tests cover it.
+### T-19 Recommendation builder · `done` · P · deps: T-10, T-16
+Result: `RecommendationBuilder` withholds excluded findings, strips protected/excluded `ProposedOperation`s (new Core type; findings now carry typed operations that must match their recovery) and answers the six §7 questions per `Recommendation` with confidence/impact/recovery kept separate; review-only, Low-confidence, informative or fully blocked findings get `Disposition.Review` with a reason; `FindingSources` turns verified duplicates (keeps protected, then oldest copy), version groups and large folders into findings; 11 + 2 tests.
 
 ### Slice 5: Ledger and quarantine
 
-### T-20 Ledger · `todo` · P · deps: T-03
-Refs: §6.4 · D-005 · area: `src/PCHealth.Ledger`
-Done when:
-- D-005 is confirmed.
-- The SQLite ledger records every field listed in §6.4 and survives restarts.
-- Tests run on a temp database.
+### T-20 Ledger · `done` · P · deps: T-03
+Result: D-005 accepted (`Microsoft.Data.Sqlite` 10.0.13); `TransactionLedger` stores `LedgerTransaction`s with every §6.4 field (id, time, operation, state/outcome, reason, checks, items with before/after metadata, recovery location and per-item status/error, expected/observed bytes, recovery method/limitations/deadline) in WAL + synchronous=FULL SQLite; terms can't be rewritten, newer or non-ledger files are refused; 7 temp-database tests incl. reopen.
 
-### T-21 Quarantine store · `todo` · P · deps: T-20
-Refs: §6.4 · area: `src/PCHealth.Ledger`
-Done when:
-- The quarantine layout stores per-item metadata.
-- Retention defaults to 14 days and is configurable.
-- Expiry purges only items past their deadline and records each purge.
-- Tests use a controlled clock.
+### T-21 Quarantine store · `done` · P · deps: T-20
+Result: `QuarantineStore` (root per D-016) gives each item a slot `<transaction>/<position>/` with `item.json` (original path, before-metadata, quarantined time, deadline, Prepared/Stored) beside `content`; retention defaults to 14 days and is configurable; `PurgeExpired` deletes only stored items past the later of slot and ledger deadline, never follows links, and records each purge as a `PurgeQuarantine` ledger transaction (pending first, then per-item outcome) linked by `RelatesTo`; ledger gained `LedgerOperation`; 8 + 1 tests on `ManualClock`.
 
-### T-22 Restore and interrupted operations · `todo` · P · deps: T-21
-Refs: §6.4, §9 · area: `src/PCHealth.Ledger`
-Done when:
-- Operations move through the states pending → applied → verified/failed, so an interrupted operation is detected and resolved at startup.
-- Restore works per operation type, with honest limits.
-- Tests cover success, partial failure and interruption.
+### T-22 Restore and interrupted operations · `done` · P · deps: T-21
+Result: the ledger enforces pending → applied → verified/failed; `InterruptedOperations.Resolve` (startup) settles pending/applied transactions per type from what is on disk (moved, not moved, both, neither), releases empty slots and reports unexplained slots without deleting them; `Restorer` restores quarantine moves through an `IFileMover` (conflict at the original path → item stays in quarantine), re-applies timestamps, records each restore as its own transaction, and states honest limits for Recycle Bin, purge and restore records; 13 tests incl. a simulated crash mid-restore.
 
 ### Slice 6: Execution gateway
 
-### T-23 Gateway pipeline · `todo` · P · deps: T-19, T-22
-Refs: §6.3 · CLAUDE.md rules 2–4 · area: `src/PCHealth.Execution`
-Done when:
-- One gateway runs: validate → protected/exclusion checks → revalidate → execute → verify → ledger.
-- It fails closed at every step.
-- The global Pause flag blocks all execution.
-- Tests use a fake platform layer.
+### T-23 Gateway pipeline · `done` · P · deps: T-19, T-22
+Result: `ExecutionGateway` is the one mutation path: validates the request (Act disposition, approved ⊆ recommendation, one kind matching recovery) → protection/exclusion checks → revalidates per item right before acting (final path by handle and unchanged, no links, scope, protection again, size/mtime, open handles, elevation per D-019, same volume per D-016) → executes through `IPlatformOperations` → verifies → ledger (pending first, progress per item, applied, verified/failed); `GlobalPause` (optionally persisted) blocks all and stops queued items; 17 tests on a fake platform and resolver incl. mid-run pause and crash.
 
-### T-24 Windows quarantine move · `todo` · W · deps: T-14, T-15, T-23
-Refs: §6.3 · area: `src/PCHealth.Execution.Windows`
-Done when:
-- Files move into quarantine by handle: opened without following reparse points, final path checked, renamed by handle.
-- A TOCTOU test swaps the target for a junction between check and act, and the move is refused.
+### T-24 Windows quarantine move · `done` · W · deps: T-14, T-15, T-23
+Result: `HandleMove` (also the Windows `IFileMover` for restores) opens the source with `FILE_FLAG_OPEN_REPARSE_POINT`, refuses links and kind changes, requires the handle's final path to equal the expected path, and renames on that handle (`FileRenameInfoEx`, no overwrite); Windows tests cover a target and a parent swapped for junctions, an existing destination, and a junction swapped in between the gateway's checks and the move (refused, nothing moved, slot released); CI Windows green (run 39664338415).
 
-### T-25 Recycle Bin deletion · `todo` · W · deps: T-23
-Refs: §5.1, §6.4 · area: `src/PCHealth.Execution.Windows`
-Done when:
-- Suitable items can go to the Recycle Bin, with a ledger entry.
-- Fixture-file tests cover it.
+### T-25 Recycle Bin deletion · `done` · W · deps: T-23
+Result: the gateway asks `CannotRecycle` before acting and records where each item went; `WindowsRecycleBin` refuses network, non-fixed, turned-off (`NukeOnDelete`) or too-small Recycle Bins, recycles via `SHFileOperationW` with undo and a permanent-deletion warning, then verifies the item by its `$I` record, reporting a permanent deletion as `PermanentlyDeletedException`, never as recoverable; 4 Windows fixture tests (CI-only per D-017, clean up their own items) + 2 gateway tests; CI Windows green (run 39664818249).
 
-### T-26 In-use checks · `todo` · W · deps: T-23
-Refs: §6.3 · area: `src/PCHealth.Execution.Windows`
-Done when:
-- Restart Manager and process checks block changes to files held open by running processes.
-- A test holds a file open and confirms the block.
+### T-26 In-use checks · `done` · W · deps: T-23
+Result: `InUseCheck` asks Restart Manager which processes hold a file, or any file in a folder, open and lists programs started from inside a folder; `WindowsPlatformOperations` combines handle moves, the Recycle Bin, in-use, elevation (DELETE-access probe, D-019) and same-volume (volume serial by handle) checks; a check that cannot be made makes the gateway refuse the item; 4 Windows tests hold fixture files open from the test process, incl. the gateway blocking one; CI Windows green (run 39665924421).
 
-### T-27 Undo end to end · `todo` · W · deps: T-24, T-25
-Refs: §3.6, §9 · area: `src/PCHealth.Execution.Windows`, `src/PCHealth.Ledger`
-Done when:
-- Undo restores a quarantined item to its original path with its metadata.
-- A conflict at the original path fails safely.
-- Interrupted-operation recovery is verified on Windows.
+### T-27 Undo end to end · `done` · W · deps: T-24, T-25
+Result: through the real Windows platform layer, Undo restores a quarantined file to its original path with its timestamps and attributes and a folder with its contents; a conflict at the original path leaves the item in quarantine; an interrupted quarantine run and an interrupted Undo are recovered at startup and the rest can then be undone; `TempRoot` now clears read-only files on cleanup; 5 Windows tests; CI Windows green (run 39665924421).
 
 ### Slice 7: UI shell (WPF)
 
-### T-28 App shell · `todo` · W · deps: T-02
-Refs: D-002 · area: `src/PCHealth.App`
-Done when:
-- D-002 is confirmed.
-- The WPF shell has navigation and dependency injection.
-- The global Pause control is bound to the gateway's Pause state.
-- View-model tests pass.
+### T-28 App shell · `done` · W · deps: T-02
+Result: D-002 accepted (WPF with its built-in Fluent theme; `Microsoft.Extensions.DependencyInjection` 10.0.13 and `CommunityToolkit.Mvvm` 8.4.2 recorded); `AppServices` composes everything around the one `ExecutionGateway`; `MainViewModel` navigates between pages; `PauseViewModel` shows and changes the gateway's own `GlobalPause` (persisted); `StartupTasks` settles interrupted operations and purges expired quarantine at launch; 5 view-model/composition tests; CI Windows green (run 39665924421). The UI itself has not been looked at on a real desktop yet.
 
-### T-29 First run · `todo` · W · deps: T-28, T-06
-Refs: §5.1 (first-run value), §3.5 · area: `src/PCHealth.App`
-Done when:
-- First run explains what is inspected, what is stored, and that nothing leaves the PC.
-- It starts read-only discovery and shows one useful finding quickly.
+### T-29 First run · `done` · W · deps: T-28, T-06
+Result: `FirstRunViewModel` states what is inspected, what is stored (the app's data folder) and the D-018 network sentence, then runs `Discovery` (read-only, user folder only): known caches first so a finding shows quickly, then large folders, duplicates of 1 MB or more, version groups and leftover app data; results go to `FindingsStore`, and first run is marked complete only when discovery ends (Stop changes nothing); 4 tests incl. real discovery on a fixture profile that is left unchanged; CI Windows green (run 39666291831).
 
-### T-30 Overview and details · `todo` · W · deps: T-29, T-19
-Refs: §3.1, §7 · area: `src/PCHealth.App`
-Done when:
-- The overview shows a few prioritized findings, each answering the six §7 questions.
-- Advanced details are available on demand.
+### T-30 Overview and details · `done` · W · deps: T-29, T-19
+Result: `OverviewViewModel` shows the three most useful recommendations (actions first, largest estimate first) and counts the rest; each `RecommendationItemViewModel` answers the six §7 questions and shows confidence, impact and recovery as separate lines, with rationale, evidence, exact operations and left-alone items behind Details; sizes are labeled measured or estimated; 5 tests; CI Windows green (run 39667002052).
 
-### T-31 Preview and approve · `todo` · W · deps: T-30, T-23
-Refs: §4, §6.5 · area: `src/PCHealth.App`
-Done when:
-- Before approval, the user sees the exact items, exclusions, expected effect, and recovery/retention terms.
-- The user can adjust the selection or decline.
-- A declined recommendation doesn't come back unless there's new evidence.
+### T-31 Preview and approve · `done` · W · deps: T-30, T-23
+Result: `PreviewViewModel` lists the exact items (each can be left out), what is left alone and why, the expected effect for the current selection, and recovery/retention terms; Approve runs only the selected items through the gateway, Decline records the recommendation, Back changes nothing; `DeclinedRecommendations` (Policy, local JSON) keeps it hidden unless its evidence changes or its estimate at least doubles; keys now use evidence paths only; 5 portable + 4 app tests; CI Windows green (run 39667327100).
 
-### T-32 Activity history and Undo · `todo` · W · deps: T-31, T-27
-Refs: §3.6, §6.4 · area: `src/PCHealth.App`
-Done when:
-- The user can read what changed, why, and with what outcome.
-- Undo is offered where supported, and limits and deadlines are shown honestly.
+### T-32 Activity history and Undo · `done` · W · deps: T-31, T-27
+Result: `ActivityViewModel` lists every ledger transaction newest first: what changed, why, the outcome per item, the quarantine deadline, and the restore limits for each operation type; Undo is offered only where `Restorer` supports it; Undo and the expiry purge now run through `ExecutionGateway` (refused while paused; startup skips the purge while paused); 5 app tests + 1 gateway test; CI Windows green (run 39667638896).
 
 ### T-33 Storage detail view · `todo` · W · deps: T-30
 Refs: §5.1 · area: `src/PCHealth.App`

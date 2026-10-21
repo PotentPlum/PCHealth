@@ -10,9 +10,13 @@ C# only. Native Windows APIs (MFT/USN, `GetFinalPathNameByHandle`, reparse point
 .NET 10 because it is the current LTS. .NET 9 is STS and leaves support in November 2026.
 
 ## D-002 UI framework: WPF
-**Provisional** (2026-10-21)
+**Accepted** (2026-10-21, user decision; built in T-28)
 
-WPF is mature, builds with the plain .NET SDK, and needs no extra workloads. WinUI 3 is the alternative if a modern Fluent look becomes a priority. Confirm in T-28 (app shell).
+WPF is mature, builds with the plain .NET SDK, and needs no extra workloads. On .NET 10 it has a built-in Fluent theme, so a modern look doesn't need WinUI 3. Two UI dependencies are approved:
+- `Microsoft.Extensions.DependencyInjection` for composition;
+- `CommunityToolkit.Mvvm` for view models.
+
+Pinned in `Directory.Packages.props` by T-28: `Microsoft.Extensions.DependencyInjection` 10.0.13 and `CommunityToolkit.Mvvm` 8.4.2. Only the toolkit's `ObservableObject` and `RelayCommand` are used, not its source generators. Neither package makes network calls.
 
 ## D-003 Development environment: hybrid
 **Accepted** (2026-10-21)
@@ -37,9 +41,13 @@ The de facto standard for .NET. Version: `xunit.v3` 4.x (4.0.2 at adoption), pin
 Test projects are dev-only and never ship, so they make no runtime network calls in the product.
 
 ## D-005 Ledger storage: SQLite via Microsoft.Data.Sqlite
-**Provisional** (2026-10-21)
+**Accepted** (2026-10-21, T-20)
 
-Suggested by the spec (Â§6.4). It is durable, local and inspectable. Confirm in T-20.
+Suggested by the spec (§6.4). It is durable, local and inspectable.
+- **Package:** `Microsoft.Data.Sqlite` 10.0.13. It brings the bundled native SQLite (`SQLitePCLRaw.bundle_e_sqlite3`) and makes no network calls.
+- **Durability:** one file, opened with WAL journaling, `synchronous = FULL` and no connection pooling.
+- **Schema version:** kept in `PRAGMA user_version`. A newer or unreadable file is refused, never overwritten.
+- **History:** a saved transaction's purpose, items and recovery terms can't be rewritten; only its progress is updated.
 
 ## D-006 Full-file hash algorithm and collision policy
 **Accepted** (2026-10-21, T-08; was Open)
@@ -145,3 +153,49 @@ How protections apply:
 - Folders come from the known-folder API (`SHGetKnownFolderPath`), so redirected and localized folders are found.
 - Checks run on the final path from the path resolver (T-13), so links and 8.3 names can't bypass them.
 - A folder that can't be resolved is still protected under its reported path.
+
+## D-015 Application ownership evidence for residue detection
+**Accepted** (2026-10-21, T-18)
+
+Residue detection (spec §5.1) decides who owns a folder in AppData or ProgramData from the following sources, all read without changing anything:
+- **Uninstall entries:** `HKLM\…\Uninstall` (64- and 32-bit views) and `HKCU\…\Uninstall`. Each entry gives a display name, publisher and install location.
+- **AppX/MSIX packages:** the package families under the current user's `AppModel\Repository\Families` registry key. This avoids the WinRT `PackageManager` projection and its Windows SDK targeting pack. Package data folders in `%LocalAppData%\Packages` are matched to family names exactly.
+
+Rules:
+- **Owned:** a registration installs into the folder, or a name exactly matches or begins the registration's display name, publisher or install-folder name. Company forms and versions are ignored when comparing.
+- **Uncertain:** the folder is reported for review only and never offered for bulk cleanup when any of these holds:
+  - a registration source is missing or unreadable;
+  - a name only resembles a registration's name;
+  - part of the folder can't be read;
+  - the folder holds program files;
+  - something in it was written in the last 30 days.
+- **Likely orphaned:** confidence is at most Medium, because folder names are only a clue to ownership.
+
+Running processes, open handles, services and scheduled tasks are checked by the gateway right before acting (T-23, T-26), not during discovery.
+
+## D-016 Quarantine location
+**Accepted** (2026-10-21, user decision; T-21, T-24)
+
+- Quarantine lives in one folder: `%LocalAppData%\PCHealth\Quarantine`.
+- Items go in only by a same-volume rename by handle. An item on another volume is never copied into quarantine. Its finding offers the Recycle Bin instead, or nothing if the Recycle Bin is not suitable.
+- Per-drive quarantine folders were considered and rejected, because they would leave a hidden folder on every drive.
+
+## D-017 Recycle Bin tests run only in CI
+**Accepted** (2026-10-21, user decision; T-25, T-27)
+
+- Tests that send fixture files to the Recycle Bin put them in the real Recycle Bin of the machine running the tests.
+- They therefore run only when `PCHEALTH_RECYCLE_BIN_TESTS=1` is set. The CI Windows job sets it; a host run skips them with that reason.
+- The tests still use only fixture files created by `PCHealth.Testing`.
+
+## D-018 First run: disclosure and scope
+**Accepted** (2026-10-21, user decision; T-29)
+
+- No automatic network calls before the update flow is decided (D-010, T-35).
+- First run says: "Nothing leaves this PC. Checking for updates contacts GitHub only when you ask."
+- First-run discovery is read-only and scans the user profile, not the whole drive, so the first finding arrives quickly.
+
+## D-019 Phase 1 runs unelevated
+**Accepted** (2026-10-21, user decision)
+
+- The app never requests elevation in Phase 1, and D-007 stays open.
+- A target that needs administrator rights to change, such as most of ProgramData, is still shown. The gateway refuses it with "needs administrator rights, not supported yet".

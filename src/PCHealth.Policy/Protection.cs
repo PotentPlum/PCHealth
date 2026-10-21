@@ -104,7 +104,7 @@ public sealed class ProtectionPolicy
         return ProtectionDecision.Allowed;
     }
 
-    private static bool IsSameOrBelow(string path, string folder)
+    internal static bool IsSameOrBelow(string path, string folder)
     {
         if (string.Equals(path, folder, PathComparison))
         {

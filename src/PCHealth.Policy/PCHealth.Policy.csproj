@@ -6,6 +6,7 @@
 
   <ItemGroup>
     <ProjectReference Include="../PCHealth.Core/PCHealth.Core.csproj" />
+    <ProjectReference Include="../PCHealth.Duplicates/PCHealth.Duplicates.csproj" />
     <ProjectReference Include="../PCHealth.Inventory/PCHealth.Inventory.csproj" />
   </ItemGroup>
 
