@@ -36,13 +36,8 @@ Done when: …
 
 ### Slice 1: Skeleton
 
-### T-01 Solution and projects · `todo` · W · deps: —
-Refs: CLAUDE.md layout · D-001, D-002, D-011 · area: repo root, `src/`
-Done when:
-- `PCHealth.slnx` contains every `src/` project from the CLAUDE.md layout, empty, with the correct TFMs.
-- `Directory.Build.props` turns on nullable, warnings-as-errors and implicit usings.
-- `Directory.Packages.props` turns on central package management.
-- The CI Windows job builds it.
+### T-01 Solution and projects · `done` · W · deps: —
+Result: `PCHealth.slnx` with 9 empty `src/` projects (6 × `net10.0`, 3 × `net10.0-windows` incl. WPF app), `Directory.Build.props`, central package management; CI Windows job green (run 39631188579).
 
 ### T-02 Test projects and portable filter · `todo` · W · deps: T-01
 Refs: D-004 · area: `tests/`, `PCHealth.Portable.slnf`
