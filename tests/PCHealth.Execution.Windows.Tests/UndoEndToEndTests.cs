@@ -156,7 +156,7 @@ public sealed class UndoEndToEndTests : IDisposable
 
     private string Create(string relative, string contents)
     {
-        var path = Path.Combine(canonical, relative);
+        var path = Path.GetFullPath(Path.Combine(canonical, relative));
         Directory.CreateDirectory(Path.GetDirectoryName(path)!);
         if (File.Exists(path))
         {
