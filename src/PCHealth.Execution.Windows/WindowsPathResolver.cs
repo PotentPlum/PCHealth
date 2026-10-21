@@ -6,9 +6,10 @@ using Microsoft.Win32.SafeHandles;
 namespace PCHealth.Execution.Windows;
 
 /// <summary>
-/// Resolves paths by handle (spec §6.3): rejects ambiguous syntax, opens the object without following a link
-/// in the last component, and reads its canonical path back with <c>GetFinalPathNameByHandleW</c>.
-/// Links in parent folders are resolved, so the final path shows where the object really is.
+/// Resolves paths by handle (spec §6.3): rejects ambiguous syntax, opens the object (by default without following
+/// a link in the last component), and reads its canonical path back with <c>GetFinalPathNameByHandleW</c>.
+/// Links in parent folders are always resolved, so the final path shows where the object really is.
+/// A link to a volume with no drive letter cannot be expressed as a drive path and is rejected.
 /// </summary>
 public sealed class WindowsPathResolver : IPathResolver
 {
@@ -21,7 +22,7 @@ public sealed class WindowsPathResolver : IPathResolver
         "LPT0", "LPT1", "LPT2", "LPT3", "LPT4", "LPT5", "LPT6", "LPT7", "LPT8", "LPT9", "LPT¹", "LPT²", "LPT³",
     };
 
-    public PathResolution Resolve(string path)
+    public PathResolution Resolve(string path, LinkHandling links = LinkHandling.DoNotFollow)
     {
         if (CheckSyntax(path) is { } rejection)
         {
@@ -35,7 +36,7 @@ public sealed class WindowsPathResolver : IPathResolver
             FileShare.ReadWrite | FileShare.Delete,
             IntPtr.Zero,
             FileMode.Open,
-            FileFlagBackupSemantics | FileFlagOpenReparsePoint,
+            links == LinkHandling.Follow ? FileFlagBackupSemantics : FileFlagBackupSemantics | FileFlagOpenReparsePoint,
             IntPtr.Zero);
         if (handle.IsInvalid)
         {

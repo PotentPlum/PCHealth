@@ -74,8 +74,17 @@ public sealed record PathResolution
     }
 }
 
+public enum LinkHandling
+{
+    /// <summary>Resolve the path itself; if its last component is a link, report the link (parent links are still resolved).</summary>
+    DoNotFollow,
+
+    /// <summary>Follow every link, including the last component, to the object finally reached.</summary>
+    Follow,
+}
+
 /// <summary>Resolves a path to its final location. Implementations fail closed: anything they cannot resolve is rejected.</summary>
 public interface IPathResolver
 {
-    PathResolution Resolve(string path);
+    PathResolution Resolve(string path, LinkHandling links = LinkHandling.DoNotFollow);
 }
