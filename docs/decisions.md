@@ -80,6 +80,13 @@ Optional speed-up: paste the same install into the cloud environment's setup scr
 
 - **CI** (`.github/workflows/ci.yml`): every push and PR runs the full solution on `windows-latest` and the portable filter on `ubuntu-latest`.
 - **Release** (`.github/workflows/release.yml`): a `vX.Y.Z` tag triggers test, self-contained `win-x64` publish, and a Velopack pack (vpk 1.2.161) uploaded to a GitHub Release.
+- **Release run by hand** (added 2026-10-22, T-38, user decision): Cloud sessions can push only their working branch, not tags, so the Release workflow can also be started by hand on `main` with a version. It refuses unless all of these hold:
+  - the version is a plain `X.Y.Z`;
+  - the run is on `main`;
+  - the tag doesn't exist yet;
+  - CI passed on that exact commit.
+  It creates the tag itself after the build is packaged, so a failed build leaves no tag behind. A tag pushed with `GITHUB_TOKEN` starts no second run.
+- **Packaging check:** the CI Windows job runs the same publish and `vpk pack` steps on every push, without uploading. A packaging problem shows up before a tag, which can't be changed afterwards.
 
 Why Velopack: it gives a one-time install on the other PC, then delta updates pulled from Releases with rollback, and needs no signing certificate (MSIX would). Releases come only from tags, so not every commit reaches the other PC.
 
