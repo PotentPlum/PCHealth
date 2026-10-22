@@ -57,6 +57,12 @@ jobs:
           PCHEALTH_RECYCLE_BIN_TESTS: "1"
         run: dotnet test --solution PCHealth.slnx -c Release --no-build
 
+      # Starts the real app untouched and fails if it opens any connection on its own (T-36).
+      - name: Launch the app and watch its network use
+        if: steps.guard.outputs.present == 'true'
+        shell: pwsh
+        run: ./scripts/ci/observe-network.ps1 -Exe src/PCHealth.App/bin/Release/net10.0-windows/PCHealth.App.exe
+
   linux-portable:
     name: Linux (portable projects)
     # Pinned to match Claude Code cloud sessions (Ubuntu 24.04); ubuntu-latest moves to 26.

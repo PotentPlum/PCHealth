@@ -147,22 +147,15 @@ Result: `ActivityViewModel` lists every ledger transaction newest first: what ch
 ### T-33 Storage detail view · `done` · W · deps: T-30
 Result: `StorageViewModel` (Storage page) lists the folders in the user folder biggest first, with drill-down/Up, files directly in each folder, a share bar and the largest file types; folder sizes are labeled "(measured)" (lower bounds when the scan was incomplete), what could be freed is labeled "estimated, not guaranteed" and comes from the suggested actions; "Measure again" reruns read-only discovery; `StorageSummary.Children`; no treemap; 1 portable + 5 app tests; CI Windows green (run 39748580784).
 
-### T-34 Settings and local data · `doing (cloud, 2026-10-22)` · W · deps: T-28
-Refs: §6.5 · area: `src/PCHealth.App`
-Done when:
-- Settings cover the retention window and exclusions.
-- The user can inspect and clear the product's locally stored data.
+### T-34 Settings and local data · `done` · W · deps: T-28
+Result: `SettingsViewModel` (Settings page) sets the quarantine period (1-90 days, saved in `settings.json`; applies to newly quarantined items, recommendations are rebuilt, and the gateway refuses a quarantine recommendation showing a different period), adds and removes exclusions, lists everything the app keeps with its size, and clears it after confirmation (`TransactionLedger.Clear` compacts the file); clearing is refused while quarantine holds items or a change is unfinished (D-020); 3 portable + 3 app tests; CI Windows green (run 39753530796).
 
 ### Slice 8: Delivery and Phase 1 exit
 
-### T-35 Update flow · `doing (cloud, 2026-10-22)` · W · deps: T-28
-Refs: §3.5 · D-009, D-010 · area: `src/PCHealth.App`
-Done when:
-- The Velopack library is integrated, at the same version as `VPK_VERSION`.
-- "Check for updates" is user-initiated and disclosed.
-- The D-010 UX question is decided.
+### T-35 Update flow · `done` · W · deps: T-28
+Result: Velopack 1.2.161 (= `VPK_VERSION`; the CI Linux job checks they match) with a custom `Program.Main` (`SetAutoApplyOnStartup(false)`); `UpdatesViewModel` (Updates page) discloses what contacting GitHub involves and does nothing until "Check for updates", then downloads and installs only on "Install and restart"; D-010 UX decided (manual, two steps); 4 app tests; CI Windows green (run 39753530796).
 
-### T-36 Privacy check · `todo` · W · deps: T-35
+### T-36 Privacy check · `doing (cloud, 2026-10-22)` · W · deps: T-35
 Refs: §3.5, §9
 Done when:
 - The app's observed network behavior matches what it discloses: only the update check, only when the user starts it.
