@@ -58,6 +58,7 @@ public sealed class QuarantineStore
         OperatingSystem.IsWindows() ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal;
 
     private readonly TimeProvider clock;
+    private TimeSpan retention;
 
     public QuarantineStore(string root, TimeProvider? clock = null, TimeSpan? retention = null)
     {
@@ -68,19 +69,25 @@ public sealed class QuarantineStore
         }
 
         Retention = retention ?? DefaultRetention;
-        if (Retention <= TimeSpan.Zero)
-        {
-            throw new ArgumentOutOfRangeException(nameof(retention), "The retention period must be positive.");
-        }
-
         Root = Path.TrimEndingDirectorySeparator(Path.GetFullPath(root));
         this.clock = clock ?? TimeProvider.System;
     }
 
     public string Root { get; }
 
-    /// <summary>How long an item stays restorable. Shown to the user before they approve (spec §6.4).</summary>
-    public TimeSpan Retention { get; }
+    /// <summary>
+    /// How long an item stays restorable. Shown to the user before they approve (spec §6.4). A change applies to items
+    /// quarantined afterwards; items already in quarantine keep the deadline they were given.
+    /// </summary>
+    public TimeSpan Retention
+    {
+        get => retention;
+        set
+        {
+            ArgumentOutOfRangeException.ThrowIfLessThanOrEqual(value, TimeSpan.Zero, nameof(Retention));
+            retention = value;
+        }
+    }
 
     public DateTimeOffset DeadlineFor(DateTimeOffset quarantinedUtc) => quarantinedUtc + Retention;
 

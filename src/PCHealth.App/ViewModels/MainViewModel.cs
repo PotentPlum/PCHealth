@@ -16,6 +16,7 @@ public sealed class MainViewModel : ObservableObject
         OverviewViewModel overview,
         StorageViewModel storage,
         ActivityViewModel activity,
+        SettingsViewModel settings,
         PauseViewModel pause,
         AppPaths paths,
         Func<Recommendation, PreviewViewModel> preview,
@@ -38,7 +39,7 @@ public sealed class MainViewModel : ObservableObject
             opened.Add(page);
             Current = page;
         };
-        Pages = [overview, storage, activity];
+        Pages = [overview, storage, activity, settings];
         FirstRun = firstRun;
         current = FirstRunViewModel.IsNeeded(paths) ? firstRun : overview;
         firstRun.Completed += (_, _) => Current = overview;
@@ -65,6 +66,10 @@ public sealed class MainViewModel : ObservableObject
             if (value is ActivityViewModel activity)
             {
                 activity.Refresh();
+            }
+            else if (value is SettingsViewModel settings)
+            {
+                settings.Refresh();
             }
 
             SetProperty(ref current, value);

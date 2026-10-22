@@ -37,7 +37,8 @@ public sealed class Discovery(
     ProtectionPolicy protection,
     ExclusionList exclusions,
     string profileRoot,
-    TimeProvider clock) : IDiscovery
+    TimeProvider clock,
+    Func<TimeSpan>? quarantineRetention = null) : IDiscovery
 {
     public const long DuplicateMinimumBytes = 1024 * 1024;
     public const int LargeFolderCount = 5;
@@ -69,7 +70,7 @@ public sealed class Discovery(
     private IReadOnlyList<Finding> Caches(CancellationToken cancellationToken) =>
         CacheCatalog.LoadDefault().Evaluate(locations, scanner, protection, exclusions, clock.GetUtcNow(), cancellationToken).Findings;
 
-    private RecommendationBuilder Builder() => new(protection, exclusions);
+    private RecommendationBuilder Builder() => new(protection, exclusions, quarantineRetention?.Invoke());
 }
 
 /// <summary>The latest discovery results, shared by the pages that show them.</summary>
@@ -93,6 +94,19 @@ public sealed class FindingsStore
         ArgumentNullException.ThrowIfNull(discovery);
         Storage = discovery.Storage;
         Publish(discovery.Recommendations);
+    }
+
+    /// <summary>
+    /// Builds the latest recommendations again from their findings, e.g. after the exclusions or the quarantine period
+    /// changed, so what is shown always matches the current settings. The measured storage is kept.
+    /// </summary>
+    public void Rebuild(RecommendationBuilder builder)
+    {
+        ArgumentNullException.ThrowIfNull(builder);
+        if (Latest is { } latest)
+        {
+            Publish(builder.Build(latest.Recommendations.Select(r => r.Finding).Concat(latest.Excluded.Select(e => e.Finding))));
+        }
     }
 
     /// <summary>Drops a recommendation that was acted on; the next discovery measures the new state.</summary>

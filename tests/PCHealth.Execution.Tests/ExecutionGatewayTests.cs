@@ -488,6 +488,22 @@ public class ExecutionGatewayTests
         }
     }
 
+    [Fact]
+    public void A_quarantine_move_is_refused_when_the_retention_changed_after_it_was_shown()
+    {
+        using var fixture = new Fixture();
+        var folder = fixture.Folder("LocalAppData/OldEditor", ("settings.json", "{}"));
+        var recommendation = fixture.Quarantine(folder);
+        fixture.Store.Retention = TimeSpan.FromDays(3);
+
+        var result = fixture.Gateway().Execute(recommendation, recommendation.Operations);
+
+        Assert.Equal(ExecutionStatus.Refused, result.Status);
+        Assert.Contains("quarantine period changed", result.Summary);
+        Assert.True(Directory.Exists(folder));
+        Assert.Empty(fixture.Ledger.All());
+    }
+
     private sealed class Fixture : IDisposable
     {
         public Fixture()

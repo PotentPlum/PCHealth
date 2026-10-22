@@ -144,14 +144,10 @@ Result: `PreviewViewModel` lists the exact items (each can be left out), what is
 ### T-32 Activity history and Undo · `done` · W · deps: T-31, T-27
 Result: `ActivityViewModel` lists every ledger transaction newest first: what changed, why, the outcome per item, the quarantine deadline, and the restore limits for each operation type; Undo is offered only where `Restorer` supports it; Undo and the expiry purge now run through `ExecutionGateway` (refused while paused; startup skips the purge while paused); 5 app tests + 1 gateway test; CI Windows green (run 39667638896).
 
-### T-33 Storage detail view · `doing (cloud, 2026-10-22)` · W · deps: T-30
-Refs: §5.1 · area: `src/PCHealth.App`
-Done when:
-- There is a large-folders view with drill-down.
-- Measured and estimated figures are labeled distinctly.
-- Treemap and other visualizations are optional extras, not required.
+### T-33 Storage detail view · `done` · W · deps: T-30
+Result: `StorageViewModel` (Storage page) lists the folders in the user folder biggest first, with drill-down/Up, files directly in each folder, a share bar and the largest file types; folder sizes are labeled "(measured)" (lower bounds when the scan was incomplete), what could be freed is labeled "estimated, not guaranteed" and comes from the suggested actions; "Measure again" reruns read-only discovery; `StorageSummary.Children`; no treemap; 1 portable + 5 app tests; CI Windows green (run 39748580784).
 
-### T-34 Settings and local data · `todo` · W · deps: T-28
+### T-34 Settings and local data · `doing (cloud, 2026-10-22)` · W · deps: T-28
 Refs: §6.5 · area: `src/PCHealth.App`
 Done when:
 - Settings cover the retention window and exclusions.

@@ -58,6 +58,31 @@ public class TransactionLedgerTests
     }
 
     [Fact]
+    public void Clearing_erases_every_finished_transaction_but_never_an_unfinished_one()
+    {
+        using var root = new TempRoot();
+        var path = root.Resolve("ledger.db");
+        using (var ledger = TransactionLedger.Open(path))
+        {
+            ledger.Record(Sample() with { State = TransactionState.Verified });
+            ledger.Record(Sample() with { State = TransactionState.Failed, Outcome = "In use." });
+            var unfinished = Sample();
+            ledger.Save(unfinished);
+
+            Assert.Throws<InvalidOperationException>(() => ledger.Clear());
+            Assert.Equal(3, ledger.All().Count);
+
+            ledger.Record(unfinished with { State = TransactionState.Verified });
+            Assert.Equal(3, ledger.Clear());
+            Assert.Empty(ledger.All());
+        }
+
+        using var reopened = TransactionLedger.Open(path);
+        Assert.Empty(reopened.All());
+        Assert.DoesNotContain("OldEditor", System.Text.Encoding.UTF8.GetString(File.ReadAllBytes(path)), StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void Progress_can_be_updated_but_terms_cannot_be_rewritten()
     {
         using var root = new TempRoot();

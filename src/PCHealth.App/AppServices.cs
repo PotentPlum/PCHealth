@@ -28,7 +28,11 @@ public static class AppServices
         services.AddSingleton(sp => WindowsProtectedLocations.CreateDefaultPolicy(sp.GetRequiredService<IPathResolver>()));
         services.AddSingleton(_ => ExclusionList.Load(paths.Exclusions));
         services.AddSingleton(_ => TransactionLedger.Open(paths.Ledger));
-        services.AddSingleton(sp => new QuarantineStore(paths.Quarantine, sp.GetRequiredService<TimeProvider>()));
+        services.AddSingleton(_ => AppSettings.Load(paths.Settings));
+        services.AddSingleton(sp => new QuarantineStore(
+            paths.Quarantine, sp.GetRequiredService<TimeProvider>(), sp.GetRequiredService<AppSettings>().QuarantineRetention));
+        services.AddSingleton<Func<RecommendationBuilder>>(sp => () => new RecommendationBuilder(
+            sp.GetRequiredService<ProtectionPolicy>(), sp.GetRequiredService<ExclusionList>(), sp.GetRequiredService<QuarantineStore>().Retention));
         services.AddSingleton(_ => new GlobalPause(paths.PauseState));
         services.AddSingleton(sp => new ExecutionGateway(
             sp.GetRequiredService<IPathResolver>(),
@@ -60,13 +64,15 @@ public static class AppServices
             sp.GetRequiredService<ProtectionPolicy>(),
             sp.GetRequiredService<ExclusionList>(),
             Environment.GetFolderPath(Environment.SpecialFolder.UserProfile),
-            sp.GetRequiredService<TimeProvider>()));
+            sp.GetRequiredService<TimeProvider>(),
+            () => sp.GetRequiredService<QuarantineStore>().Retention));
 
         services.AddSingleton<PauseViewModel>();
         services.AddSingleton<FirstRunViewModel>();
         services.AddSingleton<OverviewViewModel>();
         services.AddSingleton<StorageViewModel>();
         services.AddSingleton<ActivityViewModel>();
+        services.AddSingleton<SettingsViewModel>();
         services.AddSingleton<MainViewModel>();
 
         configure?.Invoke(services);
