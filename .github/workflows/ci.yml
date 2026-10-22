@@ -64,6 +64,17 @@ jobs:
     steps:
       - uses: actions/checkout@v7
 
+      # The app's Velopack library must match the vpk tool that packs releases (D-009, D-010).
+      - name: Check Velopack versions match
+        shell: bash
+        run: |
+          lib=$(grep -oP 'Include="Velopack" Version="\K[^"]+' Directory.Packages.props || true)
+          tool=$(grep -oP 'VPK_VERSION: \K\S+' .github/workflows/release.yml)
+          if [ -n "$lib" ] && [ "$lib" != "$tool" ]; then
+            echo "::error::Velopack NuGet $lib does not match VPK_VERSION $tool in release.yml."
+            exit 1
+          fi
+
       - name: Check for portable solution filter
         id: guard
         shell: bash

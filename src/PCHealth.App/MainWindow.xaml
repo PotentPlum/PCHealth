@@ -266,6 +266,18 @@
                 </StackPanel>
             </ScrollViewer>
         </DataTemplate>
+        <DataTemplate DataType="{x:Type vm:UpdatesViewModel}">
+            <StackPanel Margin="24" MaxWidth="720" HorizontalAlignment="Left">
+                <TextBlock FontSize="24" Text="Updates" />
+                <TextBlock Margin="0,4,0,12" Text="{Binding Version}" />
+                <TextBlock TextWrapping="Wrap" Margin="0,0,0,12" Text="{Binding Source={x:Static vm:UpdatesViewModel.Disclosure}}" />
+                <StackPanel Orientation="Horizontal" Margin="0,0,0,12">
+                    <Button Padding="14,6" Content="Check for updates" Command="{Binding CheckCommand}" />
+                    <Button Padding="14,6" Margin="8,0,0,0" Content="Install and restart" Command="{Binding InstallCommand}" />
+                </StackPanel>
+                <TextBlock TextWrapping="Wrap" Text="{Binding Status}" />
+            </StackPanel>
+        </DataTemplate>
     </Window.Resources>
     <DockPanel>
         <Border DockPanel.Dock="Top" Padding="16,10" BorderThickness="0,0,0,1" BorderBrush="{DynamicResource {x:Static SystemColors.ActiveBorderBrushKey}}">

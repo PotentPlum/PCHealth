@@ -88,10 +88,17 @@ Known limits:
 - The exe is unsigned, so SmartScreen warns on first run.
 
 ## D-010 Update channel and update UX
-**Partly decided** (2026-10-21)
+**Accepted** (2026-10-21 channel; 2026-10-22 UX, T-35)
 
 1. **Channel: public GitHub Releases.** The repo was made public on 2026-10-21, so Velopack can read releases without any token. The earlier options (a token on the other PC, or a shared-folder mirror) are no longer needed.
-2. **Update UX: still open.** Updates must be user-visible and user-initiated or confirmed, because an update check is network traffic and the local-first promise requires disclosure (Â§3.5, Â§6.2). Silent auto-install is ruled out for a tool that deletes files. Decide the exact flow in T-35.
+2. **UX: manual, in two steps.**
+   - The app never checks, downloads or installs on its own: no check at startup, no schedule, no background download.
+   - On the Updates page, "Check for updates" reads the GitHub release list and says whether a newer version exists.
+   - Only after that does "Install and restart" download the new version and restart into it. `SetAutoApplyOnStartup(false)` makes sure a downloaded update is never applied at a later startup without that click.
+   - The page discloses that checking and installing contact GitHub, that nothing about the user's files is sent, and that GitHub sees the IP address.
+   - A copy not installed with the installer cannot check.
+   - Silent auto-install stays ruled out for a tool that deletes files (§3.5, §6.2).
+3. **Dependency:** `Velopack` NuGet 1.2.161, the same version as `VPK_VERSION` in `release.yml`. The CI Linux job fails if the two differ. The library contacts the network only through `UpdateManager.CheckForUpdatesAsync` and `DownloadUpdatesAsync`; the app calls them only from those two buttons. T-36 checks this against observed behavior.
 
 ## D-012 Public repository hardening
 **Accepted** (2026-10-21)

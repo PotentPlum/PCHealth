@@ -155,7 +155,7 @@ Done when:
 
 ### Slice 8: Delivery and Phase 1 exit
 
-### T-35 Update flow · `todo` · W · deps: T-28
+### T-35 Update flow · `doing (cloud, 2026-10-22)` · W · deps: T-28
 Refs: §3.5 · D-009, D-010 · area: `src/PCHealth.App`
 Done when:
 - The Velopack library is integrated, at the same version as `VPK_VERSION`.
