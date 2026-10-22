@@ -45,6 +45,25 @@ public class StorageSummaryTests
     }
 
     [Fact]
+    public void Children_are_the_direct_subfolders_biggest_first()
+    {
+        using var root = new TempRoot();
+        root.CreateFile("media/clip.mp4", new string('v', 100));
+        root.CreateFile("media/photos/a.jpg", new string('i', 20));
+        root.CreateFile("media/music/deep/b.mp3", new string('a', 30));
+        root.CreateFile("docs/c.txt", "c");
+
+        var summary = Summarize(root);
+
+        Assert.Equal(new[] { root.Resolve("media"), root.Resolve("docs") }, summary.Children(root.Path).Select(f => f.FullPath));
+        Assert.Equal(
+            new[] { root.Resolve("media/music"), root.Resolve("media/photos") },
+            summary.Children(root.Resolve("media") + Path.DirectorySeparatorChar).Select(f => f.FullPath));
+        Assert.Empty(summary.Children(root.Resolve("docs")));
+        Assert.Empty(summary.Children(root.Resolve("not-scanned")));
+    }
+
+    [Fact]
     public void Ties_are_ordered_by_path_so_results_are_stable()
     {
         using var root = new TempRoot();

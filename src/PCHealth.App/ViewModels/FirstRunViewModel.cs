@@ -78,7 +78,7 @@ public sealed class FirstRunViewModel : PageViewModel
             Status = "Measuring your user folder. This can take a few minutes; nothing is changed.";
             var full = await discovery.FullAsync(null, running.Token);
             findings.Publish(full);
-            FirstFinding ??= Best(full);
+            FirstFinding ??= Best(full.Recommendations);
 
             Directory.CreateDirectory(paths.DataRoot);
             await File.WriteAllTextAsync(MarkerPath(paths), "First run completed.", CancellationToken.None);

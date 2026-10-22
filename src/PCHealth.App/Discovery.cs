@@ -15,9 +15,15 @@ public interface IDiscovery
     /// <summary>Known cache locations only: a few small folders, so a first finding arrives quickly.</summary>
     Task<RecommendationSet> QuickAsync(CancellationToken cancellationToken);
 
-    /// <summary>Caches, leftover app data, and a scan of the user folder for large folders, duplicates and versions.</summary>
-    Task<RecommendationSet> FullAsync(IProgress<ScanProgress>? progress, CancellationToken cancellationToken);
+    /// <summary>
+    /// Caches, leftover app data, and a scan of the user folder for large folders, duplicates and versions, with the
+    /// measured sizes of every folder in it.
+    /// </summary>
+    Task<FullDiscovery> FullAsync(IProgress<ScanProgress>? progress, CancellationToken cancellationToken);
 }
+
+/// <summary>The result of a full discovery: the recommendations and the measured storage they were drawn from.</summary>
+public sealed record FullDiscovery(RecommendationSet Recommendations, StorageSummary Storage);
 
 /// <summary>
 /// Discovery limited to the user's own folder (D-018). Duplicates are only looked for among files of at least
@@ -39,7 +45,7 @@ public sealed class Discovery(
     public Task<RecommendationSet> QuickAsync(CancellationToken cancellationToken) =>
         Task.Run(() => Builder().Build(Caches(cancellationToken)), cancellationToken);
 
-    public async Task<RecommendationSet> FullAsync(IProgress<ScanProgress>? progress, CancellationToken cancellationToken)
+    public async Task<FullDiscovery> FullAsync(IProgress<ScanProgress>? progress, CancellationToken cancellationToken)
     {
         var scan = await BackgroundScan.Start(scanner, profileRoot, progress, cancellationToken).Completion.ConfigureAwait(false);
         return await Task.Run(
@@ -55,7 +61,7 @@ public sealed class Discovery(
                 var duplicates = new DuplicateFinder(identities).Find(files.Where(f => f.Size.Bytes >= DuplicateMinimumBytes), cancellationToken);
                 findings.AddRange(duplicates.Groups.Select(g => FindingSources.FromDuplicates(g, protection)));
                 findings.AddRange(VersionCandidates.Find(files).Select(FindingSources.FromVersionCandidates));
-                return Builder().Build(findings);
+                return new FullDiscovery(Builder().Build(findings), summary);
             },
             cancellationToken).ConfigureAwait(false);
     }
@@ -73,10 +79,20 @@ public sealed class FindingsStore
 
     public RecommendationSet? Latest { get; private set; }
 
+    /// <summary>The measured sizes from the latest full discovery; kept in memory only, so null after a restart.</summary>
+    public StorageSummary? Storage { get; private set; }
+
     public void Publish(RecommendationSet set)
     {
         Latest = set ?? throw new ArgumentNullException(nameof(set));
         Updated?.Invoke(this, EventArgs.Empty);
+    }
+
+    public void Publish(FullDiscovery discovery)
+    {
+        ArgumentNullException.ThrowIfNull(discovery);
+        Storage = discovery.Storage;
+        Publish(discovery.Recommendations);
     }
 
     /// <summary>Drops a recommendation that was acted on; the next discovery measures the new state.</summary>

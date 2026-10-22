@@ -144,7 +144,7 @@ Result: `PreviewViewModel` lists the exact items (each can be left out), what is
 ### T-32 Activity history and Undo · `done` · W · deps: T-31, T-27
 Result: `ActivityViewModel` lists every ledger transaction newest first: what changed, why, the outcome per item, the quarantine deadline, and the restore limits for each operation type; Undo is offered only where `Restorer` supports it; Undo and the expiry purge now run through `ExecutionGateway` (refused while paused; startup skips the purge while paused); 5 app tests + 1 gateway test; CI Windows green (run 39667638896).
 
-### T-33 Storage detail view · `todo` · W · deps: T-30
+### T-33 Storage detail view · `doing (cloud, 2026-10-22)` · W · deps: T-30
 Refs: §5.1 · area: `src/PCHealth.App`
 Done when:
 - There is a large-folders view with drill-down.

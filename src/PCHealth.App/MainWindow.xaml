@@ -86,6 +86,58 @@
                 </StackPanel>
             </ScrollViewer>
         </DataTemplate>
+        <DataTemplate DataType="{x:Type vm:StorageViewModel}">
+            <ScrollViewer VerticalScrollBarVisibility="Auto">
+                <StackPanel Margin="24" MaxWidth="820" HorizontalAlignment="Left">
+                    <TextBlock FontSize="24" Text="Storage" />
+                    <TextBlock TextWrapping="Wrap" Margin="0,4,0,8" Text="{Binding Status}" />
+                    <StackPanel Orientation="Horizontal" Margin="0,0,0,12">
+                        <Button Padding="14,6" Content="Measure again" Command="{Binding MeasureCommand}" />
+                        <Button Padding="14,6" Margin="8,0,0,0" Content="Stop" Command="{Binding CancelCommand}" />
+                    </StackPanel>
+                    <StackPanel Visibility="{Binding HasMeasurement, Converter={StaticResource Visible}}">
+                        <DockPanel Margin="0,0,0,4">
+                            <Button DockPanel.Dock="Left" Padding="10,4" Margin="0,0,8,0" Content="Up" Command="{Binding UpCommand}" />
+                            <TextBlock VerticalAlignment="Center" FontWeight="SemiBold" TextWrapping="Wrap" Text="{Binding Location}" />
+                        </DockPanel>
+                        <TextBlock TextWrapping="Wrap" Text="{Binding Total}" />
+                        <TextBlock TextWrapping="Wrap" Text="{Binding FilesHere}" />
+                        <TextBlock TextWrapping="Wrap" FontStyle="Italic" Text="{Binding Reclaimable}" />
+                        <TextBlock TextWrapping="Wrap" Opacity="0.85" Margin="0,4,0,12" Text="{Binding Completeness}" />
+                        <ItemsControl ItemsSource="{Binding Folders}">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate DataType="{x:Type vm:StorageFolderViewModel}">
+                                    <Button HorizontalContentAlignment="Stretch" Margin="0,0,0,6" Padding="12,6"
+                                            Command="{Binding DataContext.OpenCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
+                                            CommandParameter="{Binding}">
+                                        <StackPanel>
+                                            <TextBlock FontWeight="SemiBold" TextWrapping="Wrap">
+                                                <Run Text="{Binding Name, Mode=OneWay}" />
+                                                <Run Text=" · " />
+                                                <Run Text="{Binding Size, Mode=OneWay}" />
+                                                <Run Text=" · " />
+                                                <Run Text="{Binding Files, Mode=OneWay}" />
+                                            </TextBlock>
+                                            <ProgressBar Height="6" Margin="0,4,0,0" Minimum="0" Maximum="1" Value="{Binding Share, Mode=OneWay}"
+                                                         AutomationProperties.Name="{Binding ShareText}" />
+                                            <TextBlock TextWrapping="Wrap" FontStyle="Italic" Text="{Binding Reclaimable}" />
+                                        </StackPanel>
+                                    </Button>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                        <TextBlock FontWeight="SemiBold" Margin="0,12,0,4" Text="By file type (whole user folder)" />
+                        <ItemsControl ItemsSource="{Binding Categories}">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <TextBlock TextWrapping="Wrap" Text="{Binding}" />
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </StackPanel>
+                </StackPanel>
+            </ScrollViewer>
+        </DataTemplate>
         <DataTemplate DataType="{x:Type vm:PreviewViewModel}">
             <ScrollViewer VerticalScrollBarVisibility="Auto">
                 <StackPanel Margin="24" MaxWidth="820" HorizontalAlignment="Left">

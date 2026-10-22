@@ -65,6 +65,7 @@ public static class AppServices
         services.AddSingleton<PauseViewModel>();
         services.AddSingleton<FirstRunViewModel>();
         services.AddSingleton<OverviewViewModel>();
+        services.AddSingleton<StorageViewModel>();
         services.AddSingleton<ActivityViewModel>();
         services.AddSingleton<MainViewModel>();
 

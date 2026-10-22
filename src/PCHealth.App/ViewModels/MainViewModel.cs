@@ -14,6 +14,7 @@ public sealed class MainViewModel : ObservableObject
     public MainViewModel(
         FirstRunViewModel firstRun,
         OverviewViewModel overview,
+        StorageViewModel storage,
         ActivityViewModel activity,
         PauseViewModel pause,
         AppPaths paths,
@@ -37,7 +38,7 @@ public sealed class MainViewModel : ObservableObject
             opened.Add(page);
             Current = page;
         };
-        Pages = [overview, activity];
+        Pages = [overview, storage, activity];
         FirstRun = firstRun;
         current = FirstRunViewModel.IsNeeded(paths) ? firstRun : overview;
         firstRun.Completed += (_, _) => Current = overview;
