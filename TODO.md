@@ -155,11 +155,8 @@ Result: `SettingsViewModel` (Settings page) sets the quarantine period (1-90 day
 ### T-35 Update flow · `done` · W · deps: T-28
 Result: Velopack 1.2.161 (= `VPK_VERSION`; the CI Linux job checks they match) with a custom `Program.Main` (`SetAutoApplyOnStartup(false)`); `UpdatesViewModel` (Updates page) discloses what contacting GitHub involves and does nothing until "Check for updates", then downloads and installs only on "Install and restart"; D-010 UX decided (manual, two steps); 4 app tests; CI Windows green (run 39753530796).
 
-### T-36 Privacy check · `doing (cloud, 2026-10-22)` · W · deps: T-35
-Refs: §3.5, §9
-Done when:
-- The app's observed network behavior matches what it discloses: only the update check, only when the user starts it.
-- The result is recorded in `docs/`.
+### T-36 Privacy check · `done` · W · deps: T-35
+Result: observed behavior matches the disclosure (docs/privacy.md): `PrivacyTests` records every .NET network event while startup, first run, every page, measuring, a quarantine move and Undo, settings and clearing run, and sees none (loopback control seen); the CI Windows job launches the real `PCHealth.App.exe` untouched for 30 s and sees no TCP/UDP endpoint (control seen, main window shown); CI Windows green (run 39754673628).
 
 ### T-37 Performance baseline · `doing (cloud, 2026-10-22)` · W · deps: T-07
 Refs: §6.1, §9
