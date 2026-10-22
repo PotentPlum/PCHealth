@@ -158,11 +158,14 @@ Result: Velopack 1.2.161 (= `VPK_VERSION`; the CI Linux job checks they match) w
 ### T-36 Privacy check · `done` · W · deps: T-35
 Result: observed behavior matches the disclosure (docs/privacy.md): `PrivacyTests` records every .NET network event while startup, first run, every page, measuring, a quarantine move and Undo, settings and clearing run, and sees none (loopback control seen); the CI Windows job launches the real `PCHealth.App.exe` untouched for 30 s and sees no TCP/UDP endpoint (control seen, main window shown); CI Windows green (run 39754673628).
 
-### T-37 Performance baseline · `doing (cloud, 2026-10-22)` · W · deps: T-07
+### T-37a Performance baseline tooling · `done` · W · deps: T-07
+Result: `tools/PCHealth.Benchmarks` generates a fixed fixture tree (1,111 folders, 20,200 files, 50 duplicate pairs) under temp and reports wall time, CPU time and share, allocations and working set for scan (3 runs), storage summary and duplicate verification; `benchmark.yml` runs it on a Windows runner; runner reference numbers recorded in `docs/benchmarks.md` (run 39755975447); split from T-37 because the host run needs the user's PC.
+
+### T-37b Performance baseline on the host · `todo` · U · deps: T-37a
 Refs: §6.1, §9
 Done when:
-- Scan time, CPU and RAM are measured on the host for a representative fixture tree.
-- Results are recorded in `docs/benchmarks.md` as measurements, not guarantees.
+- On the host, `dotnet run --project tools/PCHealth.Benchmarks -c Release -- --machine "host" --out result.md` has been run.
+- The result is added to `docs/benchmarks.md` under "Host" as a measurement, not a guarantee.
 
 ### T-38 First release · `todo` · U · deps: T-32, T-35, T-36
 Refs: D-009 · CLAUDE.md "CI and releases"

@@ -27,3 +27,22 @@ Not measured yet (T-37b). This needs a run on the user's Windows PC.
 ### GitHub Actions Windows runner (reference only)
 
 A shared virtual machine with unknown neighbors, so its numbers are only a reference point.
+
+#### 2026-10-22 · GitHub Actions windows-latest runner (Benchmark run 39755975447, commit d2675c3)
+
+Microsoft Windows 10.0.26100, 4 logical processors, 16.0 GiB memory available to .NET, .NET 10.0.13.
+
+The fixture has 1,110 folders and 20,200 files, 660.8 MiB in total, including 50 pairs of identical large files. The cache was warm.
+
+| Stage | Wall time | CPU time | CPU use (of all cores) | Allocated | Working set after |
+|-|-|-|-|-|-|
+| Scan, run 1 | 0.10 s | 0.11 s | 27 % | 11.6 MiB | 44.5 MiB |
+| Scan, run 2 | 0.08 s | 0.09 s | 29 % | 11.6 MiB | 50.8 MiB |
+| Scan, run 3 | 0.07 s | 0.06 s | 23 % | 11.6 MiB | 50.9 MiB |
+| Storage summary | 0.11 s | 0.11 s | 24 % | 21.5 MiB | 62.3 MiB |
+| Duplicates (files of 1 MB or more) | 0.32 s | 0.30 s | 23 % | 112.9 MiB | 72.8 MiB |
+
+The process's peak working set was 73.4 MiB. The run found 50 duplicate groups, as expected.
+
+- Every stage runs on one thread, about one core of four.
+- These timings come from a warm cache and a small tree. They say nothing about a cold first scan of a real profile with hundreds of thousands of files.
