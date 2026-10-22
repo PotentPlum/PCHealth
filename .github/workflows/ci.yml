@@ -63,6 +63,19 @@ jobs:
         shell: pwsh
         run: ./scripts/ci/observe-network.ps1 -Exe src/PCHealth.App/bin/Release/net10.0-windows/PCHealth.App.exe
 
+      # The release steps without the upload, so a packaging problem shows up before a tag (tags can't be changed).
+      - name: Package like a release (no upload)
+        if: steps.guard.outputs.present == 'true'
+        shell: bash
+        run: |
+          vpk_version=$(grep -oP 'VPK_VERSION: \K\S+' .github/workflows/release.yml)
+          dotnet publish src/PCHealth.App/PCHealth.App.csproj -c Release -r win-x64 --self-contained -p:Version=0.0.1-ci -o publish
+          dotnet tool install -g vpk --version "$vpk_version"
+          vpk pack -u PCHealth -v 0.0.1-ci -p publish -e PCHealth.App.exe -o Releases
+          ls Releases
+          test -f Releases/PCHealth-win-Setup.exe
+          test -f Releases/releases.win.json
+
   linux-portable:
     name: Linux (portable projects)
     # Pinned to match Claude Code cloud sessions (Ubuntu 24.04); ubuntu-latest moves to 26.
