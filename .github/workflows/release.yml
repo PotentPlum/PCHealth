@@ -18,7 +18,7 @@ on:
 
 permissions:
   contents: write
-  actions: read
+  checks: read
 
 concurrency:
   group: release
@@ -70,10 +70,13 @@ jobs:
             echo "::error::Tag v$INPUT_VERSION already exists."
             exit 1
           fi
-          ci=$(gh api "repos/$GITHUB_REPOSITORY/actions/workflows/ci.yml/runs?head_sha=$GITHUB_SHA&event=push" \
-            --jq '.workflow_runs[0].conclusion')
-          if [ "$ci" != "success" ]; then
-            echo "::error::CI on $GITHUB_SHA is '$ci', not success."
+          # Both CI jobs must have succeeded on this commit. The jobs are checked rather than the run, whose overall
+          # status GitHub can leave "in progress" after its jobs have finished.
+          ci=$(gh api "repos/$GITHUB_REPOSITORY/commits/$GITHUB_SHA/check-runs?per_page=100" --jq '
+            [.check_runs[] | select(.name == "Windows (full solution)" or .name == "Linux (portable projects)")]
+            | (map(.name) | unique | length) == 2 and all(.conclusion == "success")')
+          if [ "$ci" != "true" ]; then
+            echo "::error::CI has not passed on $GITHUB_SHA (both CI jobs must have succeeded)."
             exit 1
           fi
           echo "version=$INPUT_VERSION" >> "$GITHUB_OUTPUT"
