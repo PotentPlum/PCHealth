@@ -32,163 +32,284 @@ Done when: …
 
 ---
 
-## Phase 1: Establish value and trust (spec §8)
+## Phase 1: Establish value and trust (spec §8) · `done`
 
-### Slice 1: Skeleton
+T-01 to T-38a are done; v0.1.0 is released ([GitHub release](https://github.com/PotentPlum/PCHealth/releases/tag/v0.1.0)). Each task's result is in `git log --grep "T-NN"`, and the full Phase 1 task list is in this file at commit f0ea2ca.
 
-### T-01 Solution and projects · `done` · W · deps: —
-Result: `PCHealth.slnx` with 9 empty `src/` projects (6 × `net10.0`, 3 × `net10.0-windows` incl. WPF app), `Directory.Build.props`, central package management; CI Windows job green (run 39631188579).
+Two follow-ups need the user's PCs. Nothing in Phase 2 waits for them.
 
-### T-02 Test projects and portable filter · `done` · W · deps: T-01
-Result: xUnit v3 4.0.2 on Microsoft.Testing.Platform (D-004); a test project per `src/` project plus `PCHealth.Testing` (`TempRoot`) with 11 fixture tests; `PCHealth.Portable.slnf`; both CI jobs green (run 39634392911).
-
-### Slice 2: Read-only inventory
-
-### T-03 Core finding model · `done` · P · deps: T-02
-Result: `FileEntry`/`DirectoryEntry`, `Finding`, `Evidence` (path, measurement), separate `Confidence`/`Impact`/`Recovery` with no combined score, distinct `MeasuredSize`/`EstimatedSize`; 23 tests in `PCHealth.Core.Tests`.
-
-### T-04 Fallback recursive scanner · `done` · P · deps: T-03
-Result: `IInventoryScanner` + `RecursiveScanner` (metadata-only, records but never follows reparse points, includes hidden/system, `InaccessibleEvidence` for unreadable dirs, cancellable, per-directory progress); 12 tests, access-denied case verified as non-root (skips as root).
-
-### T-05 Scanner on Windows · `done` · W · deps: T-04
-Result: 6 Windows tests in `PCHealth.Inventory.Windows.Tests` (junctions + cycle, dir symlinks, hidden/system, >260-char paths, fixture-ACL access denied); `TempRoot` now unlinks junctions before deleting; CI Windows green (run 39646389836).
-
-### T-06 Large-folder discovery · `done` · P · deps: T-04
-Result: `StorageSummary` rolls measured sizes up per folder (links add nothing, incomplete scans flagged) and ranks top-N folders and `FileCategory` totals; 13 tests.
-
-### T-07 Low-impact scanning · `done` · P · deps: T-04
-Result: `BackgroundScan` runs on a below-normal-priority background thread (CPU only; I/O priority is a later Windows concern) with pause/resume/cancel via `PauseToken`; `ScanStatistics` and progress report counts, elapsed and paused time; 6 tests.
-
-### Slice 3: Duplicates
-
-### T-08 Decide hash algorithm · `done` · P · deps: —
-Result: D-006 accepted: BCL SHA-256 for partial and full hashes (BLAKE3 deferred to T-37 benchmarks); verified = same size + same full hash, hashes tied to size+mtime, byte-for-byte comparison in the gateway before any removal.
-
-### T-09 Candidate stages · `done` · P · deps: T-04, T-08
-Result: `CandidateFinder`: size groups (zero-byte, links and repeated paths skipped), then SHA-256 head+tail digest (64 KiB per end); unreadable files become `InaccessibleEvidence`, files changed since the scan (size/mtime) are dropped; 10 tests incl. same-size different-content.
-
-### T-10 Verified duplicate groups · `done` · P · deps: T-09
-Result: `DuplicateVerifier` full-hashes candidates with SHA-256 (size+mtime rechecked before and after); `VerifiedDuplicateGroup` (only the verifier can create one) carries `FileContentEvidence` (path, size, mtime, hash) and Verified confidence; `DuplicateFinder` runs the whole pipeline; 8 tests.
-
-### T-11 Same-file detection · `done` · W · deps: T-10
-Result: `FileIdentity`/`IFileIdentityProvider` (Core); verified groups need two or more distinct physical files and expose `PhysicalCopies`; `WindowsFileIdentityProvider` reads `FILE_ID_INFO` by handle; 3 portable + 3 Windows hard-link tests; CI Windows green (run 39653855265).
-
-### T-12 Version candidates · `done` · P · deps: T-10
-Result: `VersionCandidates` groups same-extension files whose names match once copy/version/date markers are stripped; `VersionCandidateGroup` is separate from verified duplicates, always `ReviewOnly`, confidence Medium (same folder) or Low; 23 tests.
-
-### Slice 4: Policy and protection
-
-### T-13 Path canonicalization · `done` · W · deps: T-02
-Result: `IPathResolver`/`PathResolution` (Execution) and `WindowsPathResolver` (syntax rejection, then `CreateFileW` without following the last link + `GetFinalPathNameByHandleW`); 38 adversarial Windows tests (`..`, case, 8.3, `\\?\`, UNC, ADS, device names, trailing dot/space, long paths); fails closed; CI Windows green (run 39654961964).
-
-### T-14 Reparse-point escape detection · `done` · W · deps: T-13
-Result: `ScopeValidator` (Execution) rejects targets whose final path leaves the scope and links whose destination is outside or unresolvable; resolver gained `LinkHandling.Follow`; 10 portable + 9 Windows tests with fixture junctions, dir/file symlinks, a dangling link and a volume-GUID (mount-point form) junction; CI Windows green (run 39655668565).
-
-### T-15 Protected locations · `done` · W · deps: T-13
-Result: `ProtectionPolicy` (Policy) blocks OS, Program Files, boot/recovery, personal folders (D-014), folders containing them, drive roots and program binaries, each with a readable reason; `WindowsProtectedLocations` discovers them via `SHGetKnownFolderPath`; 10 portable + 12 Windows tests; CI Windows green (run 39656523422).
-
-### T-16 User exclusions · `done` · P · deps: T-03
-Result: `ExclusionList` (file, folder-and-below, `FindingCategory`) saved atomically as local JSON (System.Text.Json, no new dependency), corrupt files rejected; `IsExcluded` for builders and `Apply` withholds findings by category or any evidence path, with the matching exclusion; `Finding` gained `Category`; 16 tests.
-
-### T-17 Known-cache catalog · `done` · W · deps: T-06, T-15
-Result: embedded `known-caches.json` (10 rules, each with rebuild/download text) evaluated by `CacheCatalog` (token locations with one `*` segment, protection + exclusion checks, read-only scan) into `Cache` findings with path/measured-size evidence; `WindowsKnownLocations` via known folders; 13 fixture tests + 7 Windows tests; CI Windows green (run 39657131868).
-
-### T-18 Orphaned app-data detection · `done` · W · deps: T-17
-Result: `ResidueDetector` cross-references top-level AppData/ProgramData folders and `LocalAppData\Packages` data folders with uninstall entries and package families (`WindowsAppRegistrations`, registry, D-015); missing sources, similar names, unreadable parts, program files or recent writes give a Low, `ReviewOnly` finding; `Finding` gained `ReviewOnly`, plus `RegistrationEvidence`/`CheckEvidence`; 18 fake-registration tests + 3 Windows tests; CI Windows green (run 39659085031).
-
-### T-19 Recommendation builder · `done` · P · deps: T-10, T-16
-Result: `RecommendationBuilder` withholds excluded findings, strips protected/excluded `ProposedOperation`s (new Core type; findings now carry typed operations that must match their recovery) and answers the six §7 questions per `Recommendation` with confidence/impact/recovery kept separate; review-only, Low-confidence, informative or fully blocked findings get `Disposition.Review` with a reason; `FindingSources` turns verified duplicates (keeps protected, then oldest copy), version groups and large folders into findings; 11 + 2 tests.
-
-### Slice 5: Ledger and quarantine
-
-### T-20 Ledger · `done` · P · deps: T-03
-Result: D-005 accepted (`Microsoft.Data.Sqlite` 10.0.13); `TransactionLedger` stores `LedgerTransaction`s with every §6.4 field (id, time, operation, state/outcome, reason, checks, items with before/after metadata, recovery location and per-item status/error, expected/observed bytes, recovery method/limitations/deadline) in WAL + synchronous=FULL SQLite; terms can't be rewritten, newer or non-ledger files are refused; 7 temp-database tests incl. reopen.
-
-### T-21 Quarantine store · `done` · P · deps: T-20
-Result: `QuarantineStore` (root per D-016) gives each item a slot `<transaction>/<position>/` with `item.json` (original path, before-metadata, quarantined time, deadline, Prepared/Stored) beside `content`; retention defaults to 14 days and is configurable; `PurgeExpired` deletes only stored items past the later of slot and ledger deadline, never follows links, and records each purge as a `PurgeQuarantine` ledger transaction (pending first, then per-item outcome) linked by `RelatesTo`; ledger gained `LedgerOperation`; 8 + 1 tests on `ManualClock`.
-
-### T-22 Restore and interrupted operations · `done` · P · deps: T-21
-Result: the ledger enforces pending → applied → verified/failed; `InterruptedOperations.Resolve` (startup) settles pending/applied transactions per type from what is on disk (moved, not moved, both, neither), releases empty slots and reports unexplained slots without deleting them; `Restorer` restores quarantine moves through an `IFileMover` (conflict at the original path → item stays in quarantine), re-applies timestamps, records each restore as its own transaction, and states honest limits for Recycle Bin, purge and restore records; 13 tests incl. a simulated crash mid-restore.
-
-### Slice 6: Execution gateway
-
-### T-23 Gateway pipeline · `done` · P · deps: T-19, T-22
-Result: `ExecutionGateway` is the one mutation path: validates the request (Act disposition, approved ⊆ recommendation, one kind matching recovery) → protection/exclusion checks → revalidates per item right before acting (final path by handle and unchanged, no links, scope, protection again, size/mtime, open handles, elevation per D-019, same volume per D-016) → executes through `IPlatformOperations` → verifies → ledger (pending first, progress per item, applied, verified/failed); `GlobalPause` (optionally persisted) blocks all and stops queued items; 17 tests on a fake platform and resolver incl. mid-run pause and crash.
-
-### T-24 Windows quarantine move · `done` · W · deps: T-14, T-15, T-23
-Result: `HandleMove` (also the Windows `IFileMover` for restores) opens the source with `FILE_FLAG_OPEN_REPARSE_POINT`, refuses links and kind changes, requires the handle's final path to equal the expected path, and renames on that handle (`FileRenameInfoEx`, no overwrite); Windows tests cover a target and a parent swapped for junctions, an existing destination, and a junction swapped in between the gateway's checks and the move (refused, nothing moved, slot released); CI Windows green (run 39664338415).
-
-### T-25 Recycle Bin deletion · `done` · W · deps: T-23
-Result: the gateway asks `CannotRecycle` before acting and records where each item went; `WindowsRecycleBin` refuses network, non-fixed, turned-off (`NukeOnDelete`) or too-small Recycle Bins, recycles via `SHFileOperationW` with undo and a permanent-deletion warning, then verifies the item by its `$I` record, reporting a permanent deletion as `PermanentlyDeletedException`, never as recoverable; 4 Windows fixture tests (CI-only per D-017, clean up their own items) + 2 gateway tests; CI Windows green (run 39664818249).
-
-### T-26 In-use checks · `done` · W · deps: T-23
-Result: `InUseCheck` asks Restart Manager which processes hold a file, or any file in a folder, open and lists programs started from inside a folder; `WindowsPlatformOperations` combines handle moves, the Recycle Bin, in-use, elevation (DELETE-access probe, D-019) and same-volume (volume serial by handle) checks; a check that cannot be made makes the gateway refuse the item; 4 Windows tests hold fixture files open from the test process, incl. the gateway blocking one; CI Windows green (run 39665924421).
-
-### T-27 Undo end to end · `done` · W · deps: T-24, T-25
-Result: through the real Windows platform layer, Undo restores a quarantined file to its original path with its timestamps and attributes and a folder with its contents; a conflict at the original path leaves the item in quarantine; an interrupted quarantine run and an interrupted Undo are recovered at startup and the rest can then be undone; `TempRoot` now clears read-only files on cleanup; 5 Windows tests; CI Windows green (run 39665924421).
-
-### Slice 7: UI shell (WPF)
-
-### T-28 App shell · `done` · W · deps: T-02
-Result: D-002 accepted (WPF with its built-in Fluent theme; `Microsoft.Extensions.DependencyInjection` 10.0.13 and `CommunityToolkit.Mvvm` 8.4.2 recorded); `AppServices` composes everything around the one `ExecutionGateway`; `MainViewModel` navigates between pages; `PauseViewModel` shows and changes the gateway's own `GlobalPause` (persisted); `StartupTasks` settles interrupted operations and purges expired quarantine at launch; 5 view-model/composition tests; CI Windows green (run 39665924421). The UI itself has not been looked at on a real desktop yet.
-
-### T-29 First run · `done` · W · deps: T-28, T-06
-Result: `FirstRunViewModel` states what is inspected, what is stored (the app's data folder) and the D-018 network sentence, then runs `Discovery` (read-only, user folder only): known caches first so a finding shows quickly, then large folders, duplicates of 1 MB or more, version groups and leftover app data; results go to `FindingsStore`, and first run is marked complete only when discovery ends (Stop changes nothing); 4 tests incl. real discovery on a fixture profile that is left unchanged; CI Windows green (run 39666291831).
-
-### T-30 Overview and details · `done` · W · deps: T-29, T-19
-Result: `OverviewViewModel` shows the three most useful recommendations (actions first, largest estimate first) and counts the rest; each `RecommendationItemViewModel` answers the six §7 questions and shows confidence, impact and recovery as separate lines, with rationale, evidence, exact operations and left-alone items behind Details; sizes are labeled measured or estimated; 5 tests; CI Windows green (run 39667002052).
-
-### T-31 Preview and approve · `done` · W · deps: T-30, T-23
-Result: `PreviewViewModel` lists the exact items (each can be left out), what is left alone and why, the expected effect for the current selection, and recovery/retention terms; Approve runs only the selected items through the gateway, Decline records the recommendation, Back changes nothing; `DeclinedRecommendations` (Policy, local JSON) keeps it hidden unless its evidence changes or its estimate at least doubles; keys now use evidence paths only; 5 portable + 4 app tests; CI Windows green (run 39667327100).
-
-### T-32 Activity history and Undo · `done` · W · deps: T-31, T-27
-Result: `ActivityViewModel` lists every ledger transaction newest first: what changed, why, the outcome per item, the quarantine deadline, and the restore limits for each operation type; Undo is offered only where `Restorer` supports it; Undo and the expiry purge now run through `ExecutionGateway` (refused while paused; startup skips the purge while paused); 5 app tests + 1 gateway test; CI Windows green (run 39667638896).
-
-### T-33 Storage detail view · `done` · W · deps: T-30
-Result: `StorageViewModel` (Storage page) lists the folders in the user folder biggest first, with drill-down/Up, files directly in each folder, a share bar and the largest file types; folder sizes are labeled "(measured)" (lower bounds when the scan was incomplete), what could be freed is labeled "estimated, not guaranteed" and comes from the suggested actions; "Measure again" reruns read-only discovery; `StorageSummary.Children`; no treemap; 1 portable + 5 app tests; CI Windows green (run 39748580784).
-
-### T-34 Settings and local data · `done` · W · deps: T-28
-Result: `SettingsViewModel` (Settings page) sets the quarantine period (1-90 days, saved in `settings.json`; applies to newly quarantined items, recommendations are rebuilt, and the gateway refuses a quarantine recommendation showing a different period), adds and removes exclusions, lists everything the app keeps with its size, and clears it after confirmation (`TransactionLedger.Clear` compacts the file); clearing is refused while quarantine holds items or a change is unfinished (D-020); 3 portable + 3 app tests; CI Windows green (run 39753530796).
-
-### Slice 8: Delivery and Phase 1 exit
-
-### T-35 Update flow · `done` · W · deps: T-28
-Result: Velopack 1.2.161 (= `VPK_VERSION`; the CI Linux job checks they match) with a custom `Program.Main` (`SetAutoApplyOnStartup(false)`); `UpdatesViewModel` (Updates page) discloses what contacting GitHub involves and does nothing until "Check for updates", then downloads and installs only on "Install and restart"; D-010 UX decided (manual, two steps); 4 app tests; CI Windows green (run 39753530796).
-
-### T-36 Privacy check · `done` · W · deps: T-35
-Result: observed behavior matches the disclosure (docs/privacy.md): `PrivacyTests` records every .NET network event while startup, first run, every page, measuring, a quarantine move and Undo, settings and clearing run, and sees none (loopback control seen); the CI Windows job launches the real `PCHealth.App.exe` untouched for 30 s and sees no TCP/UDP endpoint (control seen, main window shown); CI Windows green (run 39754673628).
-
-### T-37a Performance baseline tooling · `done` · W · deps: T-07
-Result: `tools/PCHealth.Benchmarks` generates a fixed fixture tree (1,111 folders, 20,200 files, 50 duplicate pairs) under temp and reports wall time, CPU time and share, allocations and working set for scan (3 runs), storage summary and duplicate verification; `benchmark.yml` runs it on a Windows runner; runner reference numbers recorded in `docs/benchmarks.md` (run 39755975447); split from T-37 because the host run needs the user's PC.
-
-### T-37b Performance baseline on the host · `todo` · U · deps: T-37a
-Refs: §6.1, §9
+### T-37b Performance baseline on the host · `todo` · U · deps: —
+Refs: §6.1, §9 · docs/benchmarks.md
 Done when:
 - On the host, `dotnet run --project tools/PCHealth.Benchmarks -c Release -- --machine "host" --out result.md` has been run.
 - The result is added to `docs/benchmarks.md` under "Host" as a measurement, not a guarantee.
 
-### T-38 First release · `doing (cloud, 2026-10-22)` · U · deps: T-32, T-35, T-36
+### T-38b Install and update on the second PC · `todo` · U · deps: —
+Refs: D-009, D-010 · README "Installing on another PC"
+Done when:
+- v0.1.0 is installed on the second PC from `PCHealth-win-Setup.exe` and the app starts.
+- The user asks for v0.1.1, it is tagged from a green `main`, and Updates → "Check for updates" → "Install and restart" on the second PC brings it to v0.1.1.
+
+---
+
+## Phase 2: Organization and controlled maintenance (spec §8)
+
+Rules that carry over from Phase 1: discovery stays read-only; every file change goes through the gateway with a ledger transaction and a preview; startup and service changes are out of scope (analysis only); no unattended or bulk automatic moves (§5.2, §8).
+
+Of the tasks that start work, only T-39 needs the user. It gates the MFT/USN slice (T-42 to T-45); every other slice can start now. Suggested order: T-40, T-46 and T-48 first. They have no deps and reuse Phase 1 pieces.
+
+### Slice 1: Decisions
+
+### T-39 Decide the elevated helper · `todo` · U · deps: —
+Refs: D-007 (proposal written), D-019 · §6.1, §6.5
+Done when:
+- The user accepts, changes or rejects the D-007 proposal: a separate on-demand elevated helper, a user-only named pipe, and read-only volume access only.
+- D-007 says `Accepted` or `Rejected`. If rejected, T-42 to T-45 are removed and the recursive scanner stays the only inventory.
+
+### Slice 2: Duplicate and version review
+
+### T-40 Duplicate review page · `todo` · W · deps: —
+Refs: §5.1 "Verified duplicate detection", §7 · area: src/PCHealth.App
+Done when:
+- A "Duplicates" page lists verified groups, biggest first, with path, size, modified and created times side by side.
+- The evidence behind each group (size match, partial digest, full hash, same-file checks) can be opened.
+- The user picks which copies to remove. Policy refuses a selection that removes every copy, or one that touches a protected or excluded path. The removal goes through the gateway to the Recycle Bin, and Undo works from Activity.
+- Tests cover keep-at-least-one, a file changed between scan and approval, and Undo.
+
+### T-41 Version review · `todo` · W · deps: T-40
+Refs: §5.1 · area: src/PCHealth.App, src/PCHealth.Duplicates
+Done when:
+- Version candidates appear on a separate tab of the Duplicates page, labelled "possible versions, not copies".
+- No file in a version group is preselected for removal, and the page says why similar names are not evidence.
+- The user can compare files and send individual files to the Recycle Bin through the gateway.
+- Tests cover "nothing preselected" and that version groups never appear among verified duplicates.
+
+### Slice 3: Fast inventory (needs T-39 accepted)
+
+### T-42 MFT record parser · `todo` · P · deps: T-39
+Refs: §5.1 "Storage inventory", §6.1 · area: src/PCHealth.Inventory (new `Ntfs/` folder)
+Done when:
+- A portable parser turns raw 1 KB/4 KB MFT FILE records into entries: update-sequence fixups, `$STANDARD_INFORMATION`, `$FILE_NAME` (preferring Win32 names over DOS ones), `$DATA` sizes (resident and non-resident), attribute lists, the in-use and directory flags, and hard links.
+- Malformed records are reported, never thrown past the caller.
+- Tests use synthetic records built byte by byte. No real volume is read.
+
+### T-43 Volume inventory in the elevated helper · `todo` · W · deps: T-42
+Refs: D-007 · §6.1 · area: new `src/PCHealth.Helper` (net10.0-windows), src/PCHealth.Inventory.Windows
+Done when:
+- The helper reads `$MFT` through a read-only volume handle, feeds the T-42 parser, and streams entries to the app over the D-007 pipe.
+- An `MftScanner : IInventoryScanner` in the app returns the same paths, sizes and timestamps as `RecursiveScanner` for a fixture subtree on the CI runner.
+- Tests that need administrator rights run only in CI, behind an opt-in variable like the Recycle Bin tests (D-017).
+- The pipe refuses a client that is not the current user, and a wrong secret.
+
+### T-44 Incremental updates from the USN journal · `todo` · W · deps: T-43
+Refs: §5.1, §6.1 · area: src/PCHealth.Inventory.Windows
+Done when:
+- The last inventory and the journal ID and next USN are stored locally (a new data file listed in Settings → stored data).
+- The next discovery applies create, delete, rename and size changes from the journal instead of a full read.
+- A recreated journal, a wrapped USN or a changed volume triggers a full read and says so.
+- Tests cover each of those cases against fixture changes.
+
+### T-45 Choosing the inventory · `todo` · W · deps: T-44
+Refs: §3.5, §6.5 · D-007, D-018 · area: src/PCHealth.App
+Done when:
+- The first run and Settings explain the faster scan and its administrator prompt. The recursive scan stays the default until the user opts in.
+- Discovery uses the MFT on opted-in NTFS volumes and falls back to the recursive scanner otherwise (FAT/exFAT, network drives, a denied prompt, a helper error).
+- The storage page says which method measured the numbers.
+- Benchmarks gain an MFT stage, and `docs/benchmarks.md` gets runner numbers.
+
+### Slice 4: More application caches
+
+### T-46 Catalog: apps that must be closed first · `todo` · P · deps: —
+Refs: §5.1 "Application residue and cache cleanup" · D-015 · area: src/PCHealth.Policy/Catalog
+Done when:
+- Catalog rules can name processes that must not be running, for example `firefox`.
+- Recommendations for those rules say "Close X first", and the gateway refuses while a named process runs. The check goes through `IPlatformOperations`, so it can be faked in portable tests.
+- The catalog schema version goes up, and older catalog files are refused.
+
+### T-47 Catalog: more caches · `todo` · W · deps: T-46
+Refs: §5.1 · area: src/PCHealth.Policy/Catalog/known-caches.json
+Done when:
+- At least 10 new rules exist, each with a why, a "what is rebuilt" note and a fixture test. Candidates:
+  - Firefox cache2
+  - new Teams cache
+  - Discord cache and code cache
+  - Spotify storage
+  - Steam htmlcache and shader cache
+  - VS Code CachedData and CachedExtensionVSIXs
+  - pip cache
+  - Yarn cache
+  - Windows Store app TempState
+  - Office file cache
+- Only folders the app can document as regenerable are included. Anything that holds user data, sign-ins or offline content the user chose to keep stays out.
+- Every rule was checked on the CI Windows runner for its expected location format.
+
+### Slice 5: File organization
+
+### T-48 File triage suggestions · `todo` · P · deps: —
+Refs: §5.2 · area: new `src/PCHealth.Organization` (net10.0)
+Done when:
+- For Desktop, Downloads and Documents, rule-based suggestions group files into these suggested categories, each with a confidence and the evidence behind it:
+  - installers
+  - archives that already have an extracted folder next to them
+  - disk images
+  - screenshots
+  - possible financial or tax documents, matched by name and properties
+  - possible signed documents
+  - likely superseded files
+- Categories that may hold personal or sensitive documents are marked sensitive. They are never preselected and are always shown as suggestions.
+- Exclusions apply at file, folder and category level. Category exclusions are a new exclusion kind.
+- Tests run on a generated fixture tree.
+
+### T-49 Project detection · `todo` · P · deps: T-48
+Refs: §5.2 · area: src/PCHealth.Organization
+Done when:
+- Project roots are found from these manifests:
+  - `.sln`, `.slnx`, `*.csproj`
+  - `package.json`, `pyproject.toml`, `Cargo.toml`
+  - a `.git` folder
+  - creative project files: `.prproj`, `.aep`, `.blend`, `.als`, `.flp`, `.psd` with siblings
+- Each root shows its files, total measured size and last activity (newest modified time).
+- An inactive project is described as "not changed since …". It is never described as expendable, and nothing is recommended for removal on age alone.
+- Tests cover nested roots and a project inside a cloud-sync folder.
+
+### T-50 Dependency scanning · `todo` · P · deps: T-49
+Refs: §5.2, §9 "Correctness" · area: src/PCHealth.Organization
+Done when:
+- These formats are parsed for absolute paths and paths that leave the folder:
+  - `.sln`/`.slnx` project paths
+  - `*.csproj` `ProjectReference`/`HintPath`/`Import`
+  - `package.json` `file:` and `link:` dependencies
+  - `.code-workspace` folders
+  - `.bat`, `.cmd` and `.ps1` scripts
+  - `.lnk` targets
+- A folder with such a dependency is move-restricted, and the reasons are listed.
+- Formats the scanner can't read are listed as "not checked", so a clean result never claims completeness.
+- Tests include adversarial paths: relative escapes, UNC, environment variables and mixed separators.
+
+### T-51 Move operation · `todo` · W · deps: —
+Refs: §6.3, §6.4 · area: src/PCHealth.Core, src/PCHealth.Execution, src/PCHealth.Execution.Windows
+Done when:
+- A new `MoveToFolder` operation kind exists. The destination must be a folder the user chose, must not be protected or excluded, must not overwrite anything, and in this phase must be on the same volume. The rationale is recorded as a new decision.
+- The gateway revalidates the source and destination by handle right before acting, and the ledger records both.
+- Undo moves the items back, and refuses if something now occupies the original path.
+- Tests cover a destination that is a reparse point, a name clash, a source changed after preview, a crash midway (settled at startup) and Undo.
+
+### T-52 Organize page · `todo` · W · deps: T-48, T-50, T-51
+Refs: §5.2, §7 · area: src/PCHealth.App
+Done when:
+- An "Organize" page shows suggested groups with their evidence and paths.
+- The user can uncheck items and pick a destination before the preview. The preview lists every move.
+- Move-restricted folders can't be selected, and the page says why. Sensitive categories need a second confirmation.
+- Moves run through the gateway and appear in Activity with Undo.
+- Tests drive the view model on a fixture tree.
+
+### T-53 Archive suggestions for inactive projects · `todo` · W · deps: T-52
+Refs: §5.2, §5.3 · area: src/PCHealth.Organization, src/PCHealth.App
+Done when:
+- Projects inactive past a threshold the user can change (default 12 months) can be moved to an archive folder the user chose. The move uses the T-51 operation and respects move restrictions.
+- The wording never implies the project can be deleted.
+- Tests cover the threshold and a restricted project.
+
+### Slice 6: Optional compression
+
+### T-54 Compression savings estimate · `todo` · W · deps: —
+Refs: §5.3, §6.1 · rule 9 · area: src/PCHealth.Execution.Windows (or a new Windows project), src/PCHealth.Core
+Done when:
+- The mechanism is decided and recorded as a new decision: WOF (XPRESS/LZX) versus NTFS LZNT1, the volume and file-type restrictions, and what happens when a compressed file is written.
+- For a selected folder, an estimate compresses a bounded sample in memory with the chosen algorithm. It skips already-compressed types and reports an `EstimatedSize` saving with its sample size. It is never presented as measured.
+- Discovery stays read-only, and files are not modified by the estimate.
+- Tests cover incompressible files, an empty folder and the sample bound.
+
+### T-55 Compress and decompress through the gateway · `todo` · W · deps: T-54
+Refs: §5.3, §6.3, §6.4 · area: src/PCHealth.Core, src/PCHealth.Execution, src/PCHealth.Execution.Windows
+Done when:
+- `CompressInPlace` is an operation kind with the usual revalidation. The ledger records the size before and the measured size on disk after.
+- Undo decompresses, and refuses up front if the free space is too small.
+- Files that are in use, encrypted, already compressed, or on unsupported volumes are skipped with a reason.
+- Tests run on fixture files in CI.
+
+### T-56 Compression in the app · `todo` · W · deps: T-55
+Refs: §5.3, §7 · area: src/PCHealth.App
+Done when:
+- On the Storage page, a folder offers "Estimate compression". The preview shows the estimate, the performance and compatibility trade-offs, and that savings depend on the files.
+- After approval, Activity shows the measured saving, and Undo is available.
+- The app never recommends compression on age alone.
+- Tests drive the view model.
+
+### Slice 7: Startup and background analysis (read-only)
+
+### T-57 Startup inventory · `todo` · W · deps: —
+Refs: §5.4 "Startup and background resource analysis" · area: new `src/PCHealth.Maintenance` (net10.0) + `src/PCHealth.Maintenance.Windows`
+Done when:
+- Startup items are read, unelevated where Windows allows, with each item's mechanism, command, publisher (from the signature if any), whether the file exists, and the enabled state from `StartupApproved`. The sources:
+  - Run and RunOnce keys in HKCU and HKLM, including WOW6432Node
+  - the Startup folders
+  - scheduled tasks with logon or boot triggers
+  - auto-start services
+- Anything that could not be read is reported as such.
+- Nothing is changed. Tests read fixture registry hives or fakes and run on the CI runner.
+
+### T-58 Resource observation · `todo` · W · deps: T-57
+Refs: §5.4, §6.1, §6.5 · area: src/PCHealth.Maintenance.Windows
+Done when:
+- On the user's request, a bounded observation window (default 2 minutes, cancellable, low priority) samples per-process CPU time and working set and maps processes to startup items by image path.
+- Boot timing comes from the Diagnostics-Performance log if it is readable; otherwise it is "not available without administrator rights".
+- Measurements are shown separately with their window and caveats. There is no combined score.
+- Tests use fake samples; one CI test observes a fixture process.
+
+### T-59 Maintenance page · `todo` · W · deps: T-58
+Refs: §5.4, §7 · area: src/PCHealth.App
+Done when:
+- A "Maintenance" page lists startup items with their mechanism, evidence and the latest observation.
+- Each item explains how the user can change it themselves (Task Manager Startup, Services, Task Scheduler). The app changes nothing.
+- The privacy and permissions text says what is read.
+- Tests drive the view model.
+
+### Slice 8: Diagnostic timeline
+
+### T-60 Timeline events · `todo` · W · deps: —
+Refs: §5.4 "Crash and driver investigation" · area: src/PCHealth.Maintenance(.Windows)
+Done when:
+- These events are read into one `TimelineEvent` model (time, source, kind, summary, evidence), unelevated where possible:
+  - app crashes and hangs (Application 1000/1001/1002)
+  - unexpected shutdowns (Kernel-Power 41, EventLog 6008)
+  - service and driver start failures (Service Control Manager 7000–7034)
+  - Windows Update installs
+  - MSI installs and removals
+  - reliability records
+- Any source that could not be read is listed.
+- Tests parse recorded event XML fixtures, and one CI test reads the runner's real logs read-only.
+
+### T-61 Guided slowdown investigation · `todo` · W · deps: T-60, T-57
+Refs: §5.4, §7 · area: src/PCHealth.App
+Done when:
+- A "When did it start?" flow shows the timeline around the chosen date and highlights updates, installs, driver events and startup changes that happened shortly before.
+- It phrases them as possible explanations, never as root causes, and never treats an old or unsigned driver as defective.
+- Nothing is changed or downloaded.
+- Tests cover the wording rules and the time window.
+
+### Slice 9: Phase 2 wrap-up
+
+### T-62 Privacy and permissions re-check · `todo` · W · deps: T-45, T-53, T-56, T-59, T-61
+Refs: §3.5, §6.5, §9 "Privacy" · area: tests/PCHealth.App.Tests/PrivacyTests.cs, scripts/ci, docs/privacy.md
+Done when:
+- Every new flow runs under the network listener with no network events, and the CI launch check still passes.
+- `docs/privacy.md` lists the new local data (the inventory snapshot) and what the helper and the maintenance features read.
+- The Settings stored-data list and Clear cover the new files.
+
+### T-63 Second release · `todo` · U · deps: T-62
 Refs: D-009 · CLAUDE.md "CI and releases"
 Done when:
-- The user asks for v0.1.0.
+- The user asks for v0.2.0.
 - The tag is pushed from a green `main`.
-- The app is installed on the second PC.
-- The update path is proven with v0.1.1.
+- The second PC updates to it through the app.
 
 ---
 
 ## Later phases (not sliced yet)
 
-Slice these into tasks only after Phase 1 is done. Until then they're out of scope.
+Slice these into tasks only after Phase 2 is done. Until then they're out of scope.
 
-- **Phase 2** (§8):
-  - MFT/USN inventory
-  - file triage and project grouping
-  - dependency-aware move previews
-  - optional compression
-  - more application-specific caches
-  - startup/background resource analysis
-  - diagnostic timelines
 - **Phase 3** (§8):
   - developer artifacts
   - WSL2/Docker virtual disks

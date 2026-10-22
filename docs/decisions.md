@@ -145,9 +145,16 @@ Why, given the goal of keeping tokens low:
 Phase 2 and 3 are listed but deliberately not sliced. They get sliced once Phase 1 is done.
 
 ## D-007 Process boundaries and IPC
-**Open**
+**Proposed** (2026-10-22; the user decides in T-39)
 
-The spec wants separate permission boundaries for read-only inventory, AI inference and elevated execution (Â§6.1, Â§6.5). Open questions: how many processes, the IPC mechanism (named pipes are likely), and how the elevated helper is launched and authenticated. Phase 1 can run unelevated in one process, as long as the gateway is a clean seam. Decide before any operation that needs elevation.
+The spec wants separate permission boundaries for read-only inventory, AI inference and elevated execution (§6.1, §6.5). Phase 1 ran unelevated in one process (D-019). Phase 2's fast inventory (MFT/USN, T-42 to T-45) needs a read-only handle to the volume, which Windows grants only to administrators. The proposal:
+
+- **Two processes.** The app stays unelevated and keeps the UI, discovery, policy and the execution gateway. A separate `PCHealth.Helper.exe` ships in the same install folder.
+- **On demand only.** The helper starts only after the user has opted in to the faster scan and starts a scan. It is launched through the normal administrator prompt (UAC). It exits when its work is done, when the app closes, or after 2 minutes idle. Declining the prompt falls back to the recursive scan.
+- **Read-only in Phase 2.** The helper does exactly two things: read a volume's MFT, and read its USN journal from a given position. It changes nothing. Changes that need administrator rights stay refused, as in D-019.
+- **IPC.** The app creates a named pipe with a random name and an ACL that admits only the current user. It passes the name and a one-time secret to the helper on its command line. The helper connects, proves the secret, and checks that the pipe's server is the app's own executable from the install folder. Messages are versioned and length-prefixed, and every request is checked against the two allowed operations.
+- **Different-user elevation.** If a standard user elevates with someone else's administrator account, the helper refuses ("not supported"). The app falls back to the recursive scan.
+- **AI inference** gets no process yet. There is no AI component, and the decision is made when one is planned.
 
 ## D-014 Default protected locations
 **Accepted** (2026-10-21, T-15)
