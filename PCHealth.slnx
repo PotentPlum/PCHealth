@@ -10,6 +10,9 @@
     <Project Path="src/PCHealth.Ledger/PCHealth.Ledger.csproj" />
     <Project Path="src/PCHealth.Policy/PCHealth.Policy.csproj" />
   </Folder>
+  <Folder Name="/tools/">
+    <Project Path="tools/PCHealth.Benchmarks/PCHealth.Benchmarks.csproj" />
+  </Folder>
   <Folder Name="/tests/">
     <Project Path="tests/PCHealth.App.Tests/PCHealth.App.Tests.csproj" />
     <Project Path="tests/PCHealth.Core.Tests/PCHealth.Core.Tests.csproj" />

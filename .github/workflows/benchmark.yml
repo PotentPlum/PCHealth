@@ -1,0 +1,34 @@
+# Performance baseline on a GitHub-hosted Windows runner (T-37, docs/benchmarks.md).
+# A runner is a shared VM, so these numbers are a reference point, not the host measurement.
+name: Benchmark
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - "tools/PCHealth.Benchmarks/**"
+      - ".github/workflows/benchmark.yml"
+
+permissions:
+  contents: read
+
+env:
+  DOTNET_CLI_TELEMETRY_OPTOUT: "1"
+  DOTNET_NOLOGO: "1"
+
+jobs:
+  windows:
+    name: Windows runner baseline
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-dotnet@v6
+        with:
+          global-json-file: global.json
+
+      - name: Run benchmark
+        shell: bash
+        run: |
+          dotnet run --project tools/PCHealth.Benchmarks -c Release -- --machine "GitHub Actions windows-latest runner" --out benchmark.md
+          cat benchmark.md >> "$GITHUB_STEP_SUMMARY"

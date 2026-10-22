@@ -161,7 +161,7 @@ Done when:
 - The app's observed network behavior matches what it discloses: only the update check, only when the user starts it.
 - The result is recorded in `docs/`.
 
-### T-37 Performance baseline · `todo` · W · deps: T-07
+### T-37 Performance baseline · `doing (cloud, 2026-10-22)` · W · deps: T-07
 Refs: §6.1, §9
 Done when:
 - Scan time, CPU and RAM are measured on the host for a representative fixture tree.
