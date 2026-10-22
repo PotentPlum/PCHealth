@@ -105,7 +105,7 @@ tests/
 ## CI, releases and the public repo (D-009, D-012)
 
 - `ci.yml` runs on every push and PR: Windows covers the full solution, Linux covers the portable filter.
-- `release.yml` runs on `vX.Y.Z` tags: test, publish, Velopack pack, then a GitHub Release.
-- **A version tag ships software to the user's other PC.** Never create or push a tag unless the user asks for that specific release, and only from a green `main`.
+- `release.yml` runs on `vX.Y.Z` tags, or when started by hand on `main` with a version (it then creates the tag itself): test, publish, Velopack pack, then a GitHub Release.
+- **A release ships software to the user's other PC.** Never push a tag or start the Release workflow unless the user asks for that specific release, and only from a green `main`.
 - The Velopack NuGet version must match `VPK_VERSION` in `release.yml`.
 - **The repo is public.** Never commit secrets, tokens, personal data, or real paths from the user's machines. Rulesets block force-pushes to `main` and changes to `v*` tags.

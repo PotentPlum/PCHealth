@@ -56,16 +56,17 @@ Linux environments can't build or test Windows-specific code or the UI; CI cover
 ## CI and releases
 
 - Every push runs [CI](.github/workflows/ci.yml): the full solution on Windows and the portable projects on Linux.
-- Pushing a version tag publishes a release:
-  ```bash
-  git tag v0.1.0
-  git push origin v0.1.0
-  ```
-  [release.yml](.github/workflows/release.yml) runs the tests, builds a self-contained Windows build, packages it with Velopack, and attaches it to a GitHub Release.
+- There are two ways to publish a release:
+  - Push a version tag:
+    ```bash
+    git tag v0.1.0
+    git push origin v0.1.0
+    ```
+  - In **Actions → Release → Run workflow**, run it on `main` with the version. It refuses unless CI passed on that commit and the tag is new, and it creates the tag itself.
+
+  Either way, [release.yml](.github/workflows/release.yml) runs the tests, builds a self-contained Windows build, packages it with Velopack, and attaches it to a GitHub Release.
 
 ## Installing on another PC
 
-Not usable yet; there's nothing to release (task T-38). Once the first release exists:
-
 1. Download `PCHealth-win-Setup.exe` from the repo's Releases page and run it once. SmartScreen will warn because the exe is unsigned.
-2. After that, the app checks for and installs new releases from this repo's public Releases, with your confirmation. No token is needed (D-010 in [docs/decisions.md](docs/decisions.md)).
+2. After that, open **Updates** in the app and choose **Check for updates**. The app never checks on its own. If a newer release exists, **Install and restart** downloads it from this repo's public Releases. No token is needed (D-010 in [docs/decisions.md](docs/decisions.md)).

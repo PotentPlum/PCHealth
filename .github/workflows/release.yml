@@ -1,5 +1,7 @@
-# Publish a release when a version tag is pushed (docs/decisions.md D-009).
-#   git tag v0.1.0 && git push origin v0.1.0
+# Publish a release (docs/decisions.md D-009). Two ways to start it:
+#   - push a version tag: git tag v0.1.0 && git push origin v0.1.0
+#   - Actions > Release > Run workflow on main, with the version. This refuses unless CI passed on that commit and
+#     the tag doesn't exist yet, and it creates the tag itself once the build is packaged.
 # Produces a Velopack installer + update packages on a GitHub Release.
 # The app checks for and installs updates only when the user asks (D-010). The Velopack NuGet version in
 # Directory.Packages.props must match VPK_VERSION below; the CI Linux job checks this.
@@ -8,9 +10,15 @@ name: Release
 on:
   push:
     tags: ["v*.*.*"]
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Version to release, without the v (for example 0.1.0)"
+        required: true
 
 permissions:
   contents: write
+  actions: read
 
 concurrency:
   group: release
@@ -38,10 +46,37 @@ jobs:
             exit 1
           fi
 
-      - name: Derive version from tag
+      - name: Derive version
         id: version
         shell: bash
-        run: echo "version=${GITHUB_REF_NAME#v}" >> "$GITHUB_OUTPUT"
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          INPUT_VERSION: ${{ inputs.version }}
+        run: |
+          if [ "$GITHUB_EVENT_NAME" = "push" ]; then
+            echo "version=${GITHUB_REF_NAME#v}" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          # Run by hand: only a plain X.Y.Z, only from main, only a new tag, only a commit CI passed on.
+          if ! [[ "$INPUT_VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "::error::Version must look like 0.1.0."
+            exit 1
+          fi
+          if [ "$GITHUB_REF" != "refs/heads/main" ]; then
+            echo "::error::Releases are made only from main."
+            exit 1
+          fi
+          if git ls-remote --exit-code --tags origin "refs/tags/v$INPUT_VERSION" > /dev/null; then
+            echo "::error::Tag v$INPUT_VERSION already exists."
+            exit 1
+          fi
+          ci=$(gh api "repos/$GITHUB_REPOSITORY/actions/workflows/ci.yml/runs?head_sha=$GITHUB_SHA&event=push" \
+            --jq '.workflow_runs[0].conclusion')
+          if [ "$ci" != "success" ]; then
+            echo "::error::CI on $GITHUB_SHA is '$ci', not success."
+            exit 1
+          fi
+          echo "version=$INPUT_VERSION" >> "$GITHUB_OUTPUT"
 
       - uses: actions/setup-dotnet@v6
         with:
@@ -69,5 +104,12 @@ jobs:
           # Fetch the previous release so vpk can build delta updates.
           vpk download github --repoUrl "$repo" --token "$GH_TOKEN" -o Releases
           vpk pack -u "$PACK_ID" -v "$VERSION" -r win-x64 -p publish -e "$MAIN_EXE" -o Releases
+          tag="v$VERSION"
+          if [ "$GITHUB_EVENT_NAME" = "workflow_dispatch" ]; then
+            # A tag pushed with GITHUB_TOKEN starts no other workflow, so this run stays the only release run.
+            git -c user.name="github-actions[bot]" -c user.email="41898282+github-actions[bot]@users.noreply.github.com" \
+              tag -a "$tag" "$GITHUB_SHA" -m "PC Health Monitor $VERSION"
+            git push origin "refs/tags/$tag"
+          fi
           vpk upload github --repoUrl "$repo" --token "$GH_TOKEN" -o Releases \
-            --publish --releaseName "PCHealth $VERSION" --tag "$GITHUB_REF_NAME"
+            --publish --releaseName "PCHealth $VERSION" --tag "$tag"
