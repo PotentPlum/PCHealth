@@ -167,7 +167,7 @@ Done when:
 - On the host, `dotnet run --project tools/PCHealth.Benchmarks -c Release -- --machine "host" --out result.md` has been run.
 - The result is added to `docs/benchmarks.md` under "Host" as a measurement, not a guarantee.
 
-### T-38 First release · `todo` · U · deps: T-32, T-35, T-36
+### T-38 First release · `doing (cloud, 2026-10-22)` · U · deps: T-32, T-35, T-36
 Refs: D-009 · CLAUDE.md "CI and releases"
 Done when:
 - The user asks for v0.1.0.

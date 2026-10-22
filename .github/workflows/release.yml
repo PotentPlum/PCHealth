@@ -68,6 +68,6 @@ jobs:
           repo="https://github.com/${{ github.repository }}"
           # Fetch the previous release so vpk can build delta updates.
           vpk download github --repoUrl "$repo" --token "$GH_TOKEN" -o Releases
-          vpk pack -u "$PACK_ID" -v "$VERSION" -p publish -e "$MAIN_EXE" -o Releases
+          vpk pack -u "$PACK_ID" -v "$VERSION" -r win-x64 -p publish -e "$MAIN_EXE" -o Releases
           vpk upload github --repoUrl "$repo" --token "$GH_TOKEN" -o Releases \
             --publish --releaseName "PCHealth $VERSION" --tag "$GITHUB_REF_NAME"
