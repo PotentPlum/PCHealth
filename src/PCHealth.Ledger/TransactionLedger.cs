@@ -179,8 +179,9 @@ public sealed class TransactionLedger : IDisposable
             tx.Commit();
         }
 
-        Execute(connection, "PRAGMA wal_checkpoint(TRUNCATE);");
+        // VACUUM rewrites the database through the write-ahead log; the checkpoint then moves it into the file and empties the log.
         Execute(connection, "VACUUM;");
+        Execute(connection, "PRAGMA wal_checkpoint(TRUNCATE);");
         return erased;
     }
 

@@ -75,11 +75,24 @@ public class TransactionLedgerTests
             ledger.Record(unfinished with { State = TransactionState.Verified });
             Assert.Equal(3, ledger.Clear());
             Assert.Empty(ledger.All());
+            Assert.DoesNotContain("OldEditor", Contents(path, path + "-wal"), StringComparison.Ordinal);
         }
 
         using var reopened = TransactionLedger.Open(path);
         Assert.Empty(reopened.All());
-        Assert.DoesNotContain("OldEditor", System.Text.Encoding.UTF8.GetString(File.ReadAllBytes(path)), StringComparison.Ordinal);
+    }
+
+    private static string Contents(params string[] files)
+    {
+        var text = new System.Text.StringBuilder();
+        foreach (var file in files.Where(File.Exists))
+        {
+            using var stream = new FileStream(file, FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete);
+            using var reader = new StreamReader(stream, System.Text.Encoding.UTF8);
+            text.Append(reader.ReadToEnd());
+        }
+
+        return text.ToString();
     }
 
     [Fact]
