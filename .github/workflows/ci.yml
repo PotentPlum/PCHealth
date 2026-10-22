@@ -57,12 +57,29 @@ jobs:
           PCHEALTH_RECYCLE_BIN_TESTS: "1"
         run: dotnet test --solution PCHealth.slnx -c Release --no-build
 
+      # Starts the real app untouched and fails if it opens any connection on its own (T-36).
+      - name: Launch the app and watch its network use
+        if: steps.guard.outputs.present == 'true'
+        shell: pwsh
+        run: ./scripts/ci/observe-network.ps1 -Exe src/PCHealth.App/bin/Release/net10.0-windows/PCHealth.App.exe
+
   linux-portable:
     name: Linux (portable projects)
     # Pinned to match Claude Code cloud sessions (Ubuntu 24.04); ubuntu-latest moves to 26.
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v7
+
+      # The app's Velopack library must match the vpk tool that packs releases (D-009, D-010).
+      - name: Check Velopack versions match
+        shell: bash
+        run: |
+          lib=$(grep -oP 'Include="Velopack" Version="\K[^"]+' Directory.Packages.props || true)
+          tool=$(grep -oP 'VPK_VERSION: \K\S+' .github/workflows/release.yml)
+          if [ -n "$lib" ] && [ "$lib" != "$tool" ]; then
+            echo "::error::Velopack NuGet $lib does not match VPK_VERSION $tool in release.yml."
+            exit 1
+          fi
 
       - name: Check for portable solution filter
         id: guard

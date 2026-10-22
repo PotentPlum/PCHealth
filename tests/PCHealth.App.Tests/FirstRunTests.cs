@@ -41,7 +41,8 @@ public sealed class FirstRunTests : IDisposable
         await firstRun.StartCommand.ExecuteAsync(null);
 
         Assert.Same(discovery.Quick.Recommendations[0], shownBeforeFullScan);
-        Assert.Same(discovery.Full, services.GetRequiredService<FindingsStore>().Latest);
+        Assert.Same(discovery.Full.Recommendations, services.GetRequiredService<FindingsStore>().Latest);
+        Assert.Same(discovery.Full.Storage, services.GetRequiredService<FindingsStore>().Storage);
         Assert.IsType<OverviewViewModel>(main.Current);
         Assert.False(FirstRunViewModel.IsNeeded(services.GetRequiredService<AppPaths>()));
         Assert.False(firstRun.IsRunning);
@@ -87,8 +88,9 @@ public sealed class FirstRunTests : IDisposable
         var full = await discovery.FullAsync(null, TestContext.Current.CancellationToken);
 
         Assert.Equal(FindingCategory.Cache, Assert.Single(quick.ToAct).Category);
-        Assert.Contains(full.ToAct, r => r.Category == FindingCategory.VerifiedDuplicate);
-        Assert.Contains(full.ForReview, r => r.Category == FindingCategory.LargeFolder);
+        Assert.Contains(full.Recommendations.ToAct, r => r.Category == FindingCategory.VerifiedDuplicate);
+        Assert.Contains(full.Recommendations.ForReview, r => r.Category == FindingCategory.LargeFolder);
+        Assert.Equal(profile, full.Storage.Root.FullPath);
         Assert.Equal(before, Snapshot(profile));
     }
 
@@ -120,7 +122,7 @@ public sealed class FirstRunTests : IDisposable
     {
         public RecommendationSet Quick { get; } = new([Recommendation("Quick")], []);
 
-        public RecommendationSet Full { get; } = new([Recommendation("Full")], []);
+        public FullDiscovery Full { get; } = new(new([Recommendation("Full")], []), StorageTests.Summary(Path.GetTempPath()));
 
         public bool WaitInFull { get; init; }
 
@@ -128,7 +130,7 @@ public sealed class FirstRunTests : IDisposable
 
         public Task<RecommendationSet> QuickAsync(CancellationToken cancellationToken) => Task.FromResult(Quick);
 
-        public async Task<RecommendationSet> FullAsync(IProgress<ScanProgress>? progress, CancellationToken cancellationToken)
+        public async Task<FullDiscovery> FullAsync(IProgress<ScanProgress>? progress, CancellationToken cancellationToken)
         {
             BeforeFull?.Invoke();
             if (WaitInFull)

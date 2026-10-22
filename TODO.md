@@ -144,39 +144,28 @@ Result: `PreviewViewModel` lists the exact items (each can be left out), what is
 ### T-32 Activity history and Undo · `done` · W · deps: T-31, T-27
 Result: `ActivityViewModel` lists every ledger transaction newest first: what changed, why, the outcome per item, the quarantine deadline, and the restore limits for each operation type; Undo is offered only where `Restorer` supports it; Undo and the expiry purge now run through `ExecutionGateway` (refused while paused; startup skips the purge while paused); 5 app tests + 1 gateway test; CI Windows green (run 39667638896).
 
-### T-33 Storage detail view · `todo` · W · deps: T-30
-Refs: §5.1 · area: `src/PCHealth.App`
-Done when:
-- There is a large-folders view with drill-down.
-- Measured and estimated figures are labeled distinctly.
-- Treemap and other visualizations are optional extras, not required.
+### T-33 Storage detail view · `done` · W · deps: T-30
+Result: `StorageViewModel` (Storage page) lists the folders in the user folder biggest first, with drill-down/Up, files directly in each folder, a share bar and the largest file types; folder sizes are labeled "(measured)" (lower bounds when the scan was incomplete), what could be freed is labeled "estimated, not guaranteed" and comes from the suggested actions; "Measure again" reruns read-only discovery; `StorageSummary.Children`; no treemap; 1 portable + 5 app tests; CI Windows green (run 39748580784).
 
-### T-34 Settings and local data · `todo` · W · deps: T-28
-Refs: §6.5 · area: `src/PCHealth.App`
-Done when:
-- Settings cover the retention window and exclusions.
-- The user can inspect and clear the product's locally stored data.
+### T-34 Settings and local data · `done` · W · deps: T-28
+Result: `SettingsViewModel` (Settings page) sets the quarantine period (1-90 days, saved in `settings.json`; applies to newly quarantined items, recommendations are rebuilt, and the gateway refuses a quarantine recommendation showing a different period), adds and removes exclusions, lists everything the app keeps with its size, and clears it after confirmation (`TransactionLedger.Clear` compacts the file); clearing is refused while quarantine holds items or a change is unfinished (D-020); 3 portable + 3 app tests; CI Windows green (run 39753530796).
 
 ### Slice 8: Delivery and Phase 1 exit
 
-### T-35 Update flow · `todo` · W · deps: T-28
-Refs: §3.5 · D-009, D-010 · area: `src/PCHealth.App`
-Done when:
-- The Velopack library is integrated, at the same version as `VPK_VERSION`.
-- "Check for updates" is user-initiated and disclosed.
-- The D-010 UX question is decided.
+### T-35 Update flow · `done` · W · deps: T-28
+Result: Velopack 1.2.161 (= `VPK_VERSION`; the CI Linux job checks they match) with a custom `Program.Main` (`SetAutoApplyOnStartup(false)`); `UpdatesViewModel` (Updates page) discloses what contacting GitHub involves and does nothing until "Check for updates", then downloads and installs only on "Install and restart"; D-010 UX decided (manual, two steps); 4 app tests; CI Windows green (run 39753530796).
 
-### T-36 Privacy check · `todo` · W · deps: T-35
-Refs: §3.5, §9
-Done when:
-- The app's observed network behavior matches what it discloses: only the update check, only when the user starts it.
-- The result is recorded in `docs/`.
+### T-36 Privacy check · `done` · W · deps: T-35
+Result: observed behavior matches the disclosure (docs/privacy.md): `PrivacyTests` records every .NET network event while startup, first run, every page, measuring, a quarantine move and Undo, settings and clearing run, and sees none (loopback control seen); the CI Windows job launches the real `PCHealth.App.exe` untouched for 30 s and sees no TCP/UDP endpoint (control seen, main window shown); CI Windows green (run 39754673628).
 
-### T-37 Performance baseline · `todo` · W · deps: T-07
+### T-37a Performance baseline tooling · `done` · W · deps: T-07
+Result: `tools/PCHealth.Benchmarks` generates a fixed fixture tree (1,111 folders, 20,200 files, 50 duplicate pairs) under temp and reports wall time, CPU time and share, allocations and working set for scan (3 runs), storage summary and duplicate verification; `benchmark.yml` runs it on a Windows runner; runner reference numbers recorded in `docs/benchmarks.md` (run 39755975447); split from T-37 because the host run needs the user's PC.
+
+### T-37b Performance baseline on the host · `todo` · U · deps: T-37a
 Refs: §6.1, §9
 Done when:
-- Scan time, CPU and RAM are measured on the host for a representative fixture tree.
-- Results are recorded in `docs/benchmarks.md` as measurements, not guarantees.
+- On the host, `dotnet run --project tools/PCHealth.Benchmarks -c Release -- --machine "host" --out result.md` has been run.
+- The result is added to `docs/benchmarks.md` under "Host" as a measurement, not a guarantee.
 
 ### T-38 First release · `todo` · U · deps: T-32, T-35, T-36
 Refs: D-009 · CLAUDE.md "CI and releases"

@@ -1,0 +1,14 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0</TargetFramework>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="../../src/PCHealth.Inventory/PCHealth.Inventory.csproj" />
+    <ProjectReference Include="../../src/PCHealth.Duplicates/PCHealth.Duplicates.csproj" />
+    <ProjectReference Include="../../tests/PCHealth.Testing/PCHealth.Testing.csproj" />
+  </ItemGroup>
+
+</Project>

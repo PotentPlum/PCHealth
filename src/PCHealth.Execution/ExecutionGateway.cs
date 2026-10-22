@@ -95,6 +95,11 @@ public sealed class ExecutionGateway(
             return Refuse(approved, "The approved items do not all provide the recovery the recommendation promises.");
         }
 
+        if (kinds[0] == OperationKind.MoveToQuarantine && recommendation.QuarantineRetention != quarantine.Retention)
+        {
+            return Refuse(approved, "The quarantine period changed after this was shown; nothing was changed. Look at it again before approving.");
+        }
+
         // 2. Protection and exclusion checks, before anything is recorded.
         var outcomes = new ItemOutcome?[approved.Count];
         for (var i = 0; i < approved.Count; i++)

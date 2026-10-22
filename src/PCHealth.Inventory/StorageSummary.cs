@@ -19,6 +19,7 @@ public sealed class StorageSummary
 
     private readonly Dictionary<string, FolderSize> folders;
     private readonly Dictionary<FileCategory, CategorySize> categories;
+    private readonly Dictionary<string, FolderSize[]> children;
 
     private StorageSummary(FolderSize root, Dictionary<string, FolderSize> folders, Dictionary<FileCategory, CategorySize> categories, bool isComplete)
     {
@@ -26,6 +27,10 @@ public sealed class StorageSummary
         this.folders = folders;
         this.categories = categories;
         IsComplete = isComplete;
+        children = folders.Values
+            .Where(f => !PathComparer.Equals(f.FullPath, root.FullPath) && Path.GetDirectoryName(f.FullPath) is not null)
+            .GroupBy(f => Key(Path.GetDirectoryName(f.FullPath)!), PathComparer)
+            .ToDictionary(g => g.Key, g => Ranked(g).ToArray(), PathComparer);
     }
 
     public FolderSize Root { get; }
@@ -85,16 +90,18 @@ public sealed class StorageSummary
         return folders.GetValueOrDefault(Key(fullPath));
     }
 
+    /// <summary>The folders directly inside a scanned folder, biggest first; empty if it has none or was not scanned.</summary>
+    public IReadOnlyList<FolderSize> Children(string fullPath)
+    {
+        ArgumentNullException.ThrowIfNull(fullPath);
+        return children.GetValueOrDefault(Key(fullPath)) ?? [];
+    }
+
     /// <summary>The largest folders below the root, biggest first. Nested folders are ranked independently.</summary>
     public IReadOnlyList<FolderSize> LargestFolders(int count)
     {
         ArgumentOutOfRangeException.ThrowIfNegative(count);
-        return folders.Values
-            .Where(f => !PathComparer.Equals(f.FullPath, Root.FullPath))
-            .OrderByDescending(f => f.TotalSize.Bytes)
-            .ThenBy(f => f.FullPath, StringComparer.Ordinal)
-            .Take(count)
-            .ToArray();
+        return Ranked(folders.Values.Where(f => !PathComparer.Equals(f.FullPath, Root.FullPath))).Take(count).ToArray();
     }
 
     /// <summary>The file categories using the most space, biggest first.</summary>
@@ -107,6 +114,9 @@ public sealed class StorageSummary
             .Take(count)
             .ToArray();
     }
+
+    private static IEnumerable<FolderSize> Ranked(IEnumerable<FolderSize> folders) =>
+        folders.OrderByDescending(f => f.TotalSize.Bytes).ThenBy(f => f.FullPath, StringComparer.Ordinal);
 
     private static string Key(string path) => Path.TrimEndingDirectorySeparator(path);
 }

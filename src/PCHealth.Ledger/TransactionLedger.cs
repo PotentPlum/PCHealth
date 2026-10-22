@@ -155,6 +155,36 @@ public sealed class TransactionLedger : IDisposable
     public IReadOnlyList<LedgerTransaction> InState(TransactionState state) =>
         Query("SELECT * FROM transactions WHERE state = $state ORDER BY created_utc, id;", ("$state", state.ToString()));
 
+    /// <summary>
+    /// Erases the whole history at the user's request (spec §6.5) and compacts the file so nothing of it is left behind.
+    /// Refused while a change is unfinished: that record is how an interruption is resolved.
+    /// </summary>
+    /// <returns>How many transactions were erased.</returns>
+    public int Clear()
+    {
+        int erased;
+        using (var tx = connection.BeginTransaction())
+        {
+            using var unfinished = Command(
+                connection, "SELECT COUNT(*) FROM transactions WHERE state IN ($pending, $applied);", tx,
+                ("$pending", nameof(TransactionState.Pending)), ("$applied", nameof(TransactionState.Applied)));
+            if (Convert.ToInt64(unfinished.ExecuteScalar(), CultureInfo.InvariantCulture) > 0)
+            {
+                throw new InvalidOperationException("A change is not finished yet; the history cannot be cleared until it is resolved.");
+            }
+
+            Execute(connection, "DELETE FROM items;", tx);
+            using var delete = Command(connection, "DELETE FROM transactions;", tx);
+            erased = delete.ExecuteNonQuery();
+            tx.Commit();
+        }
+
+        // VACUUM rewrites the database through the write-ahead log; the checkpoint then moves it into the file and empties the log.
+        Execute(connection, "VACUUM;");
+        Execute(connection, "PRAGMA wal_checkpoint(TRUNCATE);");
+        return erased;
+    }
+
     public void Dispose() => connection.Dispose();
 
     private LedgerTransaction? Find(Guid id, SqliteTransaction? tx) =>

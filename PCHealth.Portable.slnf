@@ -15,7 +15,8 @@
       "tests/PCHealth.Ledger.Tests/PCHealth.Ledger.Tests.csproj",
       "tests/PCHealth.Policy.Tests/PCHealth.Policy.Tests.csproj",
       "tests/PCHealth.Testing.Tests/PCHealth.Testing.Tests.csproj",
-      "tests/PCHealth.Testing/PCHealth.Testing.csproj"
+      "tests/PCHealth.Testing/PCHealth.Testing.csproj",
+      "tools/PCHealth.Benchmarks/PCHealth.Benchmarks.csproj"
     ]
   }
 }

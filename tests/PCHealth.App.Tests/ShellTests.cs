@@ -27,7 +27,7 @@ public sealed class ShellTests : IDisposable
         var main = services.GetRequiredService<MainViewModel>();
 
         Assert.IsType<FirstRunViewModel>(main.Current);
-        Assert.Equal(new[] { "Overview", "Activity" }, main.Pages.Select(p => p.Title));
+        Assert.Equal(new[] { "Overview", "Storage", "Activity", "Settings", "Updates" }, main.Pages.Select(p => p.Title));
         Assert.NotNull(services.GetRequiredService<ExecutionGateway>());
         Assert.NotNull(services.GetRequiredService<Restorer>());
     }

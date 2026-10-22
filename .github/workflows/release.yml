@@ -1,8 +1,8 @@
 # Publish a release when a version tag is pushed (docs/decisions.md D-009).
 #   git tag v0.1.0 && git push origin v0.1.0
 # Produces a Velopack installer + update packages on a GitHub Release.
-# The app picks updates up only once it integrates the Velopack library (planned after slice 7),
-# and the Velopack NuGet version in the app must match VPK_VERSION below.
+# The app checks for and installs updates only when the user asks (D-010). The Velopack NuGet version in
+# Directory.Packages.props must match VPK_VERSION below; the CI Linux job checks this.
 name: Release
 
 on:

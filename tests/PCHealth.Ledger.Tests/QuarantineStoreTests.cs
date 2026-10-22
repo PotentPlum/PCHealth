@@ -50,6 +50,20 @@ public class QuarantineStoreTests
     }
 
     [Fact]
+    public void A_retention_change_applies_to_later_items_only()
+    {
+        using var fixture = new Fixture();
+        var before = fixture.Quarantine("old/a.txt", "a");
+
+        fixture.Store.Retention = TimeSpan.FromDays(30);
+        var after = fixture.Quarantine("new/b.txt", "b");
+
+        Assert.Equal(Start.AddDays(14), fixture.Store.List().Entries.Single(e => e.OriginalPath == before.OriginalPath).DeadlineUtc);
+        Assert.Equal(Start.AddDays(30), fixture.Store.List().Entries.Single(e => e.OriginalPath == after.OriginalPath).DeadlineUtc);
+        Assert.Throws<ArgumentOutOfRangeException>(() => fixture.Store.Retention = TimeSpan.FromDays(-1));
+    }
+
+    [Fact]
     public void Expiry_purges_only_items_past_their_deadline_and_records_each_purge()
     {
         using var fixture = new Fixture();
