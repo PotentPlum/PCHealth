@@ -5,7 +5,14 @@
     <TargetFramework>net10.0-windows</TargetFramework>
     <UseWPF>true</UseWPF>
     <StartupObject>PCHealth.App.Program</StartupObject>
+    <!-- Drawn by tools/icon/make_icon.py; also used by the installers (release.yml). -->
+    <ApplicationIcon>Assets\app.ico</ApplicationIcon>
+    <Product>PC Health Monitor</Product>
   </PropertyGroup>
+
+  <ItemGroup>
+    <Resource Include="Assets\app.ico" />
+  </ItemGroup>
 
   <ItemGroup>
     <ProjectReference Include="../PCHealth.Execution.Windows/PCHealth.Execution.Windows.csproj" />
