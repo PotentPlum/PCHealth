@@ -22,16 +22,26 @@ public static class FindingSources
             .ThenBy(c => c.Min(f => f.File.LastWriteTimeUtc))
             .ThenBy(c => c.Select(f => f.File.FullPath).Min(StringComparer.Ordinal), StringComparer.Ordinal)
             .First();
-        var keptPath = keeper.Select(f => f.File.FullPath).Min(StringComparer.Ordinal)!;
         var removed = group.PhysicalCopies.Where(c => !ReferenceEquals(c, keeper)).ToArray();
+        return Duplicates(group, keeper, removed, "protected copies are kept first, then the oldest");
+    }
+
+    /// <summary>
+    /// The copies the user chose to remove from a group (T-40). Every path of a removed copy is included, and each
+    /// operation names the kept copy the gateway compares it with right before acting. Callers make sure at least one
+    /// copy stays; <see cref="RecommendationBuilder.ForDuplicates"/> does.
+    /// </summary>
+    internal static Finding Duplicates(VerifiedDuplicateGroup group, IReadOnlyList<HashedFile> keeper, IReadOnlyList<IReadOnlyList<HashedFile>> removed, string whyKept)
+    {
+        var keptPath = keeper.Select(f => f.File.FullPath).Min(StringComparer.Ordinal)!;
         var operations = removed
             .SelectMany(c => c)
-            .Select(f => new ProposedOperation(OperationKind.MoveToRecycleBin, f.File.FullPath, isDirectory: false, f.File.Size, f.File.LastWriteTimeUtc))
+            .Select(f => new ProposedOperation(OperationKind.MoveToRecycleBin, f.File.FullPath, isDirectory: false, f.File.Size, f.File.LastWriteTimeUtc, keptPath))
             .ToArray();
-        var reclaimable = checked(group.FileSize.Bytes * removed.Length);
+        var reclaimable = checked(group.FileSize.Bytes * removed.Count);
 
         var evidence = group.Evidence.ToList();
-        evidence.Add(new CheckEvidence("kept copy", $"'{keptPath}' is kept: protected copies are kept first, then the oldest."));
+        evidence.Add(new CheckEvidence("kept copy", $"'{keptPath}' is kept: {whyKept}."));
 
         return new Finding(
             FindingCategory.VerifiedDuplicate,
@@ -40,7 +50,7 @@ public static class FindingSources
             evidence,
             group.Confidence,
             new Impact(
-                $"Keeps '{keptPath}' and moves {removed.Length} other {(removed.Length == 1 ? "copy" : "copies")} ({operations.Length} paths) to the Recycle Bin.",
+                $"Keeps '{keptPath}' and moves {removed.Count} other {(removed.Count == 1 ? "copy" : "copies")} ({operations.Length} paths) to the Recycle Bin.",
                 new EstimatedSize(reclaimable, "one file size for each removed copy; space returns when the Recycle Bin is emptied"),
                 "Shortcuts, playlists or programs that open a removed copy by its path will no longer find it."),
             new Recovery(RecoveryMethod.RecycleBin, "Copies can be restored from the Recycle Bin until it is emptied."),

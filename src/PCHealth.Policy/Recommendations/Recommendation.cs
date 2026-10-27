@@ -1,6 +1,7 @@
 using System.Security.Cryptography;
 using System.Text;
 using PCHealth.Core;
+using PCHealth.Duplicates;
 
 namespace PCHealth.Policy.Recommendations;
 
@@ -166,6 +167,12 @@ public sealed record Recommendation
     }
 }
 
+/// <summary>The outcome of checking the copies a user chose to remove: an action to preview, or why it is refused.</summary>
+public sealed record DuplicateChoice(Recommendation? Recommendation, string? Refusal)
+{
+    public bool IsAllowed => Recommendation is not null;
+}
+
 /// <param name="Excluded">Findings withheld by the user's exclusions, with the exclusion that matched.</param>
 public sealed record RecommendationSet(IReadOnlyList<Recommendation> Recommendations, IReadOnlyList<ExcludedFinding> Excluded)
 {
@@ -196,6 +203,58 @@ public sealed class RecommendationBuilder(ProtectionPolicy protection, Exclusion
             .ThenBy(r => r.Key, StringComparer.Ordinal)
             .ToArray();
         return new RecommendationSet(recommendations, applied.Excluded);
+    }
+
+    /// <summary>
+    /// Checks the copies the user chose to remove from a verified group (T-40, spec §5.1). Refused when nothing is
+    /// chosen, when every copy is chosen (at least one always stays), or when a chosen copy is protected or excluded:
+    /// the user's choice is then not what would happen, so nothing is offered. Otherwise the result is an action that
+    /// moves exactly the chosen copies to the Recycle Bin, still to be previewed, approved and run by the gateway.
+    /// </summary>
+    /// <param name="remove">Entries of <see cref="VerifiedDuplicateGroup.PhysicalCopies"/>; hard links to one file go together.</param>
+    public DuplicateChoice ForDuplicates(VerifiedDuplicateGroup group, IReadOnlyCollection<IReadOnlyList<HashedFile>> remove)
+    {
+        ArgumentNullException.ThrowIfNull(group);
+        ArgumentNullException.ThrowIfNull(remove);
+        if (remove.Any(c => !group.PhysicalCopies.Contains(c)))
+        {
+            throw new ArgumentException("Only copies from this group can be chosen.", nameof(remove));
+        }
+
+        if (exclusions.IsExcluded(FindingCategory.VerifiedDuplicate))
+        {
+            return new DuplicateChoice(null, "You excluded duplicates in Settings, so nothing is offered for them.");
+        }
+
+        var chosen = group.PhysicalCopies.Where(remove.Contains).ToArray();
+        var kept = group.PhysicalCopies.Where(c => !remove.Contains(c)).ToArray();
+        if (chosen.Length == 0)
+        {
+            return new DuplicateChoice(null, "Choose at least one copy to remove.");
+        }
+
+        if (kept.Length == 0)
+        {
+            return new DuplicateChoice(null, "At least one copy has to stay. Leave out the copy you want to keep.");
+        }
+
+        foreach (var path in chosen.SelectMany(c => c).Select(f => f.File.FullPath))
+        {
+            if (protection.Check(path) is { IsBlocked: true } decision)
+            {
+                return new DuplicateChoice(null, decision.Reason);
+            }
+
+            if (exclusions.MatchPath(path) is { } exclusion)
+            {
+                return new DuplicateChoice(null, $"You excluded '{exclusion.Value}', so '{path}' cannot be removed.");
+            }
+        }
+
+        var keeper = kept.OrderBy(c => c.Min(f => f.File.LastWriteTimeUtc)).ThenBy(c => c.Select(f => f.File.FullPath).Min(StringComparer.Ordinal), StringComparer.Ordinal).First();
+
+        // Only the chosen copies and the category count here: an excluded copy that stays is exactly what the user wants.
+        return new DuplicateChoice(Build(FindingSources.Duplicates(group, keeper, chosen, "you chose to keep it")), null);
     }
 
     private Recommendation Build(Finding finding)

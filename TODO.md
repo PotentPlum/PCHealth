@@ -88,7 +88,7 @@ Done when:
 
 ### Slice 2: Duplicate and version review
 
-### T-40 Duplicate review page · `todo` · W · deps: —
+### T-40 Duplicate review page · `doing (cloud, 2026-10-27)` · W · deps: —
 Refs: §5.1 "Verified duplicate detection", §7 · area: src/PCHealth.App
 Done when:
 - A "Duplicates" page lists verified groups, biggest first, with path, size, modified and created times side by side.

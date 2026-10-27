@@ -138,8 +138,54 @@ public class RecommendationBuilderTests
         Assert.Equal(new[] { newer, newest }, recommendation.Operations.Select(o => o.Path).Order(StringComparer.Ordinal));
         Assert.All(recommendation.Operations, o => Assert.Equal(OperationKind.MoveToRecycleBin, o.Kind));
         Assert.Contains($"Keeps '{oldest}'", recommendation.WhatWillChange);
+        Assert.All(recommendation.Operations, o => Assert.Equal(oldest, o.KeptCopy));
         Assert.Equal(2 * 64, recommendation.Impact.PotentiallyReclaimable!.Value.Bytes);
         Assert.Equal("3 locations", recommendation.WhatWeFound.Split('(')[1].TrimEnd(')'));
+    }
+
+    [Fact]
+    public void A_choice_of_duplicates_keeps_at_least_one_copy_and_names_it()
+    {
+        using var root = new TempRoot();
+        var oldest = Copy(root, "a/report.pdf", ageDays: 90);
+        var newer = Copy(root, "b/report.pdf", ageDays: 10);
+        var newest = Copy(root, "c/report.pdf", ageDays: 1);
+        var group = Group(root);
+        IReadOnlyList<HashedFile> Of(string path) => group.PhysicalCopies.Single(c => c[0].File.FullPath == path);
+
+        Assert.Equal("Choose at least one copy to remove.", Builder().ForDuplicates(group, []).Refusal);
+        var all = Builder().ForDuplicates(group, group.PhysicalCopies.ToArray());
+        Assert.False(all.IsAllowed);
+        Assert.StartsWith("At least one copy has to stay.", all.Refusal);
+
+        // The user may keep a newer copy and remove the oldest.
+        var choice = Builder().ForDuplicates(group, [Of(oldest), Of(newest)]);
+
+        var recommendation = choice.Recommendation!;
+        Assert.Equal(Disposition.Act, recommendation.Disposition);
+        Assert.Equal(new[] { oldest, newest }, recommendation.Operations.Select(o => o.Path).Order(StringComparer.Ordinal));
+        Assert.All(recommendation.Operations, o => Assert.Equal(newer, o.KeptCopy));
+        Assert.Contains($"Keeps '{newer}'", recommendation.WhatWillChange);
+        Assert.Equal(2 * 64, recommendation.Impact.PotentiallyReclaimable!.Value.Bytes);
+    }
+
+    [Fact]
+    public void A_choice_that_touches_a_protected_or_excluded_copy_is_refused()
+    {
+        using var root = new TempRoot();
+        var a = Copy(root, "a/report.pdf", ageDays: 90);
+        var docs = Copy(root, "docs/report.pdf", ageDays: 10);
+        var c = Copy(root, "c/report.pdf", ageDays: 1);
+        var group = Group(root);
+        IReadOnlyList<HashedFile> Of(string path) => group.PhysicalCopies.Single(x => x[0].File.FullPath == path);
+        var protection = new ProtectionPolicy([new(root.Resolve("docs"), ProtectionKind.PersonalFolder, "your Documents.")]);
+        var exclusions = new ExclusionList();
+        exclusions.ExcludeFile(c, Now);
+        var builder = new RecommendationBuilder(protection, exclusions);
+
+        Assert.Equal($"'{docs}' is protected: your Documents.", builder.ForDuplicates(group, [Of(docs)]).Refusal);
+        Assert.Equal($"You excluded '{c}', so '{c}' cannot be removed.", builder.ForDuplicates(group, [Of(a), Of(c)]).Refusal);
+        Assert.True(builder.ForDuplicates(group, [Of(a)]).IsAllowed);
     }
 
     [Fact]

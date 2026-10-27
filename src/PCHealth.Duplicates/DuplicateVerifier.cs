@@ -13,7 +13,7 @@ public sealed record HashedFile(FileEntry File, string ContentHash, FileIdentity
 /// </summary>
 public sealed record VerifiedDuplicateGroup
 {
-    internal VerifiedDuplicateGroup(MeasuredSize fileSize, string contentHash, IReadOnlyList<HashedFile> files)
+    internal VerifiedDuplicateGroup(MeasuredSize fileSize, string contentHash, IReadOnlyList<HashedFile> files, string? partialDigest = null)
     {
         if (files.Any(f => f.ContentHash != contentHash || f.File.Size != fileSize))
         {
@@ -28,11 +28,15 @@ public sealed record VerifiedDuplicateGroup
 
         FileSize = fileSize;
         ContentHash = contentHash;
+        PartialDigest = partialDigest;
         Files = files;
         PhysicalCopies = copies;
     }
 
     public MeasuredSize FileSize { get; }
+
+    /// <summary>The head+tail digest the files shared before they were hashed in full; null if that stage did not run.</summary>
+    public string? PartialDigest { get; }
 
     public string ContentHash { get; }
 
@@ -138,7 +142,7 @@ public sealed class DuplicateVerifier(IFileIdentityProvider? identities = null)
                 .GroupBy(h => h.ContentHash, StringComparer.Ordinal)
                 .Where(g => VerifiedDuplicateGroup.PhysicalFiles(g).Count > 1)
                 .OrderBy(g => g.Key, StringComparer.Ordinal)
-                .Select(g => new VerifiedDuplicateGroup(candidate.Size, g.Key, g.ToArray())));
+                .Select(g => new VerifiedDuplicateGroup(candidate.Size, g.Key, g.ToArray(), candidate.PartialDigest)));
         }
 
         progress?.Report(new HashProgress(bytesDone, bytesTotal, filesDone, filesTotal));

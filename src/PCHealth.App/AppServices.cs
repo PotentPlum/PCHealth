@@ -45,7 +45,11 @@ public static class AppServices
             sp.GetRequiredService<TimeProvider>(),
             sp.GetRequiredService<Restorer>()));
         services.AddSingleton(sp => new Restorer(
-            sp.GetRequiredService<TransactionLedger>(), sp.GetRequiredService<QuarantineStore>(), new HandleMove(), sp.GetRequiredService<TimeProvider>()));
+            sp.GetRequiredService<TransactionLedger>(),
+            sp.GetRequiredService<QuarantineStore>(),
+            new HandleMove(),
+            sp.GetRequiredService<TimeProvider>(),
+            new WindowsRecycleBinRestore()));
         services.AddSingleton(sp => new InterruptedOperations(sp.GetRequiredService<TransactionLedger>(), sp.GetRequiredService<QuarantineStore>()));
         services.AddSingleton<StartupTasks>();
         services.AddSingleton<FindingsStore>();
@@ -74,6 +78,7 @@ public static class AppServices
         services.AddSingleton<FirstRunViewModel>();
         services.AddSingleton<OverviewViewModel>();
         services.AddSingleton<StorageViewModel>();
+        services.AddSingleton<DuplicatesViewModel>();
         services.AddSingleton<ActivityViewModel>();
         services.AddSingleton<SettingsViewModel>();
         services.AddSingleton(sp => new BenchmarkViewModel(BenchmarkViewModel.DefaultReportsFolder(), clock: sp.GetRequiredService<TimeProvider>()));

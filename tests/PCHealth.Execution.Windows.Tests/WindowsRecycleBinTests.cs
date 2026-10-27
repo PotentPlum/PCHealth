@@ -76,6 +76,26 @@ public sealed class WindowsRecycleBinTests : IDisposable
     }
 
     [Fact]
+    public void A_recycled_file_is_put_back_and_its_record_removed()
+    {
+        RequireOptIn();
+        var file = new WindowsPathResolver().Resolve(root.CreateFile("Temp/photo.jpg", "put me back"), LinkHandling.Follow).FinalPath!;
+        var location = Recycle(file, isDirectory: false);
+        var bin = new WindowsRecycleBinRestore();
+        var record = Path.Combine(Path.GetDirectoryName(location)!, "$I" + Path.GetFileName(location)[2..]);
+
+        Assert.True(bin.Holds(location, file));
+        Assert.False(bin.Holds(location, root.Resolve("Temp/other.jpg")));
+        bin.Restore(location, file, isDirectory: false);
+
+        Assert.Equal("put me back", File.ReadAllText(file));
+        Assert.False(File.Exists(location));
+        Assert.False(File.Exists(record));
+        Assert.False(bin.Holds(location, file));
+        Assert.Throws<IOException>(() => bin.Restore(location, file, isDirectory: false));
+    }
+
+    [Fact]
     public void A_local_fixed_drive_is_suitable_and_other_places_are_not()
     {
         Assert.Null(WindowsRecycleBin.Unsuitable(root.Resolve("a.tmp"), 10));
