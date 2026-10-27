@@ -56,6 +56,8 @@ public static class AppServices
             sp.GetRequiredService<DeclinedRecommendations>(),
             paths,
             sp.GetRequiredService<TimeProvider>()));
+        services.AddSingleton<Func<IReadOnlyList<Recommendation>, BatchPreviewViewModel>>(sp => recommendations => new BatchPreviewViewModel(
+            recommendations, sp.GetRequiredService<ExecutionGateway>()));
         services.AddSingleton<IDiscovery>(sp => new Discovery(
             new WindowsKnownLocations(sp.GetRequiredService<IPathResolver>()),
             new WindowsAppRegistrations(),

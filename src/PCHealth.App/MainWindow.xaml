@@ -46,7 +46,13 @@
             <ScrollViewer VerticalScrollBarVisibility="Auto">
                 <StackPanel Margin="24" MaxWidth="820" HorizontalAlignment="Left">
                     <TextBlock FontSize="24" Text="Overview" />
-                    <TextBlock TextWrapping="Wrap" Margin="0,4,0,16" Text="{Binding Summary}" />
+                    <TextBlock TextWrapping="Wrap" Margin="0,4,0,8" Text="{Binding Summary}" />
+                    <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
+                        <Button Padding="14,6" FontWeight="SemiBold" Content="{Binding CleanUpAllText}" Command="{Binding CleanUpAllCommand}" />
+                        <Button Padding="14,6" Margin="8,0,0,0" Content="{Binding ShowAllText}" Command="{Binding ShowAllCommand}"
+                                Visibility="{Binding CanShowAll, Converter={StaticResource Visible}}" />
+                    </StackPanel>
+                    <TextBlock TextWrapping="Wrap" Margin="0,0,0,16" Opacity="0.85" Text="{Binding NeedChoiceText}" />
                     <ItemsControl ItemsSource="{Binding Items}">
                         <ItemsControl.ItemTemplate>
                             <DataTemplate DataType="{x:Type vm:RecommendationItemViewModel}">
@@ -64,11 +70,12 @@
                                         <TextBlock Text="{Binding Recovery}" />
                                         <TextBlock TextWrapping="Wrap" FontStyle="Italic" Text="{Binding ReviewReason}" />
                                         <StackPanel Orientation="Horizontal" Margin="0,10,0,0">
-                                            <Button Padding="12,4" Content="Details" Command="{Binding ToggleDetailsCommand}" />
-                                            <Button Padding="12,4" Margin="8,0,0,0" Content="Preview…"
+                                            <Button Padding="12,4" FontWeight="SemiBold" Content="Clean up…"
+                                                    ToolTip="Shows exactly what would change before anything is done."
                                                     Visibility="{Binding IsAction, Converter={StaticResource Visible}}"
                                                     Command="{Binding DataContext.PreviewCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
                                                     CommandParameter="{Binding}" />
+                                            <Button Padding="12,4" Margin="8,0,0,0" Content="Details" Command="{Binding ToggleDetailsCommand}" />
                                         </StackPanel>
                                         <ItemsControl Margin="0,8,0,0" ItemsSource="{Binding Details}"
                                                       Visibility="{Binding ShowDetails, Converter={StaticResource Visible}}">
@@ -174,6 +181,57 @@
                     <StackPanel Orientation="Horizontal">
                         <Button Padding="14,6" Content="Approve" Command="{Binding ApproveCommand}" />
                         <Button Padding="14,6" Margin="8,0,0,0" Content="Decline" Command="{Binding DeclineCommand}" />
+                        <Button Padding="14,6" Margin="8,0,0,0" Content="Back" Command="{Binding BackCommand}" />
+                    </StackPanel>
+                    <TextBlock TextWrapping="Wrap" Margin="0,12,0,0" Text="{Binding Result}" />
+                </StackPanel>
+            </ScrollViewer>
+        </DataTemplate>
+        <DataTemplate DataType="{x:Type vm:BatchPreviewViewModel}">
+            <ScrollViewer VerticalScrollBarVisibility="Auto">
+                <StackPanel Margin="24" MaxWidth="820" HorizontalAlignment="Left">
+                    <TextBlock FontSize="24" Text="Clean up all suggested" />
+                    <TextBlock TextWrapping="Wrap" Margin="0,4,0,12"
+                               Text="Every suggested action, exactly as it would run. Untick an action to leave it out; open one to see each item. Nothing changes until you approve." />
+                    <ItemsControl ItemsSource="{Binding Entries}">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate DataType="{x:Type vm:BatchPreviewEntryViewModel}">
+                                <Border Margin="0,0,0,10" Padding="12" BorderThickness="1" CornerRadius="6"
+                                        BorderBrush="{DynamicResource {x:Static SystemColors.ActiveBorderBrushKey}}">
+                                    <StackPanel>
+                                        <CheckBox IsChecked="{Binding IsSelected}">
+                                            <TextBlock TextWrapping="Wrap" FontWeight="SemiBold" Text="{Binding WhatWeFound}" />
+                                        </CheckBox>
+                                        <Expander Margin="0,6,0,0" Header="{Binding Summary}">
+                                            <StackPanel Margin="0,4,0,0">
+                                                <ItemsControl ItemsSource="{Binding Paths}">
+                                                    <ItemsControl.ItemTemplate>
+                                                        <DataTemplate>
+                                                            <TextBlock TextWrapping="Wrap" FontFamily="Consolas" FontSize="12" Text="{Binding}" />
+                                                        </DataTemplate>
+                                                    </ItemsControl.ItemTemplate>
+                                                </ItemsControl>
+                                                <ItemsControl ItemsSource="{Binding LeftAlone}">
+                                                    <ItemsControl.ItemTemplate>
+                                                        <DataTemplate>
+                                                            <TextBlock TextWrapping="Wrap" FontSize="12" Text="{Binding}" />
+                                                        </DataTemplate>
+                                                    </ItemsControl.ItemTemplate>
+                                                </ItemsControl>
+                                                <TextBlock TextWrapping="Wrap" Margin="0,6,0,0" Text="{Binding Afterward}" />
+                                            </StackPanel>
+                                        </Expander>
+                                        <TextBlock TextWrapping="Wrap" Margin="0,6,0,0" Text="{Binding RecoveryTerms}" />
+                                        <TextBlock TextWrapping="Wrap" Margin="0,6,0,0" FontWeight="SemiBold" Text="{Binding Result}" />
+                                    </StackPanel>
+                                </Border>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                    <TextBlock FontWeight="SemiBold" Margin="0,4,0,0" Text="Expected effect" />
+                    <TextBlock TextWrapping="Wrap" Margin="0,4,0,16" Text="{Binding ExpectedEffect}" />
+                    <StackPanel Orientation="Horizontal">
+                        <Button Padding="14,6" FontWeight="SemiBold" Content="Approve all selected" Command="{Binding ApproveCommand}" />
                         <Button Padding="14,6" Margin="8,0,0,0" Content="Back" Command="{Binding BackCommand}" />
                     </StackPanel>
                     <TextBlock TextWrapping="Wrap" Margin="0,12,0,0" Text="{Binding Result}" />
