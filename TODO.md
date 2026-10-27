@@ -91,13 +91,8 @@ Done when:
 ### T-40 Duplicate review page · `done` · W · deps: —
 Result: A Duplicates page lists verified groups, biggest first, with each copy's paths, measured size, modified and created times side by side, and the evidence on request (size, head+tail digest, full hash, same-file check). Nothing is preselected. `RecommendationBuilder.ForDuplicates` refuses removing every copy, or a protected or excluded copy. The gateway compares each removed copy byte for byte with its kept copy right before acting. Activity can undo Recycle Bin moves (`IRecycleBin`, `WindowsRecycleBinRestore`). D-024; 11 new tests.
 
-### T-41 Version review · `todo` · W · deps: T-40
-Refs: §5.1 · area: src/PCHealth.App, src/PCHealth.Duplicates
-Done when:
-- Version candidates appear on a separate tab of the Duplicates page, labelled "possible versions, not copies".
-- No file in a version group is preselected for removal, and the page says why similar names are not evidence.
-- The user can compare files and send individual files to the Recycle Bin through the gateway.
-- Tests cover "nothing preselected" and that version groups never appear among verified duplicates.
+### T-41 Version review · `done` · W · deps: T-40
+Result: The Duplicates page has a "Possible versions, not copies" tab: each version group side by side (paths, sizes, modified with the newest marked, created), with an explanation of why similar names are not evidence; nothing is preselected. `RecommendationBuilder.ForVersions` turns only the ticked files into a Recycle Bin action through the usual preview and gateway; excluded or protected files are refused. A real discovery run shows same-size versions are never verified duplicates. D-024; 3 new tests.
 
 ### Slice 3: Fast inventory (needs T-39 accepted)
 

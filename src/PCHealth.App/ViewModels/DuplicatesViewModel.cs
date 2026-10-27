@@ -132,14 +132,84 @@ public sealed class DuplicateGroupViewModel : ObservableObject
     }
 }
 
-/// <summary>A choice of copies the policy accepted, ready for the usual preview and approval.</summary>
-public sealed record DuplicateRemoval(VerifiedDuplicateGroup Group, Recommendation Recommendation);
+/// <summary>One file in a version group: its path, size and times for comparing, and whether to remove it.</summary>
+public sealed class VersionFileViewModel(FileEntry file, bool newest, string? blocked) : ObservableObject
+{
+    private bool isSelected;
+
+    public FileEntry File { get; } = file;
+
+    public string Path => File.FullPath;
+
+    public string Size => SizeText.Measured(File.Size);
+
+    public string Modified => $"Modified {DuplicatesViewModel.Time(File.LastWriteTimeUtc)}{(newest ? " (newest)" : "")}";
+
+    public string Created => File.CreationTimeUtc is { } created ? $"Created {DuplicatesViewModel.Time(created)}" : "Created: not known";
+
+    /// <summary>Why this file cannot be removed; null when it can.</summary>
+    public string? Blocked { get; } = blocked is null ? null : $"Cannot be removed: {blocked}";
+
+    public bool IsSelected
+    {
+        get => isSelected;
+        set => SetProperty(ref isSelected, value);
+    }
+}
+
+/// <summary>Files whose names look like versions of one document, side by side; never a suggestion to remove any of them.</summary>
+public sealed class VersionGroupViewModel : ObservableObject
+{
+    private string? message;
+
+    public VersionGroupViewModel(VersionCandidateGroup group, Func<string, string?> blocked)
+    {
+        Group = group;
+        Files = group.Files.Select((f, i) => new VersionFileViewModel(f, i == 0, blocked(f.FullPath))).ToArray();
+        foreach (var file in Files)
+        {
+            file.PropertyChanged += (_, _) => OnPropertyChanged(nameof(RemoveText));
+        }
+    }
+
+    public VersionCandidateGroup Group { get; }
+
+    /// <summary>Newest first.</summary>
+    public IReadOnlyList<VersionFileViewModel> Files { get; }
+
+    public string Title => $"{Group.Files.Count} files named like {Group.Files[0].Name}";
+
+    public string Confidence => $"How alike: {Group.Confidence.Rationale} {(Group.SameFolder ? "" : "They are in different folders, which makes a link between them less likely.")}".TrimEnd();
+
+    public string RemoveText
+    {
+        get
+        {
+            var selected = Files.Count(f => f.IsSelected);
+            return selected == 0 ? "Remove selected files…" : $"Move {selected} selected {(selected == 1 ? "file" : "files")} to the Recycle Bin…";
+        }
+    }
+
+    /// <summary>Why the last choice was refused; null when it was not.</summary>
+    public string? Message
+    {
+        get => message;
+        set => SetProperty(ref message, value);
+    }
+}
+
+/// <summary>
+/// A choice the policy accepted, ready for the usual preview and approval. <paramref name="Removed"/> is called with
+/// the paths that were actually moved, so the page stops showing them.
+/// </summary>
+public sealed record ChosenRemoval(Recommendation Recommendation, Action<IReadOnlySet<string>> Removed);
 
 /// <summary>
 /// The Duplicates page (T-40, spec §5.1, §7): verified groups, biggest first, with each copy's path, size and times
 /// side by side and the evidence on request. Nothing is preselected: the user picks the copies to remove. The policy
 /// refuses a choice that removes every copy or touches a protected or excluded path; an accepted choice goes to the
-/// preview, then through the gateway to the Recycle Bin, and can be undone from Activity.
+/// preview, then through the gateway to the Recycle Bin, and can be undone from Activity. Possible versions are on a
+/// separate tab (T-41): files with similar names, which are not copies, so nothing there is ever suggested or selected.
 /// </summary>
 public sealed class DuplicatesViewModel : PageViewModel
 {
@@ -148,6 +218,7 @@ public sealed class DuplicatesViewModel : PageViewModel
     private readonly ExclusionList exclusions;
     private readonly Func<RecommendationBuilder> builder;
     private string summary = "";
+    private string versionsSummary = "";
 
     public DuplicatesViewModel(FindingsStore findings, ProtectionPolicy protection, ExclusionList exclusions, Func<RecommendationBuilder> builder)
         : base("Duplicates")
@@ -157,14 +228,32 @@ public sealed class DuplicatesViewModel : PageViewModel
         this.exclusions = exclusions;
         this.builder = builder;
         RemoveCommand = new RelayCommand<DuplicateGroupViewModel>(Remove, group => group is not null);
+        RemoveVersionsCommand = new RelayCommand<VersionGroupViewModel>(RemoveVersions, group => group is not null);
         findings.Updated += (_, _) => Refresh();
         Refresh();
     }
 
     /// <summary>Raised when an accepted choice should be previewed before anything changes.</summary>
-    public event EventHandler<DuplicateRemoval>? PreviewRequested;
+    public event EventHandler<ChosenRemoval>? PreviewRequested;
 
     public ObservableCollection<DuplicateGroupViewModel> Groups { get; } = [];
+
+    public ObservableCollection<VersionGroupViewModel> Versions { get; } = [];
+
+    public string VersionsTab => "Possible versions, not copies";
+
+    public string VersionsExplanation =>
+        "These files have similar names, such as \"Report v2\" and \"Report final\", but their contents differ. A similar name is not "
+        + "evidence that a file is an old version you no longer need: a \"draft\" can hold the only copy of a paragraph, and \"final\" is not always the last. "
+        + "So nothing here is suggested or selected. Compare the sizes and dates, open the files in Explorer if you need to, and choose yourself.";
+
+    public string VersionsSummary
+    {
+        get => versionsSummary;
+        private set => SetProperty(ref versionsSummary, value);
+    }
+
+    public IRelayCommand<VersionGroupViewModel> RemoveVersionsCommand { get; }
 
     public string Summary
     {
@@ -178,6 +267,7 @@ public sealed class DuplicatesViewModel : PageViewModel
 
     public void Refresh()
     {
+        RefreshVersions();
         Groups.Clear();
         if (findings.Duplicates is not { } groups)
         {
@@ -202,6 +292,42 @@ public sealed class DuplicatesViewModel : PageViewModel
                 + $"Keeping one copy of each would free about {SizeText.Bytes(Groups.Sum(g => g.ReclaimableBytes))} (estimated). Nothing is selected: choose the copies you want to remove.";
     }
 
+    private void RefreshVersions()
+    {
+        Versions.Clear();
+        if (findings.Versions is not { } groups)
+        {
+            VersionsSummary = "Possible versions are found by a full scan. Run one from Storage with \"Measure again\".";
+            return;
+        }
+
+        if (exclusions.IsExcluded(FindingCategory.VersionCandidate))
+        {
+            VersionsSummary = "You excluded versions in Settings, so none are shown.";
+            return;
+        }
+
+        foreach (var group in groups.Select(g => new VersionGroupViewModel(g, Blocked)))
+        {
+            Versions.Add(group);
+        }
+
+        VersionsSummary = Versions.Count == 0
+            ? "No files with version-like names are left to review from the last scan of your user folder."
+            : $"{Versions.Count} {(Versions.Count == 1 ? "group" : "groups")} of files with version-like names. Nothing is selected.";
+    }
+
+    private void RemoveVersions(VersionGroupViewModel? group)
+    {
+        var chosen = group!.Files.Where(f => f.IsSelected).Select(f => f.File).ToArray();
+        var choice = builder().ForVersions(group.Group, chosen);
+        group.Message = choice.Refusal;
+        if (choice.Recommendation is { } recommendation)
+        {
+            PreviewRequested?.Invoke(this, new ChosenRemoval(recommendation, done => findings.RemoveVersions(group.Group, chosen.Where(f => done.Contains(f.FullPath)).ToArray())));
+        }
+    }
+
     private string? Blocked(string path) =>
         protection.Check(path) is { IsBlocked: true } decision ? decision.Reason
         : exclusions.MatchPath(path) is { } exclusion ? $"you excluded '{exclusion.Value}'."
@@ -213,7 +339,7 @@ public sealed class DuplicatesViewModel : PageViewModel
         group.Message = choice.Refusal;
         if (choice.Recommendation is { } recommendation)
         {
-            PreviewRequested?.Invoke(this, new DuplicateRemoval(group.Group, recommendation));
+            PreviewRequested?.Invoke(this, new ChosenRemoval(recommendation, _ => findings.RemoveDuplicates(group.Group)));
         }
     }
 }
