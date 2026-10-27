@@ -76,6 +76,7 @@ public static class AppServices
         services.AddSingleton<StorageViewModel>();
         services.AddSingleton<ActivityViewModel>();
         services.AddSingleton<SettingsViewModel>();
+        services.AddSingleton(sp => new BenchmarkViewModel(BenchmarkViewModel.DefaultReportsFolder(), clock: sp.GetRequiredService<TimeProvider>()));
         services.AddSingleton<IUpdates, VelopackUpdates>();
         services.AddSingleton<UpdatesViewModel>();
         services.AddSingleton<MainViewModel>();

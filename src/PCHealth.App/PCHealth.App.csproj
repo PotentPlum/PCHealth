@@ -15,6 +15,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="../PCHealth.Benchmarking/PCHealth.Benchmarking.csproj" />
     <ProjectReference Include="../PCHealth.Execution.Windows/PCHealth.Execution.Windows.csproj" />
     <ProjectReference Include="../PCHealth.Inventory.Windows/PCHealth.Inventory.Windows.csproj" />
   </ItemGroup>

@@ -260,6 +260,32 @@
                 </StackPanel>
             </ScrollViewer>
         </DataTemplate>
+        <DataTemplate DataType="{x:Type vm:BenchmarkViewModel}">
+            <ScrollViewer VerticalScrollBarVisibility="Auto">
+                <StackPanel Margin="24" MaxWidth="820" HorizontalAlignment="Left">
+                    <TextBlock FontSize="24" Text="Benchmark" />
+                    <TextBlock TextWrapping="Wrap" Margin="0,4,0,12" Text="{Binding Explanation}" />
+                    <StackPanel Orientation="Horizontal" Margin="0,0,0,12">
+                        <Button Padding="14,6" FontWeight="SemiBold" Content="Run benchmark" Command="{Binding RunCommand}" />
+                        <Button Padding="14,6" Margin="8,0,0,0" Content="Stop" Command="{Binding StopCommand}" />
+                    </StackPanel>
+                    <ProgressBar Height="10" Margin="0,0,0,8" IsIndeterminate="True"
+                                 Visibility="{Binding IsRunning, Converter={StaticResource Visible}}" />
+                    <TextBlock TextWrapping="Wrap" Margin="0,0,0,12" Text="{Binding Status}" />
+                    <TextBlock FontWeight="SemiBold" Text="Where reports are saved" />
+                    <TextBox Margin="0,4,0,4" IsReadOnly="True" TextWrapping="Wrap" BorderThickness="0" Background="Transparent"
+                             Text="{Binding ReportPath, TargetNullValue='', Mode=OneWay}" />
+                    <TextBox Margin="0,0,0,8" IsReadOnly="True" TextWrapping="Wrap" BorderThickness="0" Background="Transparent"
+                             Text="{Binding ReportsFolder, Mode=OneWay}" />
+                    <StackPanel Orientation="Horizontal" Margin="0,0,0,16">
+                        <Button Padding="12,4" Content="Open folder" Command="{Binding OpenFolderCommand}" />
+                        <Button Padding="12,4" Margin="8,0,0,0" Content="Copy path" Command="{Binding CopyPathCommand}" />
+                    </StackPanel>
+                    <TextBox IsReadOnly="True" TextWrapping="Wrap" FontFamily="Consolas" FontSize="12"
+                             Text="{Binding Report, Mode=OneWay}" />
+                </StackPanel>
+            </ScrollViewer>
+        </DataTemplate>
         <DataTemplate DataType="{x:Type vm:ActivityViewModel}">
             <ScrollViewer VerticalScrollBarVisibility="Auto">
                 <StackPanel Margin="24" MaxWidth="820" HorizontalAlignment="Left">

@@ -16,6 +16,7 @@ public sealed class MainViewModel : ObservableObject
         OverviewViewModel overview,
         StorageViewModel storage,
         ActivityViewModel activity,
+        BenchmarkViewModel benchmark,
         SettingsViewModel settings,
         UpdatesViewModel updates,
         PauseViewModel pause,
@@ -58,7 +59,7 @@ public sealed class MainViewModel : ObservableObject
             opened.Add(page);
             Current = page;
         };
-        Pages = [overview, storage, activity, settings, updates];
+        Pages = [overview, storage, activity, benchmark, settings, updates];
         FirstRun = firstRun;
         current = FirstRunViewModel.IsNeeded(paths) ? firstRun : overview;
         firstRun.Completed += (_, _) => Current = overview;

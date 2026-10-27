@@ -250,3 +250,12 @@ Running processes, open handles, services and scheduled tasks are checked by the
 - **`Setup.exe`:** vpk still builds the one-click per-user `Setup.exe`, and existing per-user installs keep updating through it. The README points to the MSI.
 - **Updates:** they still come from GitHub Releases on the two buttons (D-010). The install folder isn't writable without administrator rights, so Velopack's `Update.exe` asks for them (UAC) when an update is applied. The app itself still never asks for elevation (D-019).
 - **Moving from 0.1.0:** install the MSI and start the new app once. That moves the data out of the old folder (D-021). Then uninstall the old per-user "PCHealth" entry.
+
+## D-023 Benchmark from the app
+**Accepted** (2026-10-27, user request; T-69)
+
+- **What:** the Benchmark page runs the same code as `tools/PCHealth.Benchmarks`, which now lives in the portable `PCHealth.Benchmarking` library.
+- **Writes:** the run writes its own test files into a new folder under the temp folder and deletes that folder afterwards, also when it is stopped or fails. It reads no user files. These are the app's own files, so like clearing local data (D-020) this doesn't go through the execution gateway. The gateway exists for changes to the user's files and system.
+- **Space check:** the run is refused when less than twice the test files' size is free on the temp folder's drive.
+- **Reports:** each one is saved as a new file in `Documents\PC Health Monitor\Benchmarks`, so it is easy to find and share. Existing files are never overwritten. The report names the machine only as "this PC" and contains no paths.
+- **Not part of local data:** the reports belong to the user and are not covered by "Clear local data".

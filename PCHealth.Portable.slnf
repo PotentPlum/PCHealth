@@ -2,12 +2,14 @@
   "solution": {
     "path": "PCHealth.slnx",
     "projects": [
+      "src/PCHealth.Benchmarking/PCHealth.Benchmarking.csproj",
       "src/PCHealth.Core/PCHealth.Core.csproj",
       "src/PCHealth.Duplicates/PCHealth.Duplicates.csproj",
       "src/PCHealth.Execution/PCHealth.Execution.csproj",
       "src/PCHealth.Inventory/PCHealth.Inventory.csproj",
       "src/PCHealth.Ledger/PCHealth.Ledger.csproj",
       "src/PCHealth.Policy/PCHealth.Policy.csproj",
+      "tests/PCHealth.Benchmarking.Tests/PCHealth.Benchmarking.Tests.csproj",
       "tests/PCHealth.Core.Tests/PCHealth.Core.Tests.csproj",
       "tests/PCHealth.Duplicates.Tests/PCHealth.Duplicates.Tests.csproj",
       "tests/PCHealth.Execution.Tests/PCHealth.Execution.Tests.csproj",
