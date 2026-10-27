@@ -17,7 +17,16 @@ public interface IKnownLocations
 /// <param name="FilePattern">Only files matching this name pattern count, e.g. <c>*.dmp</c>; null means all files.</param>
 /// <param name="MinAgeDays">Only files not written for at least this many days count; null means any age.</param>
 /// <param name="Rebuild">What gets rebuilt or downloaded afterwards, shown to the user.</param>
-public sealed record CacheRule(string Id, string Name, string Location, string Why, string Rebuild, string? FilePattern = null, int? MinAgeDays = null);
+/// <param name="CloseFirst">Apps that must not be running while the cache is cleaned, e.g. the browser that owns it (T-46).</param>
+public sealed record CacheRule(
+    string Id,
+    string Name,
+    string Location,
+    string Why,
+    string Rebuild,
+    string? FilePattern = null,
+    int? MinAgeDays = null,
+    IReadOnlyList<AppToClose>? CloseFirst = null);
 
 /// <summary>A rule that did not produce a finding, and why.</summary>
 public sealed record SkippedRule(CacheRule Rule, string Location, string Reason);
@@ -30,6 +39,9 @@ public sealed record CatalogResult(IReadOnlyList<Finding> Findings, IReadOnlyLis
 /// </summary>
 public sealed class CacheCatalog
 {
+    /// <summary>The catalog format this app reads. Version 2 added <see cref="CacheRule.CloseFirst"/> (T-46).</summary>
+    public const int SchemaVersion = 2;
+
     private const string ResourceName = "PCHealth.Policy.Catalog.known-caches.json";
 
     public CacheCatalog(IReadOnlyList<CacheRule> rules)
@@ -55,14 +67,45 @@ public sealed class CacheCatalog
     {
         using var stream = typeof(CacheCatalog).Assembly.GetManifestResourceStream(ResourceName)
             ?? throw new InvalidOperationException($"Missing embedded resource {ResourceName}.");
-        var document = JsonSerializer.Deserialize<Document>(stream, new JsonSerializerOptions { PropertyNameCaseInsensitive = true })
-            ?? throw new InvalidDataException("The cache catalog is empty.");
-        if (document.Version != 1 || document.Rules is null)
+        return Load(stream);
+    }
+
+    /// <summary>
+    /// Reads a catalog file. Only <see cref="SchemaVersion"/> is accepted: an older file would silently lack rules'
+    /// apps to close, so it is refused rather than read.
+    /// </summary>
+    /// <exception cref="InvalidDataException">The file is empty, malformed, or another format version.</exception>
+    public static CacheCatalog Load(Stream stream)
+    {
+        ArgumentNullException.ThrowIfNull(stream);
+        Document? document;
+        try
         {
-            throw new InvalidDataException("The cache catalog has an unsupported format.");
+            document = JsonSerializer.Deserialize<Document>(stream, new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+        }
+        catch (Exception ex) when (ex is JsonException or ArgumentException)
+        {
+            throw new InvalidDataException($"The cache catalog is not valid: {ex.Message}", ex);
         }
 
-        return new CacheCatalog(document.Rules);
+        if (document is null)
+        {
+            throw new InvalidDataException("The cache catalog is empty.");
+        }
+
+        if (document.Version != SchemaVersion || document.Rules is null)
+        {
+            throw new InvalidDataException($"The cache catalog has format version {document.Version}; this app reads version {SchemaVersion} only.");
+        }
+
+        try
+        {
+            return new CacheCatalog(document.Rules);
+        }
+        catch (ArgumentException ex)
+        {
+            throw new InvalidDataException($"The cache catalog has an invalid rule: {ex.Message}", ex);
+        }
     }
 
     public CatalogResult Evaluate(
@@ -170,7 +213,8 @@ public sealed class CacheCatalog
                 new EstimatedSize(bytes.Bytes, "sum of the matching files' sizes; space returns when the Recycle Bin is emptied"),
                 rule.Rebuild),
             new Recovery(RecoveryMethod.RecycleBin, "Files can be restored from the Recycle Bin until it is emptied. Files in use are skipped."),
-            operations: files.Select(f => new ProposedOperation(OperationKind.MoveToRecycleBin, f.FullPath, isDirectory: false, f.Size, f.LastWriteTimeUtc)).ToArray());
+            operations: files.Select(f => new ProposedOperation(OperationKind.MoveToRecycleBin, f.FullPath, isDirectory: false, f.Size, f.LastWriteTimeUtc)).ToArray(),
+            closeFirst: rule.CloseFirst);
     }
 
     /// <summary>Expands the rule's location into existing folders; a single <c>*</c> segment matches each subfolder that is not a link.</summary>
@@ -241,6 +285,11 @@ public sealed class CacheCatalog
         if (rule.MinAgeDays is < 0)
         {
             throw new ArgumentException($"Rule {rule.Id} has a negative minimum age.");
+        }
+
+        if (rule.CloseFirst is { } apps && (apps.Count == 0 || apps.Any(a => a is null)))
+        {
+            throw new ArgumentException($"Rule {rule.Id} lists apps to close, but not every entry names one.");
         }
     }
 

@@ -68,6 +68,11 @@ public sealed class PreviewViewModel : PageViewModel
 
     public string WhatWeFound => Recommendation.WhatWeFound;
 
+    /// <summary>"Close X first." for actions on an app's own data (T-46); approval is refused while it runs.</summary>
+    public string? CloseFirst => Recommendation.CloseFirst;
+
+    public bool HasCloseFirst => CloseFirst is not null;
+
     public ObservableCollection<PreviewItemViewModel> Items { get; }
 
     /// <summary>Items taken out by protections or the user's exclusions, with the reason.</summary>

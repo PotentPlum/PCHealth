@@ -172,6 +172,8 @@
                 <StackPanel Margin="24" MaxWidth="820" HorizontalAlignment="Left">
                     <TextBlock FontSize="24" Text="Preview" />
                     <TextBlock FontWeight="SemiBold" TextWrapping="Wrap" Margin="0,4,0,12" Text="{Binding WhatWeFound}" />
+                    <TextBlock FontWeight="Bold" TextWrapping="Wrap" Margin="0,0,0,12" Text="{Binding CloseFirst}"
+                               Visibility="{Binding HasCloseFirst, Converter={StaticResource Visible}}" />
                     <TextBlock FontWeight="SemiBold" Text="Exactly what would change (untick to leave an item out)" />
                     <ItemsControl Margin="0,4,0,12" ItemsSource="{Binding Items}">
                         <ItemsControl.ItemTemplate>
@@ -243,6 +245,8 @@
                                                 <TextBlock TextWrapping="Wrap" Margin="0,6,0,0" Text="{Binding Afterward}" />
                                             </StackPanel>
                                         </Expander>
+                                        <TextBlock TextWrapping="Wrap" Margin="0,6,0,0" FontWeight="Bold" Text="{Binding CloseFirst}"
+                                                   Visibility="{Binding HasCloseFirst, Converter={StaticResource Visible}}" />
                                         <TextBlock TextWrapping="Wrap" Margin="0,6,0,0" Text="{Binding RecoveryTerms}" />
                                         <TextBlock TextWrapping="Wrap" Margin="0,6,0,0" FontWeight="SemiBold" Text="{Binding Result}" />
                                     </StackPanel>

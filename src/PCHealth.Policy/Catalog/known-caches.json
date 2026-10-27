@@ -1,5 +1,5 @@
 {
-  "version": 1,
+  "version": 2,
   "rules": [
     {
       "id": "user-temp",
@@ -50,6 +50,7 @@
       "id": "chrome-cache",
       "name": "Google Chrome cache",
       "location": "{LocalAppData}/Google/Chrome/User Data/*/Cache",
+      "closeFirst": [{ "process": "chrome", "name": "Google Chrome" }],
       "why": "Copies of web pages, images and scripts Chrome has downloaded.",
       "rebuild": "Chrome downloads pages again as you visit them; sites load slower at first. Sign-ins and history are not stored here."
     },
@@ -57,6 +58,7 @@
       "id": "edge-cache",
       "name": "Microsoft Edge cache",
       "location": "{LocalAppData}/Microsoft/Edge/User Data/*/Cache",
+      "closeFirst": [{ "process": "msedge", "name": "Microsoft Edge" }],
       "why": "Copies of web pages, images and scripts Edge has downloaded.",
       "rebuild": "Edge downloads pages again as you visit them; sites load slower at first. Sign-ins and history are not stored here."
     },

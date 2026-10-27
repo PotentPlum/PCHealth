@@ -30,6 +30,11 @@ public sealed class BatchPreviewEntryViewModel(Recommendation recommendation) : 
 
     public string RecoveryTerms => Recommendation.CanIRecover;
 
+    /// <summary>"Close X first." for actions on an app's own data (T-46); this action is refused while it runs.</summary>
+    public string? CloseFirst => Recommendation.CloseFirst;
+
+    public bool HasCloseFirst => CloseFirst is not null;
+
     public bool IsSelected
     {
         get => isSelected;

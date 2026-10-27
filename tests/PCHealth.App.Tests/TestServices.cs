@@ -57,6 +57,8 @@ internal static class TestServices
 
         public bool SameVolume(string path, string otherPath) => true;
 
+        public IReadOnlyList<string> RunningProcesses(IReadOnlyCollection<string> processNames) => [];
+
         public string? CannotRecycle(string finalPath, long sizeBytes) => null;
 
         public string MoveToRecycleBin(string finalPath, bool isDirectory)

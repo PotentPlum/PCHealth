@@ -448,6 +448,13 @@ public class ExecutionGatewayTests
 
         public bool NukeInstead { get; set; }
 
+        public HashSet<string> Running { get; } = new(StringComparer.OrdinalIgnoreCase);
+
+        public bool CannotListProcesses { get; set; }
+
+        public IReadOnlyList<string> RunningProcesses(IReadOnlyCollection<string> processNames) =>
+            CannotListProcesses ? throw new IOException("Access is denied.") : processNames.Where(Running.Contains).ToArray();
+
         public string? CannotRecycle(string finalPath, long sizeBytes) => Unrecyclable;
 
         public string MoveToRecycleBin(string finalPath, bool isDirectory)
@@ -567,6 +574,42 @@ public class ExecutionGatewayTests
         public bool Holds(string location, string originalPath) => File.Exists(location) || Directory.Exists(location);
 
         public void Restore(string location, string originalPath, bool isDirectory) => new PlainFileMover().Move(location, originalPath, isDirectory);
+    }
+
+    [Fact]
+    public void An_app_that_must_be_closed_first_blocks_the_request_while_it_runs()
+    {
+        using var fixture = new Fixture();
+        var file = fixture.File("Chrome/Cache/f_000001", "cached");
+        var recommendation = new RecommendationBuilder(new ProtectionPolicy([]), new ExclusionList()).Build([new Finding(
+            FindingCategory.Cache, "Google Chrome cache", "Copies of web pages.",
+            [new PathEvidence(Path.GetDirectoryName(file)!, "Known location.")],
+            new Confidence(ConfidenceLevel.High, "Known location."),
+            new Impact("Moves 1 file to the Recycle Bin."),
+            new Recovery(RecoveryMethod.RecycleBin, "Restorable until the Recycle Bin is emptied."),
+            operations: [Fixture.Op(file)],
+            closeFirst: [new AppToClose("chrome", "Google Chrome")])]).Recommendations.Single();
+        fixture.Platform.Running.Add("CHROME");
+
+        var refused = fixture.Gateway().Execute(recommendation, recommendation.Operations);
+
+        Assert.Equal(ExecutionStatus.Refused, refused.Status);
+        Assert.Equal("Close Google Chrome first: it is still running. Nothing was changed.", refused.Summary);
+        Assert.True(File.Exists(file));
+        Assert.Empty(fixture.Ledger.All());
+
+        fixture.Platform.Running.Clear();
+        fixture.Platform.CannotListProcesses = true;
+        var unchecked_ = fixture.Gateway().Execute(recommendation, recommendation.Operations);
+        Assert.Equal(ExecutionStatus.Refused, unchecked_.Status);
+        Assert.StartsWith("Whether Google Chrome is running could not be checked", unchecked_.Summary);
+        Assert.True(File.Exists(file));
+
+        fixture.Platform.CannotListProcesses = false;
+        var done = fixture.Gateway().Execute(recommendation, recommendation.Operations);
+        Assert.Equal(ExecutionStatus.Completed, done.Status);
+        Assert.False(File.Exists(file));
+        Assert.Contains("apps that must be closed first are not running", fixture.Ledger.All().Single().Checks);
     }
 
     [Fact]

@@ -182,6 +182,8 @@ public sealed class UndoEndToEndTests : IDisposable
 
         public bool SameVolume(string path, string otherPath) => inner.SameVolume(path, otherPath);
 
+        public IReadOnlyList<string> RunningProcesses(IReadOnlyCollection<string> processNames) => inner.RunningProcesses(processNames);
+
         public string? CannotRecycle(string finalPath, long sizeBytes) => inner.CannotRecycle(finalPath, sizeBytes);
 
         public string MoveToRecycleBin(string finalPath, bool isDirectory) => inner.MoveToRecycleBin(finalPath, isDirectory);

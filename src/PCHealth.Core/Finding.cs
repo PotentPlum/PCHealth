@@ -10,6 +10,29 @@ public enum FindingCategory
     AppResidue,
 }
 
+/// <summary>An app that must not be running while a finding is acted on, e.g. a browser whose cache it changes (T-46).</summary>
+/// <param name="Process">The process name without <c>.exe</c>, e.g. <c>chrome</c>.</param>
+/// <param name="Name">The app's name as people know it, e.g. <c>Google Chrome</c>.</param>
+public sealed record AppToClose
+{
+    public AppToClose(string process, string name)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(process);
+        ArgumentException.ThrowIfNullOrWhiteSpace(name);
+        if (process.IndexOfAny(['/', '\\', ':', '*', '?']) >= 0 || process.EndsWith(".exe", StringComparison.OrdinalIgnoreCase))
+        {
+            throw new ArgumentException($"A process name has no path, wildcard or .exe: '{process}'.", nameof(process));
+        }
+
+        Process = process;
+        Name = name;
+    }
+
+    public string Process { get; }
+
+    public string Name { get; }
+}
+
 /// <summary>
 /// One evidence-backed finding (spec §7). Confidence, impact and recovery are kept as separate
 /// properties and are reported side by side, never combined (spec §3.3).
@@ -25,7 +48,8 @@ public sealed record Finding
         Impact impact,
         Recovery recovery,
         bool reviewOnly = false,
-        IReadOnlyList<ProposedOperation>? operations = null)
+        IReadOnlyList<ProposedOperation>? operations = null,
+        IReadOnlyList<AppToClose>? closeFirst = null)
     {
         if (!Enum.IsDefined(category))
         {
@@ -63,6 +87,11 @@ public sealed record Finding
         Recovery = recovery;
         ReviewOnly = reviewOnly;
         Operations = operations.ToArray();
+        CloseFirst = closeFirst?.ToArray() ?? [];
+        if (CloseFirst.Any(a => a is null))
+        {
+            throw new ArgumentException("Apps to close cannot be null.", nameof(closeFirst));
+        }
     }
 
     public FindingCategory Category { get; }
@@ -89,4 +118,7 @@ public sealed record Finding
 
     /// <summary>The exact changes this finding proposes, if acted on; empty for findings that are only informative.</summary>
     public IReadOnlyList<ProposedOperation> Operations { get; }
+
+    /// <summary>Apps that must be closed before acting; the gateway refuses while any of them runs.</summary>
+    public IReadOnlyList<AppToClose> CloseFirst { get; }
 }

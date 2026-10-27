@@ -160,6 +160,8 @@ public sealed class WindowsRecycleBinTests : IDisposable
 
         public bool SameVolume(string path, string otherPath) => true;
 
+        public IReadOnlyList<string> RunningProcesses(IReadOnlyCollection<string> processNames) => [];
+
         public string? CannotRecycle(string finalPath, long sizeBytes) => WindowsRecycleBin.Unsuitable(finalPath, sizeBytes);
 
         public string MoveToRecycleBin(string finalPath, bool isDirectory) => WindowsRecycleBin.Recycle(finalPath, isDirectory);

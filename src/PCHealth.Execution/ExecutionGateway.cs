@@ -46,6 +46,7 @@ public sealed class ExecutionGateway(
     private static readonly string[] Checks =
     [
         "request matches an approved recommendation",
+        "apps that must be closed first are not running",
         "not protected and not excluded",
         "final path resolved by handle and unchanged",
         "not a link and inside its folder",
@@ -94,6 +95,11 @@ public sealed class ExecutionGateway(
         if (kinds.Length != 1 || ProposedOperation.RecoveryFor(kinds[0]) != recommendation.Recovery.Method)
         {
             return Refuse(approved, "The approved items do not all provide the recovery the recommendation promises.");
+        }
+
+        if (AppsStillRunning(recommendation) is { } running)
+        {
+            return Refuse(approved, running);
         }
 
         var approvedPaths = approved.Select(o => o.Path).ToHashSet(OperatingSystem.IsWindows() ? StringComparer.OrdinalIgnoreCase : StringComparer.Ordinal);
@@ -361,6 +367,34 @@ public sealed class ExecutionGateway(
         }
 
         return null;
+    }
+
+    /// <summary>
+    /// Why the request must wait for apps the recommendation names to be closed; null when none of them runs. Checked
+    /// once per request: files an app holds open during the run are still caught one by one by the in-use check.
+    /// </summary>
+    private string? AppsStillRunning(Recommendation recommendation)
+    {
+        var apps = recommendation.Finding.CloseFirst;
+        if (apps.Count == 0)
+        {
+            return null;
+        }
+
+        IReadOnlyList<string> running;
+        try
+        {
+            running = platform.RunningProcesses(apps.Select(a => a.Process).Distinct(StringComparer.OrdinalIgnoreCase).ToArray());
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or InvalidOperationException)
+        {
+            return $"Whether {Names(apps)} is running could not be checked, so nothing was changed: {ex.Message}";
+        }
+
+        var open = apps.Where(a => running.Contains(a.Process, StringComparer.OrdinalIgnoreCase)).ToArray();
+        return open.Length == 0 ? null : $"Close {Names(open)} first: it is still running. Nothing was changed.";
+
+        static string Names(IEnumerable<AppToClose> apps) => string.Join(" and ", apps.Select(a => a.Name).Distinct(StringComparer.Ordinal));
     }
 
     /// <summary>Why the copy meant to stay does not allow removing this one; null when it is there, unlinked and identical.</summary>
