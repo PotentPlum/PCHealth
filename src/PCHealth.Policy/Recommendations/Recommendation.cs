@@ -167,8 +167,8 @@ public sealed record Recommendation
     }
 }
 
-/// <summary>The outcome of checking the copies a user chose to remove: an action to preview, or why it is refused.</summary>
-public sealed record DuplicateChoice(Recommendation? Recommendation, string? Refusal)
+/// <summary>The outcome of checking the files a user chose to remove: an action to preview, or why it is refused.</summary>
+public sealed record UserChoice(Recommendation? Recommendation, string? Refusal)
 {
     public bool IsAllowed => Recommendation is not null;
 }
@@ -212,7 +212,7 @@ public sealed class RecommendationBuilder(ProtectionPolicy protection, Exclusion
     /// moves exactly the chosen copies to the Recycle Bin, still to be previewed, approved and run by the gateway.
     /// </summary>
     /// <param name="remove">Entries of <see cref="VerifiedDuplicateGroup.PhysicalCopies"/>; hard links to one file go together.</param>
-    public DuplicateChoice ForDuplicates(VerifiedDuplicateGroup group, IReadOnlyCollection<IReadOnlyList<HashedFile>> remove)
+    public UserChoice ForDuplicates(VerifiedDuplicateGroup group, IReadOnlyCollection<IReadOnlyList<HashedFile>> remove)
     {
         ArgumentNullException.ThrowIfNull(group);
         ArgumentNullException.ThrowIfNull(remove);
@@ -223,38 +223,82 @@ public sealed class RecommendationBuilder(ProtectionPolicy protection, Exclusion
 
         if (exclusions.IsExcluded(FindingCategory.VerifiedDuplicate))
         {
-            return new DuplicateChoice(null, "You excluded duplicates in Settings, so nothing is offered for them.");
+            return new UserChoice(null, "You excluded duplicates in Settings, so nothing is offered for them.");
         }
 
         var chosen = group.PhysicalCopies.Where(remove.Contains).ToArray();
         var kept = group.PhysicalCopies.Where(c => !remove.Contains(c)).ToArray();
         if (chosen.Length == 0)
         {
-            return new DuplicateChoice(null, "Choose at least one copy to remove.");
+            return new UserChoice(null, "Choose at least one copy to remove.");
         }
 
         if (kept.Length == 0)
         {
-            return new DuplicateChoice(null, "At least one copy has to stay. Leave out the copy you want to keep.");
+            return new UserChoice(null, "At least one copy has to stay. Leave out the copy you want to keep.");
         }
 
-        foreach (var path in chosen.SelectMany(c => c).Select(f => f.File.FullPath))
+        if (Blocked(chosen.SelectMany(c => c).Select(f => f.File.FullPath)) is { } refusal)
         {
-            if (protection.Check(path) is { IsBlocked: true } decision)
-            {
-                return new DuplicateChoice(null, decision.Reason);
-            }
-
-            if (exclusions.MatchPath(path) is { } exclusion)
-            {
-                return new DuplicateChoice(null, $"You excluded '{exclusion.Value}', so '{path}' cannot be removed.");
-            }
+            return new UserChoice(null, refusal);
         }
 
         var keeper = kept.OrderBy(c => c.Min(f => f.File.LastWriteTimeUtc)).ThenBy(c => c.Select(f => f.File.FullPath).Min(StringComparer.Ordinal), StringComparer.Ordinal).First();
 
         // Only the chosen copies and the category count here: an excluded copy that stays is exactly what the user wants.
-        return new DuplicateChoice(Build(FindingSources.Duplicates(group, keeper, chosen, "you chose to keep it")), null);
+        return new UserChoice(Build(FindingSources.Duplicates(group, keeper, chosen, "you chose to keep it")), null);
+    }
+
+    /// <summary>
+    /// Checks the files the user chose to remove from a version group (T-41, spec §5.1). Version groups never offer
+    /// anything on their own; only the user's explicit choice does. Refused when nothing is chosen, when versions are
+    /// excluded, or when a chosen file is protected or excluded. Otherwise exactly the chosen files go to the Recycle
+    /// Bin, still to be previewed, approved and run by the gateway.
+    /// </summary>
+    public UserChoice ForVersions(VersionCandidateGroup group, IReadOnlyCollection<FileEntry> remove)
+    {
+        ArgumentNullException.ThrowIfNull(group);
+        ArgumentNullException.ThrowIfNull(remove);
+        if (remove.Any(f => !group.Files.Contains(f)))
+        {
+            throw new ArgumentException("Only files from this group can be chosen.", nameof(remove));
+        }
+
+        if (exclusions.IsExcluded(FindingCategory.VersionCandidate))
+        {
+            return new UserChoice(null, "You excluded versions in Settings, so nothing is offered for them.");
+        }
+
+        var chosen = group.Files.Where(remove.Contains).ToArray();
+        if (chosen.Length == 0)
+        {
+            return new UserChoice(null, "Choose at least one file to remove.");
+        }
+
+        if (Blocked(chosen.Select(f => f.FullPath)) is { } refusal)
+        {
+            return new UserChoice(null, refusal);
+        }
+
+        return new UserChoice(Build(FindingSources.ChosenVersions(group, chosen)), null);
+    }
+
+    private string? Blocked(IEnumerable<string> paths)
+    {
+        foreach (var path in paths)
+        {
+            if (protection.Check(path) is { IsBlocked: true } decision)
+            {
+                return decision.Reason;
+            }
+
+            if (exclusions.MatchPath(path) is { } exclusion)
+            {
+                return $"You excluded '{exclusion.Value}', so '{path}' cannot be removed.";
+            }
+        }
+
+        return null;
     }
 
     private Recommendation Build(Finding finding)

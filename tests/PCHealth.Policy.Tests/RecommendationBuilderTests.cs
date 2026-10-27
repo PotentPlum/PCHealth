@@ -189,6 +189,38 @@ public class RecommendationBuilderTests
     }
 
     [Fact]
+    public void Only_the_versions_the_user_chose_are_offered_and_never_a_protected_or_excluded_one()
+    {
+        using var root = new TempRoot();
+        root.CreateFile("docs/Plan v1.docx", "a");
+        root.CreateFile("docs/Plan v2.docx", "bb");
+        root.CreateFile("docs/Plan final.docx", "ccc");
+        var scan = new RecursiveScanner().Scan(root.Path, cancellationToken: TestContext.Current.CancellationToken);
+        var group = Assert.Single(VersionCandidates.Find(scan.Entries.OfType<FileEntry>()));
+        FileEntry Of(string name) => group.Files.Single(f => f.Name == name);
+        var exclusions = new ExclusionList();
+        exclusions.ExcludeFile(Of("Plan final.docx").FullPath, Now);
+        var builder = new RecommendationBuilder(new ProtectionPolicy([]), exclusions);
+
+        // On its own a version group offers nothing.
+        Assert.Equal(Disposition.Review, Assert.Single(Builder().Build([FindingSources.FromVersionCandidates(group)]).Recommendations).Disposition);
+        Assert.Equal("Choose at least one file to remove.", builder.ForVersions(group, []).Refusal);
+        Assert.StartsWith("You excluded", builder.ForVersions(group, [Of("Plan v1.docx"), Of("Plan final.docx")]).Refusal);
+
+        var recommendation = builder.ForVersions(group, [Of("Plan v1.docx"), Of("Plan v2.docx")]).Recommendation!;
+
+        Assert.Equal(Disposition.Act, recommendation.Disposition);
+        Assert.Equal(new[] { Of("Plan v1.docx").FullPath, Of("Plan v2.docx").FullPath }, recommendation.Operations.Select(o => o.Path).Order(StringComparer.Ordinal));
+        Assert.All(recommendation.Operations, o => Assert.Equal(OperationKind.MoveToRecycleBin, o.Kind));
+        Assert.All(recommendation.Operations, o => Assert.Null(o.KeptCopy));
+        Assert.Equal(3, recommendation.Impact.PotentiallyReclaimable!.Value.Bytes);
+        Assert.Contains("The other versions stay.", recommendation.WhatWillChange);
+
+        exclusions.ExcludeCategory(FindingCategory.VersionCandidate, Now);
+        Assert.StartsWith("You excluded versions", builder.ForVersions(group, [Of("Plan v1.docx")]).Refusal);
+    }
+
+    [Fact]
     public void A_protected_duplicate_is_the_one_kept()
     {
         using var root = new TempRoot();

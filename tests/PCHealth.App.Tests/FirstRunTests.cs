@@ -159,7 +159,7 @@ public sealed class FirstRunTests : IDisposable
         }
     }
 
-    private sealed class Locations(string temp, string localAppData) : IKnownLocations
+    internal sealed class Locations(string temp, string localAppData) : IKnownLocations
     {
         public string? Resolve(string token) => token switch
         {
@@ -169,7 +169,7 @@ public sealed class FirstRunTests : IDisposable
         };
     }
 
-    private sealed class NoRegistrations : IAppRegistrations
+    internal sealed class NoRegistrations : IAppRegistrations
     {
         public RegistrationSnapshot Read() => new([], []);
     }

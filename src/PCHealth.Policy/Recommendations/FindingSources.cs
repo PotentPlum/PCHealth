@@ -72,6 +72,30 @@ public static class FindingSources
             reviewOnly: true);
     }
 
+    /// <summary>
+    /// Files the user chose to remove from a version group after comparing them (T-41). The name match is not the
+    /// evidence here; the user's own choice is, so the finding says so and moves exactly those files to the Recycle Bin.
+    /// </summary>
+    internal static Finding ChosenVersions(VersionCandidateGroup group, IReadOnlyList<FileEntry> chosen)
+    {
+        var bytes = chosen.Sum(f => f.Size.Bytes);
+        return new Finding(
+            FindingCategory.VersionCandidate,
+            $"{chosen.Count} of {group.Files.Count} possible versions of {group.Files[0].Name}",
+            "You chose these after comparing the versions.",
+            [
+                .. chosen.Select(f => (Evidence)new PathEvidence(f.FullPath, $"{f.Name} · {f.Size.Bytes} bytes · modified {f.LastWriteTimeUtc:u}")),
+                new CheckEvidence("your choice", "You chose these files yourself. Similar names alone are never evidence that a file can go."),
+            ],
+            new Confidence(ConfidenceLevel.High, "You chose these files yourself after comparing them."),
+            new Impact(
+                $"Moves {chosen.Count} {(chosen.Count == 1 ? "file" : "files")} to the Recycle Bin. The other versions stay.",
+                new EstimatedSize(bytes, "the sizes measured during the scan; space returns when the Recycle Bin is emptied"),
+                "Shortcuts or recent-file lists that open a removed version by its path will no longer find it."),
+            new Recovery(RecoveryMethod.RecycleBin, "Files can be restored from the Recycle Bin until it is emptied."),
+            operations: chosen.Select(f => new ProposedOperation(OperationKind.MoveToRecycleBin, f.FullPath, isDirectory: false, f.Size, f.LastWriteTimeUtc)).ToArray());
+    }
+
     /// <summary>A large folder is information about where space goes, not a proposal.</summary>
     public static Finding FromLargeFolder(FolderSize folder, bool scanComplete)
     {

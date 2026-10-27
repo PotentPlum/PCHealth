@@ -65,9 +65,10 @@ public sealed class MainViewModel : ObservableObject
             var page = preview(removal.Recommendation);
             page.Finished += (_, _) =>
             {
-                if (page.Execution?.Items.Any(i => i.Status == Ledger.ItemStatus.Done) == true)
+                var done = page.Execution?.Items.Where(i => i.Status == Ledger.ItemStatus.Done).Select(i => i.Operation.Path).ToHashSet(StringComparer.Ordinal) ?? [];
+                if (done.Count > 0)
                 {
-                    findings.RemoveDuplicates(removal.Group);
+                    removal.Removed(done);
                 }
 
                 duplicates.Refresh();

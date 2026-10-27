@@ -46,6 +46,11 @@ public class VersionCandidatesTests
         Assert.True(group.SameFolder);
         Assert.Equal(ConfidenceLevel.Medium, group.Confidence.Level);
         Assert.Equal(3, group.Evidence.Count);
+
+        var left = group.Without([v2])!;
+        Assert.Equal(new[] { final.FullPath, v1.FullPath }, left.Files.Select(f => f.FullPath));
+        Assert.Equal("report", left.Stem);
+        Assert.Null(left.Without([final]));
     }
 
     [Fact]

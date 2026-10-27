@@ -37,6 +37,15 @@ public sealed record VersionCandidateGroup
 
     public IReadOnlyList<Evidence> Evidence =>
         Files.Select(f => (Evidence)new PathEvidence(f.FullPath, $"{f.Name} · {f.Size.Bytes} bytes · modified {f.LastWriteTimeUtc:u}")).ToArray();
+
+    /// <summary>The group once <paramref name="removed"/> are gone; null when fewer than two files are left to compare.</summary>
+    public VersionCandidateGroup? Without(IEnumerable<FileEntry> removed)
+    {
+        ArgumentNullException.ThrowIfNull(removed);
+        var gone = removed.Select(f => f.FullPath).ToHashSet(StringComparer.Ordinal);
+        var left = Files.Where(f => !gone.Contains(f.FullPath)).ToArray();
+        return left.Length >= 2 ? new VersionCandidateGroup(Stem, Extension, left) : null;
+    }
 }
 
 /// <summary>Groups files whose names differ only by version, copy or date markers.</summary>

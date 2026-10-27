@@ -287,66 +287,122 @@
             </ScrollViewer>
         </DataTemplate>
         <DataTemplate DataType="{x:Type vm:DuplicatesViewModel}">
-            <ScrollViewer VerticalScrollBarVisibility="Auto">
-                <StackPanel Margin="24" MaxWidth="900" HorizontalAlignment="Left">
-                    <TextBlock FontSize="24" Text="Duplicates" />
-                    <TextBlock TextWrapping="Wrap" Margin="0,4,0,16" Text="{Binding Summary}" />
-                    <ItemsControl ItemsSource="{Binding Groups}">
-                        <ItemsControl.ItemTemplate>
-                            <DataTemplate DataType="{x:Type vm:DuplicateGroupViewModel}">
-                                <Border Margin="0,0,0,12" Padding="16" BorderThickness="1" CornerRadius="6"
-                                        BorderBrush="{DynamicResource {x:Static SystemColors.ActiveBorderBrushKey}}">
-                                    <StackPanel>
-                                        <TextBlock FontSize="16" FontWeight="SemiBold" TextWrapping="Wrap" Text="{Binding Title}" />
-                                        <TextBlock TextWrapping="Wrap" Margin="0,4,0,8" Text="{Binding Summary}" />
-                                        <ItemsControl ItemsSource="{Binding Copies}">
-                                            <ItemsControl.ItemTemplate>
-                                                <DataTemplate DataType="{x:Type vm:DuplicateCopyViewModel}">
-                                                    <Grid Margin="0,0,0,8">
-                                                        <Grid.ColumnDefinitions>
-                                                            <ColumnDefinition Width="Auto" />
-                                                            <ColumnDefinition Width="*" />
-                                                            <ColumnDefinition Width="Auto" />
-                                                        </Grid.ColumnDefinitions>
-                                                        <CheckBox Grid.Column="0" VerticalAlignment="Top" Margin="0,2,8,0" IsChecked="{Binding IsSelected}"
-                                                                  ToolTip="Remove this copy" />
-                                                        <StackPanel Grid.Column="1">
-                                                            <TextBlock TextWrapping="Wrap" FontFamily="Consolas" FontSize="12" Text="{Binding Path}" />
-                                                            <TextBlock TextWrapping="Wrap" FontStyle="Italic" Text="{Binding HardLinks}" />
-                                                            <TextBlock TextWrapping="Wrap" Foreground="DarkRed" Text="{Binding Blocked}" />
-                                                        </StackPanel>
-                                                        <StackPanel Grid.Column="2" Margin="12,0,0,0" MinWidth="180">
-                                                            <TextBlock Text="{Binding Size}" />
-                                                            <TextBlock Text="{Binding Modified}" />
-                                                            <TextBlock Text="{Binding Created}" />
-                                                        </StackPanel>
-                                                    </Grid>
-                                                </DataTemplate>
-                                            </ItemsControl.ItemTemplate>
-                                        </ItemsControl>
-                                        <StackPanel Orientation="Horizontal" Margin="0,4,0,0">
-                                            <Button Padding="12,4" FontWeight="SemiBold" Content="{Binding RemoveText}"
-                                                    ToolTip="Shows exactly what would change before anything is done."
-                                                    Command="{Binding DataContext.RemoveCommand, RelativeSource={RelativeSource AncestorType=ItemsControl, AncestorLevel=1}}"
-                                                    CommandParameter="{Binding}" />
-                                            <Button Padding="12,4" Margin="8,0,0,0" Content="Evidence" Command="{Binding ToggleEvidenceCommand}" />
-                                        </StackPanel>
-                                        <TextBlock TextWrapping="Wrap" Margin="0,6,0,0" Foreground="DarkRed" Text="{Binding Message}" />
-                                        <ItemsControl Margin="0,8,0,0" ItemsSource="{Binding Evidence}"
-                                                      Visibility="{Binding ShowEvidence, Converter={StaticResource Visible}}">
-                                            <ItemsControl.ItemTemplate>
-                                                <DataTemplate>
-                                                    <TextBlock TextWrapping="Wrap" FontFamily="Consolas" FontSize="12" Margin="0,0,0,2" Text="{Binding}" />
-                                                </DataTemplate>
-                                            </ItemsControl.ItemTemplate>
-                                        </ItemsControl>
-                                    </StackPanel>
-                                </Border>
-                            </DataTemplate>
-                        </ItemsControl.ItemTemplate>
-                    </ItemsControl>
-                </StackPanel>
-            </ScrollViewer>
+            <DockPanel Margin="24,24,24,0">
+                <TextBlock DockPanel.Dock="Top" FontSize="24" Margin="0,0,0,8" Text="Duplicates" />
+                <TabControl>
+                    <TabItem Header="Identical copies">
+                        <ScrollViewer VerticalScrollBarVisibility="Auto">
+                            <StackPanel Margin="12" MaxWidth="900" HorizontalAlignment="Left">
+                                <TextBlock TextWrapping="Wrap" Margin="0,0,0,16" Text="{Binding Summary}" />
+                                <ItemsControl ItemsSource="{Binding Groups}">
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate DataType="{x:Type vm:DuplicateGroupViewModel}">
+                                            <Border Margin="0,0,0,12" Padding="16" BorderThickness="1" CornerRadius="6"
+                                                    BorderBrush="{DynamicResource {x:Static SystemColors.ActiveBorderBrushKey}}">
+                                                <StackPanel>
+                                                    <TextBlock FontSize="16" FontWeight="SemiBold" TextWrapping="Wrap" Text="{Binding Title}" />
+                                                    <TextBlock TextWrapping="Wrap" Margin="0,4,0,8" Text="{Binding Summary}" />
+                                                    <ItemsControl ItemsSource="{Binding Copies}">
+                                                        <ItemsControl.ItemTemplate>
+                                                            <DataTemplate DataType="{x:Type vm:DuplicateCopyViewModel}">
+                                                                <Grid Margin="0,0,0,8">
+                                                                    <Grid.ColumnDefinitions>
+                                                                        <ColumnDefinition Width="Auto" />
+                                                                        <ColumnDefinition Width="*" />
+                                                                        <ColumnDefinition Width="Auto" />
+                                                                    </Grid.ColumnDefinitions>
+                                                                    <CheckBox Grid.Column="0" VerticalAlignment="Top" Margin="0,2,8,0" IsChecked="{Binding IsSelected}"
+                                                                              ToolTip="Remove this copy" />
+                                                                    <StackPanel Grid.Column="1">
+                                                                        <TextBlock TextWrapping="Wrap" FontFamily="Consolas" FontSize="12" Text="{Binding Path}" />
+                                                                        <TextBlock TextWrapping="Wrap" FontStyle="Italic" Text="{Binding HardLinks}" />
+                                                                        <TextBlock TextWrapping="Wrap" Foreground="DarkRed" Text="{Binding Blocked}" />
+                                                                    </StackPanel>
+                                                                    <StackPanel Grid.Column="2" Margin="12,0,0,0" MinWidth="180">
+                                                                        <TextBlock Text="{Binding Size}" />
+                                                                        <TextBlock Text="{Binding Modified}" />
+                                                                        <TextBlock Text="{Binding Created}" />
+                                                                    </StackPanel>
+                                                                </Grid>
+                                                            </DataTemplate>
+                                                        </ItemsControl.ItemTemplate>
+                                                    </ItemsControl>
+                                                    <StackPanel Orientation="Horizontal" Margin="0,4,0,0">
+                                                        <Button Padding="12,4" FontWeight="SemiBold" Content="{Binding RemoveText}"
+                                                                ToolTip="Shows exactly what would change before anything is done."
+                                                                Command="{Binding DataContext.RemoveCommand, RelativeSource={RelativeSource AncestorType=ItemsControl, AncestorLevel=1}}"
+                                                                CommandParameter="{Binding}" />
+                                                        <Button Padding="12,4" Margin="8,0,0,0" Content="Evidence" Command="{Binding ToggleEvidenceCommand}" />
+                                                    </StackPanel>
+                                                    <TextBlock TextWrapping="Wrap" Margin="0,6,0,0" Foreground="DarkRed" Text="{Binding Message}" />
+                                                    <ItemsControl Margin="0,8,0,0" ItemsSource="{Binding Evidence}"
+                                                                  Visibility="{Binding ShowEvidence, Converter={StaticResource Visible}}">
+                                                        <ItemsControl.ItemTemplate>
+                                                            <DataTemplate>
+                                                                <TextBlock TextWrapping="Wrap" FontFamily="Consolas" FontSize="12" Margin="0,0,0,2" Text="{Binding}" />
+                                                            </DataTemplate>
+                                                        </ItemsControl.ItemTemplate>
+                                                    </ItemsControl>
+                                                </StackPanel>
+                                            </Border>
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                            </StackPanel>
+                        </ScrollViewer>
+                    </TabItem>
+                    <TabItem Header="{Binding VersionsTab}">
+                        <ScrollViewer VerticalScrollBarVisibility="Auto">
+                            <StackPanel Margin="12" MaxWidth="900" HorizontalAlignment="Left">
+                                <TextBlock TextWrapping="Wrap" FontStyle="Italic" Margin="0,0,0,8" Text="{Binding VersionsExplanation}" />
+                                <TextBlock TextWrapping="Wrap" Margin="0,0,0,16" Text="{Binding VersionsSummary}" />
+                                <ItemsControl ItemsSource="{Binding Versions}">
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate DataType="{x:Type vm:VersionGroupViewModel}">
+                                            <Border Margin="0,0,0,12" Padding="16" BorderThickness="1" CornerRadius="6"
+                                                    BorderBrush="{DynamicResource {x:Static SystemColors.ActiveBorderBrushKey}}">
+                                                <StackPanel>
+                                                    <TextBlock FontSize="16" FontWeight="SemiBold" TextWrapping="Wrap" Text="{Binding Title}" />
+                                                    <TextBlock TextWrapping="Wrap" Margin="0,4,0,8" Opacity="0.85" Text="{Binding Confidence}" />
+                                                    <ItemsControl ItemsSource="{Binding Files}">
+                                                        <ItemsControl.ItemTemplate>
+                                                            <DataTemplate DataType="{x:Type vm:VersionFileViewModel}">
+                                                                <Grid Margin="0,0,0,8">
+                                                                    <Grid.ColumnDefinitions>
+                                                                        <ColumnDefinition Width="Auto" />
+                                                                        <ColumnDefinition Width="*" />
+                                                                        <ColumnDefinition Width="Auto" />
+                                                                    </Grid.ColumnDefinitions>
+                                                                    <CheckBox Grid.Column="0" VerticalAlignment="Top" Margin="0,2,8,0" IsChecked="{Binding IsSelected}"
+                                                                              ToolTip="Remove this file" />
+                                                                    <StackPanel Grid.Column="1">
+                                                                        <TextBlock TextWrapping="Wrap" FontFamily="Consolas" FontSize="12" Text="{Binding Path}" />
+                                                                        <TextBlock TextWrapping="Wrap" Foreground="DarkRed" Text="{Binding Blocked}" />
+                                                                    </StackPanel>
+                                                                    <StackPanel Grid.Column="2" Margin="12,0,0,0" MinWidth="200">
+                                                                        <TextBlock Text="{Binding Size}" />
+                                                                        <TextBlock Text="{Binding Modified}" />
+                                                                        <TextBlock Text="{Binding Created}" />
+                                                                    </StackPanel>
+                                                                </Grid>
+                                                            </DataTemplate>
+                                                        </ItemsControl.ItemTemplate>
+                                                    </ItemsControl>
+                                                    <Button HorizontalAlignment="Left" Padding="12,4" Margin="0,4,0,0" Content="{Binding RemoveText}"
+                                                            ToolTip="Shows exactly what would change before anything is done."
+                                                            Command="{Binding DataContext.RemoveVersionsCommand, RelativeSource={RelativeSource AncestorType=ItemsControl, AncestorLevel=1}}"
+                                                            CommandParameter="{Binding}" />
+                                                    <TextBlock TextWrapping="Wrap" Margin="0,6,0,0" Foreground="DarkRed" Text="{Binding Message}" />
+                                                </StackPanel>
+                                            </Border>
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                            </StackPanel>
+                        </ScrollViewer>
+                    </TabItem>
+                </TabControl>
+            </DockPanel>
         </DataTemplate>
         <DataTemplate DataType="{x:Type vm:ActivityViewModel}">
             <ScrollViewer VerticalScrollBarVisibility="Auto">

@@ -37,13 +37,14 @@ public sealed record DiscoveryProgress(DiscoveryStep Step, ScanProgress? Scan = 
 
 /// <summary>
 /// The result of a full discovery: the recommendations, the measured storage they were drawn from, the scan's counts,
-/// and the verified duplicate groups the Duplicates page shows (T-40).
+/// and the verified duplicate groups and possible versions the Duplicates page shows (T-40, T-41).
 /// </summary>
 public sealed record FullDiscovery(
     RecommendationSet Recommendations,
     StorageSummary Storage,
     ScanStatistics? Statistics = null,
-    IReadOnlyList<VerifiedDuplicateGroup>? Duplicates = null);
+    IReadOnlyList<VerifiedDuplicateGroup>? Duplicates = null,
+    IReadOnlyList<VersionCandidateGroup>? Versions = null);
 
 /// <summary>
 /// Discovery limited to the user's own folder (D-018). Duplicates are only looked for among files of at least
@@ -90,8 +91,9 @@ public sealed class Discovery(
                 findings.AddRange(duplicates.Groups.Select(g => FindingSources.FromDuplicates(g, protection)));
 
                 report.Step(DiscoveryStep.Suggestions);
-                findings.AddRange(VersionCandidates.Find(files).Select(FindingSources.FromVersionCandidates));
-                return new FullDiscovery(Builder().Build(findings), summary, scan.Statistics, duplicates.Groups);
+                var versions = VersionCandidates.Find(files);
+                findings.AddRange(versions.Select(FindingSources.FromVersionCandidates));
+                return new FullDiscovery(Builder().Build(findings), summary, scan.Statistics, duplicates.Groups, versions);
             },
             cancellationToken).ConfigureAwait(false);
     }
@@ -147,6 +149,9 @@ public sealed class FindingsStore
     /// <summary>The verified duplicate groups from the latest full discovery; in memory only, so null after a restart.</summary>
     public IReadOnlyList<VerifiedDuplicateGroup>? Duplicates { get; private set; }
 
+    /// <summary>The possible versions from the latest full discovery; in memory only, so null after a restart.</summary>
+    public IReadOnlyList<VersionCandidateGroup>? Versions { get; private set; }
+
     public void Publish(RecommendationSet set)
     {
         Latest = set ?? throw new ArgumentNullException(nameof(set));
@@ -158,6 +163,7 @@ public sealed class FindingsStore
         ArgumentNullException.ThrowIfNull(discovery);
         Storage = discovery.Storage;
         Duplicates = discovery.Duplicates ?? [];
+        Versions = discovery.Versions ?? [];
         Publish(discovery.Recommendations);
     }
 
@@ -182,13 +188,30 @@ public sealed class FindingsStore
     {
         ArgumentNullException.ThrowIfNull(group);
         Duplicates = Duplicates?.Where(g => g != group).ToArray();
-        var paths = group.Files.Select(f => f.File.FullPath).ToHashSet(StringComparer.OrdinalIgnoreCase);
+        DropSuggestions(FindingCategory.VerifiedDuplicate, group.Files.Select(f => f.File.FullPath));
+    }
+
+    /// <summary>
+    /// Takes files the user removed out of their version group (dropping the group when fewer than two are left), and
+    /// drops the overview's review item for that group, which no longer describes what is on disk.
+    /// </summary>
+    public void RemoveVersions(VersionCandidateGroup group, IReadOnlyCollection<FileEntry> removed)
+    {
+        ArgumentNullException.ThrowIfNull(group);
+        ArgumentNullException.ThrowIfNull(removed);
+        Versions = Versions?.Select(g => g == group ? g.Without(removed) : g).OfType<VersionCandidateGroup>().ToArray();
+        DropSuggestions(FindingCategory.VersionCandidate, removed.Select(f => f.FullPath));
+    }
+
+    private void DropSuggestions(FindingCategory category, IEnumerable<string> paths)
+    {
+        var set = paths.ToHashSet(StringComparer.OrdinalIgnoreCase);
         if (Latest is { } latest)
         {
             Publish(latest with
             {
                 Recommendations = latest.Recommendations
-                    .Where(r => r.Category != FindingCategory.VerifiedDuplicate || !r.Evidence.OfType<FileContentEvidence>().Any(e => paths.Contains(e.Path)))
+                    .Where(r => r.Category != category || !r.Evidence.Any(e => e is FileContentEvidence f && set.Contains(f.Path) || e is PathEvidence p && set.Contains(p.Path)))
                     .ToArray(),
             });
         }
