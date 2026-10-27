@@ -197,7 +197,7 @@ Running processes, open handles, services and scheduled tasks are checked by the
 ## D-016 Quarantine location
 **Accepted** (2026-10-21, user decision; T-21, T-24)
 
-- Quarantine lives in one folder: `%LocalAppData%\PCHealth\Quarantine`.
+- Quarantine lives in one folder: `%LocalAppData%\PCHealthData\Quarantine` (`%LocalAppData%\PCHealth\Quarantine` until D-021).
 - Items go in only by a same-volume rename by handle. An item on another volume is never copied into quarantine. Its finding offers the Recycle Bin instead, or nothing if the Recycle Bin is not suitable.
 - Per-drive quarantine folders were considered and rejected, because they would leave a hidden folder on every drive.
 
@@ -228,3 +228,16 @@ Running processes, open handles, services and scheduled tasks are checked by the
 - Recommendations are rebuilt when the period or the exclusions change. If a quarantine recommendation shows a different period from the current one, the gateway refuses it, so the user never approves terms that would not apply.
 - Clearing local data erases these: the ledger history (the file is compacted, not just emptied), exclusions, declined recommendations, settings and the first-run marker. The Pause state is kept.
 - Clearing changes only the product's own files, so it does not go through the execution gateway. It is refused in two cases: while quarantine holds any item, or while a change is unfinished. Either way it would remove a recovery path the user may still be counting on. Items in the Recycle Bin stay restorable from the Recycle Bin itself, and the user is told so before clearing.
+
+## D-021 The app's data lives apart from the install folder
+**Accepted** (2026-10-27, T-64)
+
+- **Why:** version 0.1.0 kept its data in `%LocalAppData%\PCHealth`, which is also where the per-user installer puts the app. Uninstalling deletes that folder: the history, and whatever is still in quarantine. That would break the recovery promise (§3.6).
+- **Where now:** `%LocalAppData%\PCHealthData`, wherever the app is installed (D-022). It stays on the system volume, so quarantine moves are still same-volume renames (D-016).
+- **Migration:** at every start, before anything opens the data, the app moves what is left in the old folder:
+  - the ledger and its log files;
+  - settings, exclusions, declines, the Pause state and the first-run marker;
+  - each quarantine slot.
+
+  Then the ledger's recovery locations are pointed at the new quarantine folder. Each step is a rename and is skipped once done, so an interrupted move finishes at the next start. Nothing already in the new folder is overwritten. If the move fails, the app shows why and stops, rather than starting with an empty history.
+- **Protection:** both folders are protected locations (`AppData`), so no finding ever suggests changing the app's own data.

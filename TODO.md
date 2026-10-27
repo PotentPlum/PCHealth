@@ -50,6 +50,44 @@ Done when:
 - v0.1.0 is installed on the second PC from `PCHealth-win-Setup.exe` and the app starts.
 - The user asks for v0.1.1, it is tagged from a green `main`, and Updates → "Check for updates" → "Install and restart" on the second PC brings it to v0.1.1.
 
+### Follow-ups from using v0.1.0
+
+### T-64 App data apart from the install folder · `doing (cloud, 2026-10-27)` · W · deps: —
+Refs: §3.6, §6.4 · D-016 · area: src/PCHealth.App
+Done when:
+- Data lives in `%LocalAppData%\PCHealthData`.
+- The 0.1.0 folder's data and quarantine are migrated, and the ledger follows them.
+- Both folders are protected. Recorded as D-021.
+
+### T-65 Install into Program Files · `doing (cloud, 2026-10-27)` · W · deps: T-64
+Refs: D-009, D-010 · area: .github/workflows
+Done when:
+- Releases include a per-machine MSI that installs into Program Files, with updates still working (UAC prompt).
+- CI's packaging check builds it. Recorded as D-022.
+
+### T-66 Scan progress · `doing (cloud, 2026-10-27)` · W · deps: —
+Refs: §3.5, §9 "Responsiveness" · rule 9 · area: src/PCHealth.App, src/PCHealth.Duplicates
+Done when:
+- Discovery shows its steps, counts, elapsed time and current folder.
+- After a first scan, it shows an estimated percentage and time left, labelled as an estimate.
+- Duplicate verification shows a measured percentage and time left.
+
+### T-67 Clean-up buttons · `doing (cloud, 2026-10-27)` · W · deps: —
+Refs: §3.4, §7 · area: src/PCHealth.App
+Done when:
+- Each actionable suggestion has a "Clean up…" button.
+- "Clean up all suggested" shows one combined preview and takes one approval. Each item runs as its own gateway transaction.
+- Review-only items are listed as needing a choice.
+
+### T-68 App icon · `doing (cloud, 2026-10-27)` · W · deps: —
+Done when: the exe, window, taskbar and installers use the app's own icon.
+
+### T-69 Benchmark from the app · `doing (cloud, 2026-10-27)` · W · deps: T-37a
+Refs: §6.1, §9 · docs/benchmarks.md
+Done when:
+- A button runs the benchmark and saves the report under Documents.
+- The page shows the report's path, with buttons to open the folder and copy the path.
+
 ---
 
 ## Phase 2: Organization and controlled maintenance (spec §8)

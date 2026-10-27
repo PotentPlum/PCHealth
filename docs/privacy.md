@@ -6,7 +6,7 @@ T-36 checks the network behavior the app actually shows against what it tells th
 
 - First run: "Nothing leaves this PC. Checking for updates contacts GitHub only when you ask." (D-018)
 - Updates page (D-010): checking reads the GitHub release list and installing downloads from GitHub. Nothing about the user's files is sent, GitHub sees the IP address, and the app never checks or downloads on its own.
-- Settings page: lists everything the app stores, all of it in `%LocalAppData%\PCHealth`. Folder measurements are kept in memory only.
+- Settings page: lists everything the app stores, all of it in `%LocalAppData%\PCHealthData`. Folder measurements are kept in memory only.
 
 ## How it is checked
 

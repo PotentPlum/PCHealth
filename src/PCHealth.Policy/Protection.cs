@@ -10,6 +10,9 @@ public enum ProtectionKind
 
     /// <summary>The root of a drive.</summary>
     VolumeRoot,
+
+    /// <summary>This app's own history, settings and quarantine (D-021).</summary>
+    AppData,
 }
 
 /// <summary>A folder (and everything below it) that is protected by default, with the reason shown to the user.</summary>
