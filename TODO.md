@@ -129,12 +129,8 @@ Done when:
 
 ### Slice 4: More application caches
 
-### T-46 Catalog: apps that must be closed first · `doing (cloud, 2026-10-27)` · P · deps: —
-Refs: §5.1 "Application residue and cache cleanup" · D-015 · area: src/PCHealth.Policy/Catalog
-Done when:
-- Catalog rules can name processes that must not be running, for example `firefox`.
-- Recommendations for those rules say "Close X first", and the gateway refuses while a named process runs. The check goes through `IPlatformOperations`, so it can be faked in portable tests.
-- The catalog schema version goes up, and older catalog files are refused.
+### T-46 Catalog: apps that must be closed first · `done` · P · deps: —
+Result: Cache rules can list `closeFirst` apps (bare process name and display name); the Chrome and Edge caches name their browsers. Catalog schema version 2; `CacheCatalog.Load` refuses other versions and invalid rules. Recommendations and both previews say "Close X first.", and the gateway refuses the request while a named app runs (`IPlatformOperations.RunningProcesses`), or when it can't check. D-025; 4 new tests.
 
 ### T-47 Catalog: more caches · `todo` · W · deps: T-46
 Refs: §5.1 · area: src/PCHealth.Policy/Catalog/known-caches.json
