@@ -23,6 +23,7 @@ public class DuplicateVerifierTests
         Assert.Equal(content.Length, group.FileSize.Bytes);
         Assert.All(group.Files, f => Assert.Equal(expected, f.ContentHash));
         Assert.Equal(ConfidenceLevel.Verified, group.Confidence.Level);
+        Assert.StartsWith("SHA-256/head+tail(", group.PartialDigest);
     }
 
     [Fact]

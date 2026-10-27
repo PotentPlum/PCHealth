@@ -116,6 +116,6 @@ public sealed class RecursiveScanner : IInventoryScanner
     {
         // A file symlink's own size is not the bytes it points at; reading the target's size would follow the link.
         var size = file.Attributes.HasFlag(FileAttributes.ReparsePoint) ? MeasuredSize.Zero : new MeasuredSize(file.Length);
-        return new FileEntry(file.FullName, size, file.Attributes, file.LastWriteTimeUtc);
+        return new FileEntry(file.FullName, size, file.Attributes, file.LastWriteTimeUtc, file.CreationTimeUtc);
     }
 }

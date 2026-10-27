@@ -76,7 +76,7 @@ public sealed class ActivityTests : IDisposable
 
         Assert.Equal("Moved 1 item to the Recycle Bin", entry.WhatChanged);
         Assert.False(entry.CanUndo);
-        Assert.StartsWith("Open the Recycle Bin and choose Restore.", entry.UndoTerms);
+        Assert.StartsWith("Nothing from this change is left in the Recycle Bin", entry.UndoTerms);
         Assert.Null(entry.Deadline);
     }
 

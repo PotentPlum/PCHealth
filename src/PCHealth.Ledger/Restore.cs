@@ -28,6 +28,20 @@ public sealed class PlainFileMover : IFileMover
     }
 }
 
+/// <summary>
+/// The platform's Recycle Bin, for putting back items this app moved there (T-40). Windows implements it on the
+/// user's own <c>$Recycle.Bin</c> folder; tests use a fixture folder.
+/// </summary>
+public interface IRecycleBin
+{
+    /// <summary>True while <paramref name="location"/> is still in the Recycle Bin as the item deleted from <paramref name="originalPath"/>.</summary>
+    bool Holds(string location, string originalPath);
+
+    /// <summary>Moves the item back to <paramref name="originalPath"/>, never overwriting, and removes its Recycle Bin record.</summary>
+    /// <exception cref="IOException">It could not be put back; nothing was moved.</exception>
+    void Restore(string location, string originalPath, bool isDirectory);
+}
+
 /// <summary>Whether the product can undo a transaction itself, and the honest limits either way (spec §3.6, §6.4).</summary>
 public sealed record RestoreSupport(bool CanRestore, string Limits);
 
@@ -37,11 +51,12 @@ public sealed record RestoreResult(LedgerTransaction? Restore, RestoreSupport Su
 }
 
 /// <summary>
-/// Undoes transactions by operation type (spec §6.4). Only quarantine moves are restored by the product: each item
-/// goes back to its original path unless something now exists there, in which case it stays in quarantine. Every
-/// restore is itself a ledger transaction that follows the pending, applied, verified/failed states.
+/// Undoes transactions by operation type (spec §6.4). Quarantine moves are restored by the product, and so are Recycle
+/// Bin moves while the items are still in the Recycle Bin and a Recycle Bin is given. Each item goes back to its
+/// original path unless something now exists there, in which case it stays where it is. Every restore is itself a
+/// ledger transaction that follows the pending, applied, verified/failed states.
 /// </summary>
-public sealed class Restorer(TransactionLedger ledger, QuarantineStore quarantine, IFileMover? mover = null, TimeProvider? clock = null)
+public sealed class Restorer(TransactionLedger ledger, QuarantineStore quarantine, IFileMover? mover = null, TimeProvider? clock = null, IRecycleBin? recycleBin = null)
 {
     private readonly IFileMover mover = mover ?? new PlainFileMover();
     private readonly TimeProvider clock = clock ?? TimeProvider.System;
@@ -51,7 +66,7 @@ public sealed class Restorer(TransactionLedger ledger, QuarantineStore quarantin
         ArgumentNullException.ThrowIfNull(transaction);
         switch (transaction.Operation)
         {
-            case LedgerOperation.MoveToRecycleBin:
+            case LedgerOperation.MoveToRecycleBin when recycleBin is null:
                 return new(false, "Open the Recycle Bin and choose Restore. Items stay there until the Recycle Bin is emptied; this app cannot restore them for you.");
             case LedgerOperation.PurgeQuarantine:
                 return new(false, "These items were deleted permanently when their retention period ended. They cannot be restored.");
@@ -62,6 +77,14 @@ public sealed class Restorer(TransactionLedger ledger, QuarantineStore quarantin
         if (transaction.State == TransactionState.Pending)
         {
             return new(false, "This change has not finished. It is resolved when the app next starts.");
+        }
+
+        if (transaction.Operation == LedgerOperation.MoveToRecycleBin)
+        {
+            var recycled = RecycledEntries(transaction).Count;
+            return recycled == 0
+                ? new(false, "Nothing from this change is left in the Recycle Bin: it was emptied, or the items were restored or deleted there.")
+                : new(true, $"{recycled} items can be put back where they were while they are still in the Recycle Bin. An item is not restored if something now exists at its original path.");
         }
 
         var stored = StoredEntries(transaction).Count;
@@ -86,15 +109,16 @@ public sealed class Restorer(TransactionLedger ledger, QuarantineStore quarantin
             return new RestoreResult(null, support);
         }
 
-        var entries = StoredEntries(original);
+        var fromRecycleBin = original.Operation == LedgerOperation.MoveToRecycleBin;
+        var entries = fromRecycleBin ? RecycledEntries(original) : StoredEntries(original).Select(e => new Source(e.OriginalPath, e.IsDirectory, e.Before, e.ContentPath, e)).ToArray();
         var record = new LedgerTransaction(
             Guid.NewGuid(),
             clock.GetUtcNow(),
             LedgerOperation.Restore,
             TransactionState.Pending,
             $"You asked to undo the change made on {original.CreatedUtc:u}.",
-            ["the item is still in quarantine", "nothing exists at the original path"],
-            entries.Select(e => new LedgerItem(e.OriginalPath, e.IsDirectory, e.Before, RecoveryLocation: e.ContentPath)).ToArray(),
+            [fromRecycleBin ? "the item is still in the Recycle Bin" : "the item is still in quarantine", "nothing exists at the original path"],
+            entries.Select(e => new LedgerItem(e.OriginalPath, e.IsDirectory, e.Before, RecoveryLocation: e.Location)).ToArray(),
             expectedBytes: null,
             observedBytes: null,
             RecoveryMethod.None,
@@ -104,7 +128,7 @@ public sealed class Restorer(TransactionLedger ledger, QuarantineStore quarantin
         };
         ledger.Save(record);
 
-        var items = record.Items.Zip(entries, (item, entry) => RestoreOne(item, entry)).ToArray();
+        var items = record.Items.Zip(entries, (item, entry) => fromRecycleBin ? RestoreRecycled(item, entry) : RestoreOne(item, entry)).ToArray();
         record = record with { State = TransactionState.Applied, Items = items };
         ledger.Save(record);
         return new RestoreResult(Complete(record), support);
@@ -119,14 +143,15 @@ public sealed class Restorer(TransactionLedger ledger, QuarantineStore quarantin
             State = done == record.Items.Count ? TransactionState.Verified : TransactionState.Failed,
             Outcome = done == record.Items.Count
                 ? $"{done} items are back at their original paths."
-                : $"{done} of {record.Items.Count} items are back; the others stay in quarantine.",
+                : $"{done} of {record.Items.Count} items are back; the others stay {(record.Checks.Any(c => c.Contains("Recycle Bin", StringComparison.Ordinal)) ? "in the Recycle Bin" : "in quarantine")}.",
         };
         ledger.Save(finished);
         return finished;
     }
 
-    private LedgerItem RestoreOne(LedgerItem item, QuarantineEntry entry)
+    private LedgerItem RestoreOne(LedgerItem item, Source source)
     {
+        var entry = source.Slot!;
         if (Exists(entry.OriginalPath))
         {
             return item with { Status = ItemStatus.Skipped, Error = "Something now exists at the original path, so the item stays in quarantine." };
@@ -145,6 +170,34 @@ public sealed class Restorer(TransactionLedger ledger, QuarantineStore quarantin
             return item with { Status = ItemStatus.Failed, Error = ex.Message };
         }
     }
+
+    private LedgerItem RestoreRecycled(LedgerItem item, Source entry)
+    {
+        if (Exists(entry.OriginalPath))
+        {
+            return item with { Status = ItemStatus.Skipped, Error = "Something now exists at the original path, so the item stays in the Recycle Bin." };
+        }
+
+        try
+        {
+            Directory.CreateDirectory(Path.GetDirectoryName(entry.OriginalPath)!);
+            recycleBin!.Restore(entry.Location, entry.OriginalPath, entry.IsDirectory);
+            return item with { Status = ItemStatus.Done, RecoveryLocation = null, After = Observe(entry.OriginalPath, entry.IsDirectory) };
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or InvalidOperationException)
+        {
+            return item with { Status = ItemStatus.Failed, Error = ex.Message };
+        }
+    }
+
+    /// <summary>The items of a Recycle Bin move that are still there.</summary>
+    private IReadOnlyList<Source> RecycledEntries(LedgerTransaction transaction) =>
+        recycleBin is null
+            ? []
+            : transaction.Items
+                .Where(i => i.Status == ItemStatus.Done && i.RecoveryLocation is { } location && recycleBin.Holds(location, i.OriginalPath))
+                .Select(i => new Source(i.OriginalPath, i.IsDirectory, i.Before, i.RecoveryLocation!, null))
+                .ToArray();
 
     private IReadOnlyList<QuarantineEntry> StoredEntries(LedgerTransaction transaction) =>
         quarantine.List().Entries
@@ -188,4 +241,7 @@ public sealed class Restorer(TransactionLedger ledger, QuarantineStore quarantin
         var info = new FileInfo(path);
         return info.Exists ? new ItemMetadata(info.Length, info.LastWriteTimeUtc, info.CreationTimeUtc, info.Attributes) : null;
     }
+
+    /// <summary>Where an item to restore is now: a quarantine slot, or the Recycle Bin when <paramref name="Slot"/> is null.</summary>
+    private sealed record Source(string OriginalPath, bool IsDirectory, ItemMetadata Before, string Location, QuarantineEntry? Slot);
 }

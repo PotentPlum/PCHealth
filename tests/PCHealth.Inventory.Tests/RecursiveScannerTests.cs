@@ -25,6 +25,7 @@ public class RecursiveScannerTests
         Assert.IsType<DirectoryEntry>(Single(root, result, ""));
         Assert.Equal(5, Assert.IsType<FileEntry>(Single(root, result, "a.txt")).Size.Bytes);
         Assert.Equal(3, Assert.IsType<FileEntry>(Single(root, result, "sub/b.bin")).Size.Bytes);
+        Assert.Equal(File.GetCreationTimeUtc(root.Resolve("a.txt")), Assert.IsType<FileEntry>(Single(root, result, "a.txt")).CreationTimeUtc!.Value.UtcDateTime);
     }
 
     [Fact]

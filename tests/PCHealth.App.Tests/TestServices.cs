@@ -9,7 +9,8 @@ namespace PCHealth.App.Tests;
 
 /// <summary>
 /// The app's real composition with only the Windows file layer swapped for plain moves on fixture files: temp paths
-/// may contain 8.3 names, which the handle-based Windows layer rightly refuses to treat as final paths.
+/// may contain 8.3 names, which the handle-based Windows layer rightly refuses to treat as final paths. The Recycle
+/// Bin is a folder in the fixture.
 /// </summary>
 internal static class TestServices
 {
@@ -17,10 +18,14 @@ internal static class TestServices
         AppServices.Build(new AppPaths(root.Resolve("PCHealth")), s =>
         {
             s.AddSingleton<IPathResolver>(new PassThroughResolver());
-            s.AddSingleton<IPlatformOperations>(new PlainPlatform());
+            s.AddSingleton<IPlatformOperations>(new PlainPlatform(root));
             s.AddSingleton(new ProtectionPolicy([]));
             s.AddSingleton(sp => new Restorer(
-                sp.GetRequiredService<TransactionLedger>(), sp.GetRequiredService<QuarantineStore>(), new PlainFileMover(), sp.GetRequiredService<TimeProvider>()));
+                sp.GetRequiredService<TransactionLedger>(),
+                sp.GetRequiredService<QuarantineStore>(),
+                new PlainFileMover(),
+                sp.GetRequiredService<TimeProvider>(),
+                new FixtureRecycleBin()));
         });
 
     internal sealed class PassThroughResolver : IPathResolver
@@ -31,7 +36,14 @@ internal static class TestServices
                 : PathResolution.Rejected(PathRejectionReason.NotFound, "Not found.");
     }
 
-    internal sealed class PlainPlatform : IPlatformOperations
+    internal sealed class FixtureRecycleBin : IRecycleBin
+    {
+        public bool Holds(string location, string originalPath) => System.IO.File.Exists(location) || Directory.Exists(location);
+
+        public void Restore(string location, string originalPath, bool isDirectory) => new PlainFileMover().Move(location, originalPath, isDirectory);
+    }
+
+    internal sealed class PlainPlatform(TempRoot root) : IPlatformOperations
     {
         public ItemState? Inspect(string finalPath)
         {
@@ -45,9 +57,15 @@ internal static class TestServices
 
         public bool SameVolume(string path, string otherPath) => true;
 
-        public string? CannotRecycle(string finalPath, long sizeBytes) => "not used in these tests.";
+        public string? CannotRecycle(string finalPath, long sizeBytes) => null;
 
-        public string MoveToRecycleBin(string finalPath, bool isDirectory) => throw new IOException("Not used in these tests.");
+        public string MoveToRecycleBin(string finalPath, bool isDirectory)
+        {
+            var destination = root.Resolve($"RecycleBin/{Guid.NewGuid():N}");
+            Directory.CreateDirectory(Path.GetDirectoryName(destination)!);
+            new PlainFileMover().Move(finalPath, destination, isDirectory);
+            return destination;
+        }
 
         public void MoveToQuarantine(string finalPath, string destination, bool isDirectory) => System.IO.File.Move(finalPath, destination);
     }

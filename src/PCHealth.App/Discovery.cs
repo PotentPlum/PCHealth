@@ -35,8 +35,15 @@ public enum DiscoveryStep
 /// <summary>Where a full discovery is (T-66): the step, and the counts of the step that has them.</summary>
 public sealed record DiscoveryProgress(DiscoveryStep Step, ScanProgress? Scan = null, HashProgress? Hashing = null);
 
-/// <summary>The result of a full discovery: the recommendations, the measured storage they were drawn from, and the scan's counts.</summary>
-public sealed record FullDiscovery(RecommendationSet Recommendations, StorageSummary Storage, ScanStatistics? Statistics = null);
+/// <summary>
+/// The result of a full discovery: the recommendations, the measured storage they were drawn from, the scan's counts,
+/// and the verified duplicate groups the Duplicates page shows (T-40).
+/// </summary>
+public sealed record FullDiscovery(
+    RecommendationSet Recommendations,
+    StorageSummary Storage,
+    ScanStatistics? Statistics = null,
+    IReadOnlyList<VerifiedDuplicateGroup>? Duplicates = null);
 
 /// <summary>
 /// Discovery limited to the user's own folder (D-018). Duplicates are only looked for among files of at least
@@ -84,7 +91,7 @@ public sealed class Discovery(
 
                 report.Step(DiscoveryStep.Suggestions);
                 findings.AddRange(VersionCandidates.Find(files).Select(FindingSources.FromVersionCandidates));
-                return new FullDiscovery(Builder().Build(findings), summary, scan.Statistics);
+                return new FullDiscovery(Builder().Build(findings), summary, scan.Statistics, duplicates.Groups);
             },
             cancellationToken).ConfigureAwait(false);
     }
@@ -137,6 +144,9 @@ public sealed class FindingsStore
     /// <summary>The measured sizes from the latest full discovery; kept in memory only, so null after a restart.</summary>
     public StorageSummary? Storage { get; private set; }
 
+    /// <summary>The verified duplicate groups from the latest full discovery; in memory only, so null after a restart.</summary>
+    public IReadOnlyList<VerifiedDuplicateGroup>? Duplicates { get; private set; }
+
     public void Publish(RecommendationSet set)
     {
         Latest = set ?? throw new ArgumentNullException(nameof(set));
@@ -147,6 +157,7 @@ public sealed class FindingsStore
     {
         ArgumentNullException.ThrowIfNull(discovery);
         Storage = discovery.Storage;
+        Duplicates = discovery.Duplicates ?? [];
         Publish(discovery.Recommendations);
     }
 
@@ -160,6 +171,30 @@ public sealed class FindingsStore
         if (Latest is { } latest)
         {
             Publish(builder.Build(latest.Recommendations.Select(r => r.Finding).Concat(latest.Excluded.Select(e => e.Finding))));
+        }
+    }
+
+    /// <summary>
+    /// Drops a duplicate group the user acted on, and the overview's suggestion for the same files: both describe
+    /// files that may no longer be there. The next discovery measures the new state.
+    /// </summary>
+    public void RemoveDuplicates(VerifiedDuplicateGroup group)
+    {
+        ArgumentNullException.ThrowIfNull(group);
+        Duplicates = Duplicates?.Where(g => g != group).ToArray();
+        var paths = group.Files.Select(f => f.File.FullPath).ToHashSet(StringComparer.OrdinalIgnoreCase);
+        if (Latest is { } latest)
+        {
+            Publish(latest with
+            {
+                Recommendations = latest.Recommendations
+                    .Where(r => r.Category != FindingCategory.VerifiedDuplicate || !r.Evidence.OfType<FileContentEvidence>().Any(e => paths.Contains(e.Path)))
+                    .ToArray(),
+            });
+        }
+        else
+        {
+            Updated?.Invoke(this, EventArgs.Empty);
         }
     }
 

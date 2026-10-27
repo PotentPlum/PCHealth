@@ -30,13 +30,17 @@ public abstract record FileSystemEntry
 
 public sealed record FileEntry : FileSystemEntry
 {
-    public FileEntry(string path, MeasuredSize size, FileAttributes attributes, DateTimeOffset lastWriteTimeUtc)
+    /// <param name="creationTimeUtc">When the file was created on this volume, if the inventory read it.</param>
+    public FileEntry(string path, MeasuredSize size, FileAttributes attributes, DateTimeOffset lastWriteTimeUtc, DateTimeOffset? creationTimeUtc = null)
         : base(path, attributes, lastWriteTimeUtc)
     {
         Size = size;
+        CreationTimeUtc = creationTimeUtc;
     }
 
     public MeasuredSize Size { get; }
+
+    public DateTimeOffset? CreationTimeUtc { get; }
 }
 
 public sealed record DirectoryEntry : FileSystemEntry

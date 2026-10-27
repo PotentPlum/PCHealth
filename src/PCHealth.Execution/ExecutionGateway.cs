@@ -50,6 +50,7 @@ public sealed class ExecutionGateway(
         "final path resolved by handle and unchanged",
         "not a link and inside its folder",
         "size and last-write time as when found",
+        "a duplicate's kept copy still exists with the same bytes",
         "not in use by a running process",
         "no administrator rights needed",
         "quarantine on the same volume",
@@ -93,6 +94,12 @@ public sealed class ExecutionGateway(
         if (kinds.Length != 1 || ProposedOperation.RecoveryFor(kinds[0]) != recommendation.Recovery.Method)
         {
             return Refuse(approved, "The approved items do not all provide the recovery the recommendation promises.");
+        }
+
+        var approvedPaths = approved.Select(o => o.Path).ToHashSet(OperatingSystem.IsWindows() ? StringComparer.OrdinalIgnoreCase : StringComparer.Ordinal);
+        if (approved.Any(o => o.KeptCopy is { } kept && approvedPaths.Contains(kept)))
+        {
+            return Refuse(approved, "A copy that is meant to stay was also chosen for removal; at least one copy always stays. Nothing was changed.");
         }
 
         if (kinds[0] == OperationKind.MoveToQuarantine && recommendation.QuarantineRetention != quarantine.Retention)
@@ -327,6 +334,11 @@ public sealed class ExecutionGateway(
             return "It changed since it was found, so it was left alone.";
         }
 
+        if (operation.KeptCopy is { } kept && KeptCopyProblem(kept, resolved.FinalPath!) is { } problem)
+        {
+            return problem;
+        }
+
         if (platform.ProcessesUsing(resolved.FinalPath!) is { Count: > 0 } processes)
         {
             return $"It is in use by {string.Join(", ", processes)}.";
@@ -349,6 +361,26 @@ public sealed class ExecutionGateway(
         }
 
         return null;
+    }
+
+    /// <summary>Why the copy meant to stay does not allow removing this one; null when it is there, unlinked and identical.</summary>
+    private string? KeptCopyProblem(string kept, string finalPath)
+    {
+        var resolved = resolver.Resolve(kept);
+        if (!resolved.IsResolved || resolved.IsDirectory)
+        {
+            return $"The copy that stays, '{kept}', could not be found, so this copy was left alone.";
+        }
+
+        if (resolved.IsReparsePoint
+            || !string.Equals(Path.TrimEndingDirectorySeparator(resolved.FinalPath!), Path.TrimEndingDirectorySeparator(kept), PathComparison))
+        {
+            return $"The copy that stays, '{kept}', is now a link or leads elsewhere, so this copy was left alone.";
+        }
+
+        return ContentComparison.Identical(resolved.FinalPath!, finalPath)
+            ? null
+            : $"The copy that stays, '{kept}', no longer has the same contents, so this copy was left alone.";
     }
 
     /// <summary>The item's metadata as recorded before anything changes; a folder keeps the size measured when it was found.</summary>

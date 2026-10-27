@@ -489,6 +489,87 @@ public class ExecutionGatewayTests
     }
 
     [Fact]
+    public void A_duplicate_is_removed_only_while_its_kept_copy_has_the_same_bytes()
+    {
+        using var fixture = new Fixture();
+        var kept = fixture.File("a/photo.jpg", "same bytes");
+        var gone = fixture.File("b/photo.jpg", "same bytes");
+        var vanished = fixture.File("c/photo.jpg", "same bytes");
+        var altered = fixture.File("d/photo.jpg", "same bytes");
+        var keptGone = fixture.File("e/photo.jpg", "same bytes");
+        var keptAltered = fixture.File("f/photo.jpg", "same bytes");
+        var recommendation = fixture.Duplicates(
+            (gone, kept), (vanished, keptGone), (altered, keptAltered));
+        File.Delete(keptGone);
+        File.WriteAllText(keptAltered, "SAME BYTES");
+
+        var result = fixture.Gateway().Execute(recommendation, recommendation.Operations);
+
+        Assert.Equal(ExecutionStatus.PartiallyCompleted, result.Status);
+        Assert.Equal(ItemStatus.Done, result.Items[0].Status);
+        Assert.False(File.Exists(gone));
+        Assert.Contains("could not be found", result.Items[1].Reason);
+        Assert.Contains("no longer has the same contents", result.Items[2].Reason);
+        Assert.True(File.Exists(vanished) && File.Exists(altered) && File.Exists(kept));
+        Assert.Contains("a duplicate's kept copy still exists with the same bytes", fixture.Ledger.All().Single().Checks);
+    }
+
+    [Fact]
+    public void Removing_the_copy_meant_to_stay_in_the_same_request_is_refused()
+    {
+        using var fixture = new Fixture();
+        var a = fixture.File("a/photo.jpg", "same");
+        var b = fixture.File("b/photo.jpg", "same");
+        var recommendation = fixture.Duplicates((a, b), (b, a));
+
+        var result = fixture.Gateway().Execute(recommendation, recommendation.Operations);
+
+        Assert.Equal(ExecutionStatus.Refused, result.Status);
+        Assert.Contains("at least one copy always stays", result.Summary);
+        Assert.True(File.Exists(a) && File.Exists(b));
+        Assert.Empty(fixture.Ledger.All());
+    }
+
+    [Fact]
+    public void Recycle_bin_moves_can_be_undone_while_the_items_are_still_there()
+    {
+        using var fixture = new Fixture();
+        var a = fixture.File("Temp/a.tmp", "aa");
+        var b = fixture.File("Temp/b.tmp", "bbb");
+        var recommendation = fixture.Recycle(a, b);
+        var moved = fixture.Gateway().Execute(recommendation, recommendation.Operations).TransactionId!.Value;
+        var restorer = new Restorer(fixture.Ledger, fixture.Store, clock: fixture.Clock, recycleBin: new FixtureRecycleBin());
+
+        var support = restorer.SupportFor(fixture.Ledger.Find(moved)!);
+        Assert.True(support.CanRestore);
+        Assert.StartsWith("2 items can be put back where they were while they are still in the Recycle Bin.", support.Limits);
+        Assert.False(new Restorer(fixture.Ledger, fixture.Store).SupportFor(fixture.Ledger.Find(moved)!).CanRestore);
+
+        File.WriteAllText(b, "new file at the old path");
+        var undo = restorer.Restore(moved);
+
+        Assert.Equal(TransactionState.Failed, undo.Restore!.State);
+        Assert.Equal("1 of 2 items are back; the others stay in the Recycle Bin.", undo.Restore.Outcome);
+        Assert.Equal("aa", File.ReadAllText(a));
+        Assert.Equal("new file at the old path", File.ReadAllText(b));
+        Assert.Contains("the item is still in the Recycle Bin", undo.Restore.Checks);
+        Assert.StartsWith("1 items can be put back", restorer.SupportFor(fixture.Ledger.Find(moved)!).Limits);
+
+        File.Delete(b);
+        Assert.Equal(TransactionState.Verified, restorer.Restore(moved).Restore!.State);
+        Assert.Equal("bbb", File.ReadAllText(b));
+        Assert.StartsWith("Nothing from this change is left in the Recycle Bin", restorer.SupportFor(fixture.Ledger.Find(moved)!).Limits);
+    }
+
+    /// <summary>The fixture's Recycle Bin is the folder <see cref="FakePlatform"/> moves items into.</summary>
+    private sealed class FixtureRecycleBin : IRecycleBin
+    {
+        public bool Holds(string location, string originalPath) => File.Exists(location) || Directory.Exists(location);
+
+        public void Restore(string location, string originalPath, bool isDirectory) => new PlainFileMover().Move(location, originalPath, isDirectory);
+    }
+
+    [Fact]
     public void A_quarantine_move_is_refused_when_the_retention_changed_after_it_was_shown()
     {
         using var fixture = new Fixture();
@@ -559,6 +640,18 @@ public class ExecutionGatewayTests
             new Impact($"Moves {paths.Length} files to the Recycle Bin."),
             new Recovery(RecoveryMethod.RecycleBin, "Restorable until the Recycle Bin is emptied."),
             operations: paths.Select(Op).ToArray()));
+
+        public Recommendation Duplicates(params (string Path, string Kept)[] copies) => Build(new Finding(
+            FindingCategory.VerifiedDuplicate, "Identical copies", "They take up space.",
+            copies.Select(c => (Evidence)new PathEvidence(c.Path, "Same full-content hash.")).ToArray(),
+            new Confidence(ConfidenceLevel.Verified, "Same full-content hash."),
+            new Impact("Moves copies to the Recycle Bin."),
+            new Recovery(RecoveryMethod.RecycleBin, "Restorable until the Recycle Bin is emptied."),
+            operations: copies.Select(c =>
+            {
+                var info = new FileInfo(c.Path);
+                return new ProposedOperation(OperationKind.MoveToRecycleBin, c.Path, isDirectory: false, new MeasuredSize(info.Length), info.LastWriteTimeUtc, c.Kept);
+            }).ToArray()));
 
         public Recommendation Quarantine(string folder, bool reviewOnly = false) => QuarantineMany([folder], reviewOnly);
 

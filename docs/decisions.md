@@ -259,3 +259,11 @@ Running processes, open handles, services and scheduled tasks are checked by the
 - **Space check:** the run is refused when less than twice the test files' size is free on the temp folder's drive.
 - **Reports:** each one is saved as a new file in `Documents\PC Health Monitor\Benchmarks`, so it is easy to find and share. Existing files are never overwritten. The report names the machine only as "this PC" and contains no paths.
 - **Not part of local data:** the reports belong to the user and are not covered by "Clear local data".
+
+## D-024 Choosing duplicates, and Undo from the Recycle Bin
+**Accepted** (2026-10-27; T-40)
+
+- **The user's choice:** on the Duplicates page nothing is preselected. `RecommendationBuilder.ForDuplicates` refuses a choice that removes every copy, or that includes a protected or excluded copy. Only the chosen copies count: an excluded copy that stays is what the user asked for. An accepted choice becomes an ordinary recommendation, which is previewed, approved and run by the gateway.
+- **Byte comparison before removal (as D-006 promised):** each duplicate removal names a kept copy (`ProposedOperation.KeptCopy`). Right before acting, the gateway checks that the kept copy is still there, is not a link, and has byte-for-byte the same contents as the copy being removed. Otherwise that copy is left alone. A request that would also remove its own kept copy is refused as a whole. The overview's duplicate suggestions use the same check.
+- **Undo from the Recycle Bin:** Activity offers Undo for Recycle Bin moves while the items are still there. The restore works the way Explorer's Restore does. The `$R` item in the user's own `$Recycle.Bin` folder is moved back by handle, never overwriting, but only if its `$I` record names the original path. Then that `$I` record is removed. An item stays in the Recycle Bin when something now exists at its original path. Each Undo is a ledger transaction, as for quarantine.
+- **Creation times:** the scanner now records each file's creation time, so copies can be compared on modified and created times side by side.
