@@ -129,7 +129,7 @@ Done when:
 
 ### Slice 4: More application caches
 
-### T-46 Catalog: apps that must be closed first · `todo` · P · deps: —
+### T-46 Catalog: apps that must be closed first · `doing (cloud, 2026-10-27)` · P · deps: —
 Refs: §5.1 "Application residue and cache cleanup" · D-015 · area: src/PCHealth.Policy/Catalog
 Done when:
 - Catalog rules can name processes that must not be running, for example `firefox`.

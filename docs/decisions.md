@@ -268,3 +268,11 @@ Running processes, open handles, services and scheduled tasks are checked by the
 - **Undo from the Recycle Bin:** Activity offers Undo for Recycle Bin moves while the items are still there. The restore works the way Explorer's Restore does. The `$R` item in the user's own `$Recycle.Bin` folder is moved back by handle, never overwriting, but only if its `$I` record names the original path. Then that `$I` record is removed. An item stays in the Recycle Bin when something now exists at its original path. Each Undo is a ledger transaction, as for quarantine.
 - **Creation times:** the scanner now records each file's creation time, so copies can be compared on modified and created times side by side.
 - **Possible versions (T-41):** they are on their own tab, "Possible versions, not copies". Their files differ in content, so a group never offers anything by itself and nothing in it is preselected. `RecommendationBuilder.ForVersions` turns only the files the user ticks into a Recycle Bin action, which is refused when versions or a ticked file are excluded or protected. There is no kept-copy check because the files are not copies.
+
+## D-025 Apps that must be closed first
+**Accepted** (2026-10-27; T-46)
+
+- **Catalog:** a cache rule can list `closeFirst` apps, each with a bare process name (for example `chrome`, without `.exe` or a path) and the name people know it by. The shipped catalog names Chrome for the Chrome cache and Edge for the Edge cache.
+- **Format version 2:** adding `closeFirst` raised the catalog schema to version 2. A catalog of any other version is refused rather than read, because an older file would silently lack the apps to close.
+- **What the user sees:** the recommendation, the preview and the combined preview say "Close Google Chrome first."
+- **Gateway:** before anything is recorded, the gateway asks the platform (`IPlatformOperations.RunningProcesses`) whether any named app is running, in any session. It refuses the whole request while one is. If that check can't be made, it also refuses (fail closed). It checks once per request. A file an app opens during the run is still caught per item by the existing in-use check, so a per-item process scan isn't needed.

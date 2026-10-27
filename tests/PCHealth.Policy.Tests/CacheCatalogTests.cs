@@ -1,6 +1,7 @@
 using PCHealth.Core;
 using PCHealth.Inventory;
 using PCHealth.Policy.Catalog;
+using PCHealth.Policy.Recommendations;
 using PCHealth.Testing;
 
 namespace PCHealth.Policy.Tests;
@@ -73,6 +74,40 @@ public class CacheCatalogTests
 
         Assert.Equal(2, chrome.Length);
         Assert.Equal(new long[] { 40, 60 }, chrome.Select(f => f.Evidence.OfType<MeasurementEvidence>().Single().Size.Bytes).Order());
+    }
+
+    [Fact]
+    public void A_browser_cache_says_to_close_the_browser_first()
+    {
+        using var fixture = new Fixture();
+        fixture.File("LocalAppData/Google/Chrome/User Data/Default/Cache/Cache_Data/f_000001", 40, ageDays: 2);
+        fixture.File("LocalAppData/CrashDumps/app.dmp", 10, ageDays: 2);
+
+        var findings = fixture.Evaluate().Findings;
+        var chrome = findings.Single(f => f.Title == "Google Chrome cache");
+        var recommendations = new RecommendationBuilder(new ProtectionPolicy([]), new ExclusionList()).Build(findings).Recommendations;
+
+        Assert.Equal(new AppToClose("chrome", "Google Chrome"), Assert.Single(chrome.CloseFirst));
+        Assert.Empty(findings.Single(f => f.Title == "Application crash dumps").CloseFirst);
+        var recommendation = recommendations.Single(r => r.Finding == chrome);
+        Assert.Equal("Close Google Chrome first.", recommendation.CloseFirst);
+        Assert.StartsWith("Close Google Chrome first. Moves 1 files", recommendation.WhatWillChange);
+        Assert.Null(recommendations.Single(r => r.Finding.Title == "Application crash dumps").CloseFirst);
+        Assert.Equal("msedge", Assert.Single(CacheCatalog.LoadDefault().Rules.Single(r => r.Id == "edge-cache").CloseFirst!).Process);
+    }
+
+    [Fact]
+    public void Only_the_current_catalog_format_is_read()
+    {
+        const string Rule = """{ "id": "x", "name": "X cache", "location": "{LocalAppData}/X", "why": "Why.", "rebuild": "Rebuilt." }""";
+        static CacheCatalog Load(string json) => CacheCatalog.Load(new MemoryStream(System.Text.Encoding.UTF8.GetBytes(json)));
+
+        Assert.Equal(2, CacheCatalog.SchemaVersion);
+        Assert.Single(Load($$"""{ "version": 2, "rules": [{{Rule}}] }""").Rules);
+        var old = Assert.Throws<InvalidDataException>(() => Load($$"""{ "version": 1, "rules": [{{Rule}}] }"""));
+        Assert.Contains("format version 1", old.Message);
+        Assert.Throws<InvalidDataException>(() => Load("""{ "version": 2, "rules": [{ "id": "x", "name": "X", "location": "{LocalAppData}/X", "why": "W", "rebuild": "R", "closeFirst": [{ "process": "C:\\x\\x.exe", "name": "X" }] }] }"""));
+        Assert.Throws<InvalidDataException>(() => Load("not json"));
     }
 
     [Fact]

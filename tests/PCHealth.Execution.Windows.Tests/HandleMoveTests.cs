@@ -179,6 +179,8 @@ public class HandleMoveTests
 
         public bool SameVolume(string path, string otherPath) => true;
 
+        public IReadOnlyList<string> RunningProcesses(IReadOnlyCollection<string> processNames) => [];
+
         public string? CannotRecycle(string finalPath, long sizeBytes) => "not used here.";
 
         public string MoveToRecycleBin(string finalPath, bool isDirectory) => throw new IOException("Not used here.");

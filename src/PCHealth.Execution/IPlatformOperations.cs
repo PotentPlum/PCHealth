@@ -17,6 +17,10 @@ public interface IPlatformOperations
     /// <exception cref="IOException">The check could not be made; the gateway then refuses the item.</exception>
     IReadOnlyList<string> ProcessesUsing(string finalPath);
 
+    /// <summary>Which of these process names (without <c>.exe</c>) are running now, in any session (T-46).</summary>
+    /// <exception cref="IOException">The check could not be made; the gateway then refuses.</exception>
+    IReadOnlyList<string> RunningProcesses(IReadOnlyCollection<string> processNames);
+
     /// <summary>True if changing the item needs administrator rights (D-019: refused in Phase 1).</summary>
     bool NeedsElevation(string finalPath);
 

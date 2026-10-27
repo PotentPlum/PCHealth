@@ -71,21 +71,32 @@ public sealed record Recommendation
     /// <summary>3. What is the evidence?</summary>
     public IReadOnlyList<Evidence> Evidence => Finding.Evidence;
 
+    /// <summary>"Close X first." when the finding names apps that must not be running; null otherwise (T-46).</summary>
+    public string? CloseFirst => Finding.CloseFirst.Count == 0
+        ? null
+        : $"Close {string.Join(" and ", Finding.CloseFirst.Select(a => a.Name).Distinct(StringComparer.Ordinal))} first.";
+
     /// <summary>4. What will change?</summary>
     public string WhatWillChange
     {
         get
         {
-            var blocked = Blocked.Count == 0 ? "" : $" {Blocked.Count} items are left alone because they are protected or excluded.";
-            if (Operations.Count == 0)
-            {
-                return "Nothing changes: this is for you to review." + blocked;
-            }
-
-            return Disposition == Disposition.Review
-                ? $"Nothing is selected: review it first. If you then choose to act: {Impact.WhatChanges}{blocked}"
-                : Impact.WhatChanges + blocked;
+            var change = Change();
+            return Operations.Count > 0 && CloseFirst is { } close ? $"{close} {change}" : change;
         }
+    }
+
+    private string Change()
+    {
+        var blocked = Blocked.Count == 0 ? "" : $" {Blocked.Count} items are left alone because they are protected or excluded.";
+        if (Operations.Count == 0)
+        {
+            return "Nothing changes: this is for you to review." + blocked;
+        }
+
+        return Disposition == Disposition.Review
+            ? $"Nothing is selected: review it first. If you then choose to act: {Impact.WhatChanges}{blocked}"
+            : Impact.WhatChanges + blocked;
     }
 
     /// <summary>5. What could happen afterward?</summary>

@@ -44,8 +44,18 @@ public class FindingTests
         var names = typeof(Finding).GetProperties(BindingFlags.Public | BindingFlags.Instance).Select(p => p.Name);
 
         Assert.Equal(
-            new[] { "Category", "Confidence", "Evidence", "Impact", "Operations", "Recovery", "ReviewOnly", "Title", "WhyItMatters" },
+            new[] { "Category", "CloseFirst", "Confidence", "Evidence", "Impact", "Operations", "Recovery", "ReviewOnly", "Title", "WhyItMatters" },
             names.Order());
+    }
+
+    [Fact]
+    public void An_app_to_close_is_named_by_its_bare_process_name()
+    {
+        Assert.Equal("chrome", new AppToClose("chrome", "Google Chrome").Process);
+        Assert.Throws<ArgumentException>(() => new AppToClose("chrome.exe", "Google Chrome"));
+        Assert.Throws<ArgumentException>(() => new AppToClose(@"C:\Apps\chrome", "Google Chrome"));
+        Assert.Throws<ArgumentException>(() => new AppToClose("chr*", "Google Chrome"));
+        Assert.Throws<ArgumentException>(() => new AppToClose("chrome", " "));
     }
 
     [Fact]

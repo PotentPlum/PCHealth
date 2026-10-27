@@ -35,6 +35,29 @@ public sealed class WindowsPlatformOperations : IPlatformOperations
     public IReadOnlyList<string> ProcessesUsing(string finalPath) =>
         InUseCheck.ProcessesUsing(finalPath, File.GetAttributes(finalPath).HasFlag(FileAttributes.Directory));
 
+    public IReadOnlyList<string> RunningProcesses(IReadOnlyCollection<string> processNames)
+    {
+        try
+        {
+            return processNames.Where(IsRunning).ToArray();
+        }
+        catch (Win32Exception ex)
+        {
+            throw new IOException($"The running apps could not be listed: {ex.Message}", ex);
+        }
+
+        static bool IsRunning(string name)
+        {
+            var processes = System.Diagnostics.Process.GetProcessesByName(name);
+            foreach (var process in processes)
+            {
+                process.Dispose();
+            }
+
+            return processes.Length > 0;
+        }
+    }
+
     /// <summary>True when this account cannot open the item for deletion, which a move needs (D-019).</summary>
     public bool NeedsElevation(string finalPath)
     {
