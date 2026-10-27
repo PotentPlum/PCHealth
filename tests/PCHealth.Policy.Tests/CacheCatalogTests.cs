@@ -96,6 +96,55 @@ public class CacheCatalogTests
         Assert.Equal("msedge", Assert.Single(CacheCatalog.LoadDefault().Rules.Single(r => r.Id == "edge-cache").CloseFirst!).Process);
     }
 
+    [Theory]
+    [InlineData("chrome-code-cache", "LocalAppData/Google/Chrome/User Data/Default/Code Cache/js/index", "chrome")]
+    [InlineData("edge-code-cache", "LocalAppData/Microsoft/Edge/User Data/Profile 1/Code Cache/js/index", "msedge")]
+    [InlineData("firefox-cache", "LocalAppData/Mozilla/Firefox/Profiles/abcd.default-release/cache2/entries/0A1B2C", "firefox")]
+    [InlineData("firefox-startup-cache", "LocalAppData/Mozilla/Firefox/Profiles/abcd.default-release/startupCache/startupCache.8.little", "firefox")]
+    [InlineData("discord-cache", "RoamingAppData/discord/Cache/Cache_Data/f_000001", "Discord")]
+    [InlineData("discord-code-cache", "RoamingAppData/discord/Code Cache/js/index", "Discord")]
+    [InlineData("steam-html-cache", "LocalAppData/Steam/htmlcache/Cache/f_000001", "steam")]
+    [InlineData("vscode-cached-data", "RoamingAppData/Code/CachedData/0f1e2d3c/chrome/js/index", "Code")]
+    [InlineData("vscode-extension-downloads", "RoamingAppData/Code/CachedExtensionVSIXs/ms-python.python-2026.1.0", "Code")]
+    [InlineData("pip-cache", "LocalAppData/pip/Cache/http-v2/a/b/c/0a1b", null)]
+    [InlineData("yarn-cache", "LocalAppData/Yarn/Cache/v6/npm-left-pad-1.3.0/package.json", null)]
+    [InlineData("go-build-cache", "LocalAppData/go-build/0a/0a1b2c3d-d", null)]
+    [InlineData("store-app-temp", "LocalAppData/Packages/Contoso.Notes_8wekyb3d8bbwe/TempState/old.tmp", null)]
+    public void Each_added_cache_rule_finds_its_files_and_names_the_app_to_close(string id, string file, string? process)
+    {
+        using var fixture = new Fixture();
+        fixture.File(file, 100, ageDays: 30);
+        var rule = CacheCatalog.LoadDefault().Rules.Single(r => r.Id == id);
+
+        var finding = Assert.Single(fixture.Evaluate().Findings, f => f.Title == rule.Name);
+
+        Assert.Equal(100, finding.Evidence.OfType<MeasurementEvidence>().Single().Size.Bytes);
+        Assert.Equal(fixture.Root.Resolve(file), Assert.Single(finding.Operations).Path);
+        Assert.Equal(rule.Rebuild, finding.Impact.Aftereffects);
+        Assert.Equal(process, finding.CloseFirst.FirstOrDefault()?.Process);
+    }
+
+    [Fact]
+    public void Sign_ins_settings_and_recent_temporary_files_next_to_a_cache_are_never_counted()
+    {
+        using var fixture = new Fixture();
+        fixture.File("RoamingAppData/discord/Cache/Cache_Data/f_000001", 10, ageDays: 2);
+        fixture.File("RoamingAppData/discord/Local Storage/leveldb/000003.log", 500, ageDays: 2);
+        fixture.File("RoamingAppData/discord/settings.json", 500, ageDays: 2);
+        fixture.File("LocalAppData/Mozilla/Firefox/Profiles/abcd.default-release/cache2/entries/0A", 10, ageDays: 2);
+        fixture.File("LocalAppData/Mozilla/Firefox/Profiles/abcd.default-release/storage/default/site.sqlite", 500, ageDays: 2);
+        fixture.File("RoamingAppData/Code/User/settings.json", 500, ageDays: 2);
+        fixture.File("RoamingAppData/Code/CachedData/0f1e/index", 10, ageDays: 2);
+        fixture.File("LocalAppData/Packages/Contoso.Notes_8wekyb3d8bbwe/LocalState/notes.db", 500, ageDays: 30);
+        fixture.File("LocalAppData/Packages/Contoso.Notes_8wekyb3d8bbwe/TempState/fresh.tmp", 500, ageDays: 1);
+
+        var findings = fixture.Evaluate().Findings;
+
+        Assert.All(findings, f => Assert.All(f.Operations, o => Assert.DoesNotContain("settings", o.Path)));
+        Assert.Equal(30, findings.Sum(f => f.Impact.PotentiallyReclaimable!.Value.Bytes));
+        Assert.DoesNotContain(findings, f => f.Title == "Store apps' temporary files");
+    }
+
     [Fact]
     public void Only_the_current_catalog_format_is_read()
     {
@@ -220,6 +269,7 @@ public class CacheCatalogTests
         {
             this.includeTemp = includeTemp;
             Root.CreateDirectory("LocalAppData");
+            Root.CreateDirectory("RoamingAppData");
             Root.CreateDirectory("Temp");
         }
 
@@ -229,6 +279,7 @@ public class CacheCatalogTests
         {
             "Temp" when includeTemp => Root.Resolve("Temp"),
             "LocalAppData" => Root.Resolve("LocalAppData"),
+            "RoamingAppData" => Root.Resolve("RoamingAppData"),
             _ => null,
         };
 
