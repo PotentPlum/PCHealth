@@ -25,7 +25,7 @@ public static class AppServices
         services.AddSingleton(TimeProvider.System);
         services.AddSingleton<IPathResolver, WindowsPathResolver>();
         services.AddSingleton<IPlatformOperations, WindowsPlatformOperations>();
-        services.AddSingleton(sp => WindowsProtectedLocations.CreateDefaultPolicy(sp.GetRequiredService<IPathResolver>()));
+        services.AddSingleton(sp => new ProtectionPolicy(WindowsProtectedLocations.Discover(sp.GetRequiredService<IPathResolver>()).Concat(OwnData(paths))));
         services.AddSingleton(_ => ExclusionList.Load(paths.Exclusions));
         services.AddSingleton(_ => TransactionLedger.Open(paths.Ledger));
         services.AddSingleton(_ => AppSettings.Load(paths.Settings));
@@ -56,6 +56,8 @@ public static class AppServices
             sp.GetRequiredService<DeclinedRecommendations>(),
             paths,
             sp.GetRequiredService<TimeProvider>()));
+        services.AddSingleton<Func<IReadOnlyList<Recommendation>, BatchPreviewViewModel>>(sp => recommendations => new BatchPreviewViewModel(
+            recommendations, sp.GetRequiredService<ExecutionGateway>()));
         services.AddSingleton<IDiscovery>(sp => new Discovery(
             new WindowsKnownLocations(sp.GetRequiredService<IPathResolver>()),
             new WindowsAppRegistrations(),
@@ -67,17 +69,29 @@ public static class AppServices
             sp.GetRequiredService<TimeProvider>(),
             () => sp.GetRequiredService<QuarantineStore>().Retention));
 
+        services.AddTransient(sp => new DiscoveryProgressViewModel(sp.GetRequiredService<AppSettings>(), paths, sp.GetRequiredService<TimeProvider>()));
         services.AddSingleton<PauseViewModel>();
         services.AddSingleton<FirstRunViewModel>();
         services.AddSingleton<OverviewViewModel>();
         services.AddSingleton<StorageViewModel>();
         services.AddSingleton<ActivityViewModel>();
         services.AddSingleton<SettingsViewModel>();
+        services.AddSingleton(sp => new BenchmarkViewModel(BenchmarkViewModel.DefaultReportsFolder(), clock: sp.GetRequiredService<TimeProvider>()));
         services.AddSingleton<IUpdates, VelopackUpdates>();
         services.AddSingleton<UpdatesViewModel>();
         services.AddSingleton<MainViewModel>();
 
         configure?.Invoke(services);
         return services.BuildServiceProvider(new ServiceProviderOptions { ValidateOnBuild = true, ValidateScopes = true });
+    }
+
+    /// <summary>The app never suggests changing its own data, nor the folder an earlier version kept it in (D-021).</summary>
+    private static IEnumerable<ProtectedLocation> OwnData(AppPaths paths)
+    {
+        yield return new ProtectedLocation(paths.DataRoot, ProtectionKind.AppData, "it holds this app's own history, settings and quarantine.");
+        if (Path.GetDirectoryName(paths.DataRoot) is { } parent)
+        {
+            yield return new ProtectedLocation(Path.Combine(parent, "PCHealth"), ProtectionKind.AppData, "this app or its earlier data is installed there.");
+        }
     }
 }

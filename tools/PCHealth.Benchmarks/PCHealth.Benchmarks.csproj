@@ -6,9 +6,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <ProjectReference Include="../../src/PCHealth.Inventory/PCHealth.Inventory.csproj" />
-    <ProjectReference Include="../../src/PCHealth.Duplicates/PCHealth.Duplicates.csproj" />
-    <ProjectReference Include="../../tests/PCHealth.Testing/PCHealth.Testing.csproj" />
+    <ProjectReference Include="../../src/PCHealth.Benchmarking/PCHealth.Benchmarking.csproj" />
   </ItemGroup>
 
 </Project>

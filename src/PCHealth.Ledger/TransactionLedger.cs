@@ -185,6 +185,27 @@ public sealed class TransactionLedger : IDisposable
         return erased;
     }
 
+    /// <summary>
+    /// Points the recovery locations that lie under <paramref name="fromFolder"/> at the same places under
+    /// <paramref name="toFolder"/>, after the quarantine folder was moved there as a whole (D-021). Nothing else in a
+    /// transaction is rewritten.
+    /// </summary>
+    /// <returns>How many items now point at the new folder.</returns>
+    public int MoveRecoveryLocations(string fromFolder, string toFolder)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(fromFolder);
+        ArgumentException.ThrowIfNullOrWhiteSpace(toFolder);
+        var from = Path.TrimEndingDirectorySeparator(fromFolder) + Path.DirectorySeparatorChar;
+        var to = Path.TrimEndingDirectorySeparator(toFolder) + Path.DirectorySeparatorChar;
+        using var command = Command(
+            connection,
+            "UPDATE items SET recovery_location = $to || substr(recovery_location, length($from) + 1) WHERE substr(recovery_location, 1, length($from)) = $from;",
+            null,
+            ("$from", from),
+            ("$to", to));
+        return command.ExecuteNonQuery();
+    }
+
     public void Dispose() => connection.Dispose();
 
     private LedgerTransaction? Find(Guid id, SqliteTransaction? tx) =>

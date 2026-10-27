@@ -71,10 +71,12 @@ jobs:
           vpk_version=$(grep -oP 'VPK_VERSION: \K\S+' .github/workflows/release.yml)
           dotnet publish src/PCHealth.App/PCHealth.App.csproj -c Release -r win-x64 --self-contained -p:Version=0.0.1-ci -o publish
           dotnet tool install -g vpk --version "$vpk_version"
-          vpk pack -u PCHealth -v 0.0.1-ci -r win-x64 -p publish -e PCHealth.App.exe -o Releases
+          vpk pack -u PCHealth -v 0.0.1-ci -r win-x64 -p publish -e PCHealth.App.exe -o Releases \
+            --packTitle "PC Health Monitor" --packAuthors PotentPlum --icon src/PCHealth.App/Assets/app.ico --msi --instLocation PerMachine
           ls Releases
           test -f Releases/PCHealth-win-Setup.exe
           test -f Releases/releases.win.json
+          test -f Releases/PCHealth-win.msi
 
   linux-portable:
     name: Linux (portable projects)

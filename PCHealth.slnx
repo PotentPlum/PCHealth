@@ -1,6 +1,7 @@
 <Solution>
   <Folder Name="/src/">
     <Project Path="src/PCHealth.App/PCHealth.App.csproj" />
+    <Project Path="src/PCHealth.Benchmarking/PCHealth.Benchmarking.csproj" />
     <Project Path="src/PCHealth.Core/PCHealth.Core.csproj" />
     <Project Path="src/PCHealth.Duplicates/PCHealth.Duplicates.csproj" />
     <Project Path="src/PCHealth.Execution.Windows/PCHealth.Execution.Windows.csproj" />
@@ -15,6 +16,7 @@
   </Folder>
   <Folder Name="/tests/">
     <Project Path="tests/PCHealth.App.Tests/PCHealth.App.Tests.csproj" />
+    <Project Path="tests/PCHealth.Benchmarking.Tests/PCHealth.Benchmarking.Tests.csproj" />
     <Project Path="tests/PCHealth.Core.Tests/PCHealth.Core.Tests.csproj" />
     <Project Path="tests/PCHealth.Duplicates.Tests/PCHealth.Duplicates.Tests.csproj" />
     <Project Path="tests/PCHealth.Execution.Tests/PCHealth.Execution.Tests.csproj" />

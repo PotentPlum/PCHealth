@@ -16,13 +16,32 @@ public sealed class MainViewModel : ObservableObject
         OverviewViewModel overview,
         StorageViewModel storage,
         ActivityViewModel activity,
+        BenchmarkViewModel benchmark,
         SettingsViewModel settings,
         UpdatesViewModel updates,
         PauseViewModel pause,
         AppPaths paths,
         Func<Recommendation, PreviewViewModel> preview,
+        Func<IReadOnlyList<Recommendation>, BatchPreviewViewModel> batchPreview,
         FindingsStore findings)
     {
+        overview.CleanUpAllRequested += (_, recommendations) =>
+        {
+            var page = batchPreview(recommendations);
+            page.Finished += (_, _) =>
+            {
+                foreach (var entry in page.Executed)
+                {
+                    findings.Remove(entry.Recommendation);
+                }
+
+                overview.Refresh();
+                opened.Remove(page);
+                Current = overview;
+            };
+            opened.Add(page);
+            Current = page;
+        };
         overview.PreviewRequested += (_, recommendation) =>
         {
             var page = preview(recommendation);
@@ -40,7 +59,7 @@ public sealed class MainViewModel : ObservableObject
             opened.Add(page);
             Current = page;
         };
-        Pages = [overview, storage, activity, settings, updates];
+        Pages = [overview, storage, activity, benchmark, settings, updates];
         FirstRun = firstRun;
         current = FirstRunViewModel.IsNeeded(paths) ? firstRun : overview;
         firstRun.Completed += (_, _) => Current = overview;

@@ -4,6 +4,8 @@ These are measurements of single runs on named machines, not guarantees (spec §
 
 ## How to measure
 
+In the app, open **Benchmark** and choose **Run benchmark**. The report is saved as a new file in `Documents\PC Health Monitor\Benchmarks`. The page shows the file's path, with **Open folder** and **Copy path** buttons. From a copy of the repo, the same code runs as:
+
 ```
 dotnet run --project tools/PCHealth.Benchmarks -c Release -- --machine "<label>" --out result.md
 ```
@@ -22,7 +24,7 @@ dotnet run --project tools/PCHealth.Benchmarks -c Release -- --machine "<label>"
 
 ### Host
 
-Not measured yet (T-37b). This needs a run on the user's Windows PC.
+Not measured yet (T-37b). This needs a run on the user's Windows PC: the app's Benchmark page is the easiest way.
 
 ### GitHub Actions Windows runner (reference only)
 

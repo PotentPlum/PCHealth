@@ -41,7 +41,7 @@ Two follow-ups need the user's PCs. Nothing in Phase 2 waits for them.
 ### T-37b Performance baseline on the host · `todo` · U · deps: —
 Refs: §6.1, §9 · docs/benchmarks.md
 Done when:
-- On the host, `dotnet run --project tools/PCHealth.Benchmarks -c Release -- --machine "host" --out result.md` has been run.
+- On the host, the app's **Benchmark** page (T-69, in the next release) has been run, or `dotnet run --project tools/PCHealth.Benchmarks -c Release -- --machine "host" --out result.md`.
 - The result is added to `docs/benchmarks.md` under "Host" as a measurement, not a guarantee.
 
 ### T-38b Install and update on the second PC · `todo` · U · deps: —
@@ -49,6 +49,26 @@ Refs: D-009, D-010 · README "Installing on another PC"
 Done when:
 - v0.1.0 is installed on the second PC from `PCHealth-win-Setup.exe` and the app starts.
 - The user asks for v0.1.1, it is tagged from a green `main`, and Updates → "Check for updates" → "Install and restart" on the second PC brings it to v0.1.1.
+
+### Follow-ups from using v0.1.0
+
+### T-64 App data apart from the install folder · `done` · W · deps: —
+Result: Data lives in `%LocalAppData%\PCHealthData`; `DataMigration` moves the 0.1.0 files and quarantine slots at startup (renames, resumable, never overwrites, fails closed) and `TransactionLedger.MoveRecoveryLocations` repoints the ledger; both folders are `AppData`-protected; D-021; 4 migration/protection tests + 1 ledger test.
+
+### T-65 Install into Program Files · `done` · W · deps: T-64
+Result: Releases add `PCHealth-win.msi` (`vpk --msi --instLocation PerMachine`, "PC Health Monitor" by PotentPlum, app icon); Velopack's Update.exe elevates to apply updates there; CI packaging check builds and checks the MSI; D-022; README install and 0.1.0 move steps.
+
+### T-66 Scan progress · `done` · W · deps: —
+Result: Discovery reports its five steps and throttled counts; `DiscoveryProgressViewModel` shows steps, files/folders/bytes, elapsed and current folder, an estimated percentage and time left from the last scan's file count (kept in settings.json), and a measured percentage and time left for duplicate hashing (`HashProgress`, total known up front); first-run and Storage pages; 6 tests.
+
+### T-67 Clean-up buttons · `done` · W · deps: —
+Result: "Clean up…" per suggestion; "Clean up all N suggested" opens `BatchPreviewViewModel` (per-action checkbox, exact paths, left-alone items, recovery terms, total) and runs each selected action as its own gateway transaction after one approval; items needing a choice are counted and excluded; the overview can list all suggestions; 3 tests.
+
+### T-68 App icon · `done` · W · deps: —
+Result: A drive with a heartbeat line on a blue tile, 16–256 px `.ico` drawn by `tools/icon/make_icon.py`; used by the exe, window/taskbar and both installers.
+
+### T-69 Benchmark from the app · `done` · W · deps: T-37a
+Result: Benchmark code moved to the portable `PCHealth.Benchmarking` library (CLI is now a thin wrapper); the Benchmark page runs it with a free-space check and Stop, deletes its test files, saves each report as a new file in `Documents\PC Health Monitor\Benchmarks` and shows the path with Open folder and Copy path; D-023; 3 tests.
 
 ---
 

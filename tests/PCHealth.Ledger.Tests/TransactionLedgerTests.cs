@@ -213,6 +213,29 @@ public class TransactionLedgerTests
     }
 
     [Fact]
+    public void Recovery_locations_follow_a_moved_quarantine_folder_and_nothing_else_changes()
+    {
+        using var root = new TempRoot();
+        var quarantined = new LedgerItem(
+            root.Resolve("data/a.log"), IsDirectory: false, new ItemMetadata(700), RecoveryLocation: root.Resolve("old/Quarantine/1/content"), Status: ItemStatus.Done);
+        var recycled = new LedgerItem(
+            root.Resolve("data/b.log"), IsDirectory: false, new ItemMetadata(300), RecoveryLocation: root.Resolve("old/Quarantine2/b.log"), Status: ItemStatus.Done);
+        var original = Sample() with { State = TransactionState.Verified, Items = [quarantined, recycled] };
+        using var ledger = TransactionLedger.Open(root.Resolve("ledger.db"));
+        ledger.Record(original);
+
+        Assert.Equal(1, ledger.MoveRecoveryLocations(root.Resolve("old/Quarantine"), root.Resolve("new/Quarantine")));
+        Assert.Equal(0, ledger.MoveRecoveryLocations(root.Resolve("old/Quarantine"), root.Resolve("new/Quarantine")));
+
+        var loaded = ledger.Find(original.Id)!;
+        Assert.Equal(root.Resolve("new/Quarantine/1/content"), loaded.Items[0].RecoveryLocation);
+        Assert.Equal(recycled, loaded.Items[1]);
+        Assert.Equal(quarantined with { RecoveryLocation = loaded.Items[0].RecoveryLocation }, loaded.Items[0]);
+        Assert.Equal(original.Reason, loaded.Reason);
+        Assert.Equal(TransactionState.Verified, loaded.State);
+    }
+
+    [Fact]
     public void The_ledger_needs_a_full_path()
     {
         Assert.Throws<ArgumentException>(() => TransactionLedger.Open("ledger.db"));

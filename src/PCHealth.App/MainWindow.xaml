@@ -2,8 +2,29 @@
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:vm="clr-namespace:PCHealth.App.ViewModels"
-        Title="PC Health Monitor" Width="960" Height="640" MinWidth="640" MinHeight="420">
+        Title="PC Health Monitor" Icon="Assets/app.ico" Width="960" Height="640" MinWidth="640" MinHeight="420">
     <Window.Resources>
+        <BooleanToVisibilityConverter x:Key="Visible" />
+        <DataTemplate DataType="{x:Type vm:DiscoveryProgressViewModel}">
+            <Border Margin="0,0,0,12" Padding="12" BorderThickness="1" CornerRadius="6"
+                    BorderBrush="{DynamicResource {x:Static SystemColors.ActiveBorderBrushKey}}"
+                    Visibility="{Binding IsActive, Converter={StaticResource Visible}}">
+                <StackPanel>
+                    <ItemsControl ItemsSource="{Binding Steps}">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <TextBlock Text="{Binding}" />
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                    <ProgressBar Height="10" Margin="0,8,0,4" Minimum="0" Maximum="100"
+                                 Value="{Binding Percent, Mode=OneWay}" IsIndeterminate="{Binding IsIndeterminate}" />
+                    <TextBlock TextWrapping="Wrap" Text="{Binding Estimate}" />
+                    <TextBlock TextWrapping="Wrap" Margin="0,4,0,0" Text="{Binding Counts}" />
+                    <TextBlock TextWrapping="NoWrap" TextTrimming="CharacterEllipsis" Opacity="0.75" FontSize="12" Text="{Binding CurrentFolder}" />
+                </StackPanel>
+            </Border>
+        </DataTemplate>
         <DataTemplate DataType="{x:Type vm:FirstRunViewModel}">
             <ScrollViewer VerticalScrollBarVisibility="Auto">
                 <StackPanel Margin="24" MaxWidth="720" HorizontalAlignment="Left">
@@ -18,7 +39,8 @@
                         <Button Padding="14,6" Content="Look for wasted space" Command="{Binding StartCommand}" />
                         <Button Padding="14,6" Margin="8,0,0,0" Content="Stop" Command="{Binding CancelCommand}" />
                     </StackPanel>
-                    <TextBlock TextWrapping="Wrap" Text="{Binding Status}" />
+                    <TextBlock TextWrapping="Wrap" Margin="0,0,0,8" Text="{Binding Status}" />
+                    <ContentControl Content="{Binding Progress}" />
                     <Border Margin="0,16,0,0" Padding="16" BorderThickness="1" CornerRadius="6"
                             BorderBrush="{DynamicResource {x:Static SystemColors.ActiveBorderBrushKey}}"
                             DataContext="{Binding FirstFinding}">
@@ -41,12 +63,17 @@
                 </StackPanel>
             </ScrollViewer>
         </DataTemplate>
-        <BooleanToVisibilityConverter x:Key="Visible" />
         <DataTemplate DataType="{x:Type vm:OverviewViewModel}">
             <ScrollViewer VerticalScrollBarVisibility="Auto">
                 <StackPanel Margin="24" MaxWidth="820" HorizontalAlignment="Left">
                     <TextBlock FontSize="24" Text="Overview" />
-                    <TextBlock TextWrapping="Wrap" Margin="0,4,0,16" Text="{Binding Summary}" />
+                    <TextBlock TextWrapping="Wrap" Margin="0,4,0,8" Text="{Binding Summary}" />
+                    <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
+                        <Button Padding="14,6" FontWeight="SemiBold" Content="{Binding CleanUpAllText}" Command="{Binding CleanUpAllCommand}" />
+                        <Button Padding="14,6" Margin="8,0,0,0" Content="{Binding ShowAllText}" Command="{Binding ShowAllCommand}"
+                                Visibility="{Binding CanShowAll, Converter={StaticResource Visible}}" />
+                    </StackPanel>
+                    <TextBlock TextWrapping="Wrap" Margin="0,0,0,16" Opacity="0.85" Text="{Binding NeedChoiceText}" />
                     <ItemsControl ItemsSource="{Binding Items}">
                         <ItemsControl.ItemTemplate>
                             <DataTemplate DataType="{x:Type vm:RecommendationItemViewModel}">
@@ -64,11 +91,12 @@
                                         <TextBlock Text="{Binding Recovery}" />
                                         <TextBlock TextWrapping="Wrap" FontStyle="Italic" Text="{Binding ReviewReason}" />
                                         <StackPanel Orientation="Horizontal" Margin="0,10,0,0">
-                                            <Button Padding="12,4" Content="Details" Command="{Binding ToggleDetailsCommand}" />
-                                            <Button Padding="12,4" Margin="8,0,0,0" Content="Preview…"
+                                            <Button Padding="12,4" FontWeight="SemiBold" Content="Clean up…"
+                                                    ToolTip="Shows exactly what would change before anything is done."
                                                     Visibility="{Binding IsAction, Converter={StaticResource Visible}}"
                                                     Command="{Binding DataContext.PreviewCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
                                                     CommandParameter="{Binding}" />
+                                            <Button Padding="12,4" Margin="8,0,0,0" Content="Details" Command="{Binding ToggleDetailsCommand}" />
                                         </StackPanel>
                                         <ItemsControl Margin="0,8,0,0" ItemsSource="{Binding Details}"
                                                       Visibility="{Binding ShowDetails, Converter={StaticResource Visible}}">
@@ -95,6 +123,7 @@
                         <Button Padding="14,6" Content="Measure again" Command="{Binding MeasureCommand}" />
                         <Button Padding="14,6" Margin="8,0,0,0" Content="Stop" Command="{Binding CancelCommand}" />
                     </StackPanel>
+                    <ContentControl Content="{Binding Progress}" />
                     <StackPanel Visibility="{Binding HasMeasurement, Converter={StaticResource Visible}}">
                         <DockPanel Margin="0,0,0,4">
                             <Button DockPanel.Dock="Left" Padding="10,4" Margin="0,0,8,0" Content="Up" Command="{Binding UpCommand}" />
@@ -177,6 +206,83 @@
                         <Button Padding="14,6" Margin="8,0,0,0" Content="Back" Command="{Binding BackCommand}" />
                     </StackPanel>
                     <TextBlock TextWrapping="Wrap" Margin="0,12,0,0" Text="{Binding Result}" />
+                </StackPanel>
+            </ScrollViewer>
+        </DataTemplate>
+        <DataTemplate DataType="{x:Type vm:BatchPreviewViewModel}">
+            <ScrollViewer VerticalScrollBarVisibility="Auto">
+                <StackPanel Margin="24" MaxWidth="820" HorizontalAlignment="Left">
+                    <TextBlock FontSize="24" Text="Clean up all suggested" />
+                    <TextBlock TextWrapping="Wrap" Margin="0,4,0,12"
+                               Text="Every suggested action, exactly as it would run. Untick an action to leave it out; open one to see each item. Nothing changes until you approve." />
+                    <ItemsControl ItemsSource="{Binding Entries}">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate DataType="{x:Type vm:BatchPreviewEntryViewModel}">
+                                <Border Margin="0,0,0,10" Padding="12" BorderThickness="1" CornerRadius="6"
+                                        BorderBrush="{DynamicResource {x:Static SystemColors.ActiveBorderBrushKey}}">
+                                    <StackPanel>
+                                        <CheckBox IsChecked="{Binding IsSelected}">
+                                            <TextBlock TextWrapping="Wrap" FontWeight="SemiBold" Text="{Binding WhatWeFound}" />
+                                        </CheckBox>
+                                        <Expander Margin="0,6,0,0" Header="{Binding Summary}">
+                                            <StackPanel Margin="0,4,0,0">
+                                                <ItemsControl ItemsSource="{Binding Paths}">
+                                                    <ItemsControl.ItemTemplate>
+                                                        <DataTemplate>
+                                                            <TextBlock TextWrapping="Wrap" FontFamily="Consolas" FontSize="12" Text="{Binding}" />
+                                                        </DataTemplate>
+                                                    </ItemsControl.ItemTemplate>
+                                                </ItemsControl>
+                                                <ItemsControl ItemsSource="{Binding LeftAlone}">
+                                                    <ItemsControl.ItemTemplate>
+                                                        <DataTemplate>
+                                                            <TextBlock TextWrapping="Wrap" FontSize="12" Text="{Binding}" />
+                                                        </DataTemplate>
+                                                    </ItemsControl.ItemTemplate>
+                                                </ItemsControl>
+                                                <TextBlock TextWrapping="Wrap" Margin="0,6,0,0" Text="{Binding Afterward}" />
+                                            </StackPanel>
+                                        </Expander>
+                                        <TextBlock TextWrapping="Wrap" Margin="0,6,0,0" Text="{Binding RecoveryTerms}" />
+                                        <TextBlock TextWrapping="Wrap" Margin="0,6,0,0" FontWeight="SemiBold" Text="{Binding Result}" />
+                                    </StackPanel>
+                                </Border>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                    <TextBlock FontWeight="SemiBold" Margin="0,4,0,0" Text="Expected effect" />
+                    <TextBlock TextWrapping="Wrap" Margin="0,4,0,16" Text="{Binding ExpectedEffect}" />
+                    <StackPanel Orientation="Horizontal">
+                        <Button Padding="14,6" FontWeight="SemiBold" Content="Approve all selected" Command="{Binding ApproveCommand}" />
+                        <Button Padding="14,6" Margin="8,0,0,0" Content="Back" Command="{Binding BackCommand}" />
+                    </StackPanel>
+                    <TextBlock TextWrapping="Wrap" Margin="0,12,0,0" Text="{Binding Result}" />
+                </StackPanel>
+            </ScrollViewer>
+        </DataTemplate>
+        <DataTemplate DataType="{x:Type vm:BenchmarkViewModel}">
+            <ScrollViewer VerticalScrollBarVisibility="Auto">
+                <StackPanel Margin="24" MaxWidth="820" HorizontalAlignment="Left">
+                    <TextBlock FontSize="24" Text="Benchmark" />
+                    <TextBlock TextWrapping="Wrap" Margin="0,4,0,12" Text="{Binding Explanation}" />
+                    <StackPanel Orientation="Horizontal" Margin="0,0,0,12">
+                        <Button Padding="14,6" FontWeight="SemiBold" Content="Run benchmark" Command="{Binding RunCommand}" />
+                        <Button Padding="14,6" Margin="8,0,0,0" Content="Stop" Command="{Binding StopCommand}" />
+                    </StackPanel>
+                    <ProgressBar Height="10" Margin="0,0,0,8" IsIndeterminate="True"
+                                 Visibility="{Binding IsRunning, Converter={StaticResource Visible}}" />
+                    <TextBlock TextWrapping="Wrap" Margin="0,0,0,12" Text="{Binding Status}" />
+                    <TextBlock FontWeight="SemiBold" Text="Where reports are saved" />
+                    <TextBox Margin="0,4,0,4" IsReadOnly="True" TextWrapping="Wrap" BorderThickness="0" Background="Transparent"
+                             Text="{Binding ReportPath, TargetNullValue='', Mode=OneWay}" />
+                    <TextBox Margin="0,0,0,8" IsReadOnly="True" TextWrapping="Wrap" BorderThickness="0" Background="Transparent"
+                             Text="{Binding ReportsFolder, Mode=OneWay}" />
+                    <StackPanel Orientation="Horizontal" Margin="0,0,0,16">
+                        <Button Padding="12,4" Content="Open folder" Command="{Binding OpenFolderCommand}" />
+                        <Button Padding="12,4" Margin="8,0,0,0" Content="Copy path" Command="{Binding CopyPathCommand}" />
+                    </StackPanel>
+                    <TextBox IsReadOnly="True" TextWrapping="Wrap" FontFamily="Consolas" FontSize="12"
+                             Text="{Binding Report, Mode=OneWay}" />
                 </StackPanel>
             </ScrollViewer>
         </DataTemplate>

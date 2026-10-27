@@ -89,6 +89,29 @@ public class OverviewTests
         Assert.Equal("odd", Assert.Single(overview.Items).Recommendation.Finding.Title);
     }
 
+    [Fact]
+    public void All_findings_can_be_listed_and_all_actions_cleaned_up_together()
+    {
+        var store = new FindingsStore();
+        var overview = new OverviewViewModel(store);
+        IReadOnlyList<Recommendation>? requested = null;
+        overview.CleanUpAllRequested += (_, r) => requested = r;
+        Assert.False(overview.CleanUpAllCommand.CanExecute(null));
+
+        store.Publish(Set(Act("small", 10), Act("large", 9000), Review("odd"), Act("medium", 500), Review("odd2")));
+
+        Assert.True(overview.CanShowAll);
+        Assert.Equal("Show all 5", overview.ShowAllText);
+        overview.ShowAllCommand.Execute(null);
+        Assert.Equal(5, overview.Items.Count);
+        Assert.Equal("Show fewer", overview.ShowAllText);
+
+        Assert.Equal("Clean up all 3 suggested (about 9.3 KB)…", overview.CleanUpAllText);
+        Assert.StartsWith("2 items need your choice and are not part of \"Clean up all\".", overview.NeedChoiceText);
+        overview.CleanUpAllCommand.Execute(null);
+        Assert.Equal(new[] { "large", "medium", "small" }, requested!.Select(r => r.Finding.Title));
+    }
+
     private static string P(string relative) => Path.Combine(Base, relative);
 
     private static RecommendationSet Set(params Finding[] findings) =>

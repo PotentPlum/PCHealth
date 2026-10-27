@@ -43,11 +43,12 @@ public sealed class StorageViewModel : PageViewModel
     private CancellationTokenSource? running;
     private string status = "";
 
-    public StorageViewModel(FindingsStore findings, IDiscovery discovery, DeclinedRecommendations? declines = null)
+    public StorageViewModel(FindingsStore findings, IDiscovery discovery, DeclinedRecommendations? declines = null, DiscoveryProgressViewModel? progress = null)
         : base("Storage")
     {
         this.findings = findings;
         this.discovery = discovery;
+        Progress = progress ?? new DiscoveryProgressViewModel();
         isHidden = declines is null ? _ => false : declines.IsDeclined;
         OpenCommand = new RelayCommand<StorageFolderViewModel>(folder => Show(folder!.Folder), folder => folder is not null);
         UpCommand = new RelayCommand(() => Show(Parent!), () => Parent is not null);
@@ -102,6 +103,8 @@ public sealed class StorageViewModel : PageViewModel
     }
 
     public bool IsRunning => running is not null;
+
+    public DiscoveryProgressViewModel Progress { get; }
 
     public IRelayCommand<StorageFolderViewModel> OpenCommand { get; }
 
@@ -198,10 +201,10 @@ public sealed class StorageViewModel : PageViewModel
         Changed();
         try
         {
-            Status = "Measuring your user folder. Nothing is changed.";
-            var progress = new Progress<ScanProgress>(p =>
-                Status = string.Create(CultureInfo.CurrentCulture, $"Measuring… {p.DirectoriesScanned:N0} folders, {p.FilesScanned:N0} files so far. Nothing is changed."));
-            findings.Publish(await discovery.FullAsync(progress, running.Token));
+            Status = "Measuring your user folder and looking for suggestions. Nothing is changed.";
+            var full = await discovery.FullAsync(Progress.Start(), running.Token);
+            Progress.Complete(full);
+            findings.Publish(full);
             Status = "Measured.";
         }
         catch (OperationCanceledException)
@@ -214,6 +217,7 @@ public sealed class StorageViewModel : PageViewModel
         }
         finally
         {
+            Progress.Stop();
             running.Dispose();
             running = null;
             Changed();
