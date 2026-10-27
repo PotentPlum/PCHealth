@@ -68,5 +68,13 @@ Linux environments can't build or test Windows-specific code or the UI; CI cover
 
 ## Installing on another PC
 
-1. Download `PCHealth-win-Setup.exe` from the repo's Releases page and run it once. SmartScreen will warn because the exe is unsigned.
-2. After that, open **Updates** in the app and choose **Check for updates**. The app never checks on its own. If a newer release exists, **Install and restart** downloads it from this repo's public Releases. No token is needed (D-010 in [docs/decisions.md](docs/decisions.md)).
+1. From the repo's [Releases page](https://github.com/PotentPlum/PCHealth/releases/latest), download `PCHealth-win-DeploymentTool.msi`.
+2. Run it. It installs **PC Health Monitor** into Program Files for all users and asks for administrator rights once (D-022).
+   - The files aren't code-signed yet, so SmartScreen may warn: choose **More info → Run anyway**.
+   - Before running, you can check the file against the SHA-256 shown next to it on the release page: run `Get-FileHash <file>` in PowerShell.
+3. To update, open **Updates** in the app and choose **Check for updates**. The app never checks on its own. If a newer release exists, **Install and restart** downloads it from this repo's public Releases. Windows asks for administrator rights to replace the files in Program Files. No token is needed (D-010).
+
+**Coming from 0.1.0** (installed with `PCHealth-win-Setup.exe` into `%LocalAppData%\PCHealth`):
+1. Install the MSI.
+2. Start the new app once. It moves your history, settings and quarantine to `%LocalAppData%\PCHealthData` (D-021).
+3. Uninstall the old "PCHealth" entry in Apps & features.

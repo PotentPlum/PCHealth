@@ -30,6 +30,9 @@ env:
   APP_PROJECT: src/PCHealth.App/PCHealth.App.csproj
   MAIN_EXE: PCHealth.App.exe
   PACK_ID: PCHealth
+  PACK_TITLE: PC Health Monitor
+  PACK_AUTHORS: PotentPlum
+  ICON: src/PCHealth.App/Assets/app.ico
   VPK_VERSION: 1.2.161
 
 jobs:
@@ -106,7 +109,9 @@ jobs:
           repo="https://github.com/${{ github.repository }}"
           # Fetch the previous release so vpk can build delta updates.
           vpk download github --repoUrl "$repo" --token "$GH_TOKEN" -o Releases
-          vpk pack -u "$PACK_ID" -v "$VERSION" -r win-x64 -p publish -e "$MAIN_EXE" -o Releases
+          # --msi adds an installer into Program Files for all users (D-022); Setup.exe is still built for existing installs.
+          vpk pack -u "$PACK_ID" -v "$VERSION" -r win-x64 -p publish -e "$MAIN_EXE" -o Releases \
+            --packTitle "$PACK_TITLE" --packAuthors "$PACK_AUTHORS" --icon "$ICON" --msi --instLocation PerMachine
           tag="v$VERSION"
           if [ "$GITHUB_EVENT_NAME" = "workflow_dispatch" ]; then
             # A tag pushed with GITHUB_TOKEN starts no other workflow, so this run stays the only release run.
