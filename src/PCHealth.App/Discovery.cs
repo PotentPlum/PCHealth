@@ -19,11 +19,24 @@ public interface IDiscovery
     /// Caches, leftover app data, and a scan of the user folder for large folders, duplicates and versions, with the
     /// measured sizes of every folder in it.
     /// </summary>
-    Task<FullDiscovery> FullAsync(IProgress<ScanProgress>? progress, CancellationToken cancellationToken);
+    Task<FullDiscovery> FullAsync(IProgress<DiscoveryProgress>? progress, CancellationToken cancellationToken);
 }
 
-/// <summary>The result of a full discovery: the recommendations and the measured storage they were drawn from.</summary>
-public sealed record FullDiscovery(RecommendationSet Recommendations, StorageSummary Storage);
+/// <summary>The steps of a full discovery, in the order they run.</summary>
+public enum DiscoveryStep
+{
+    Measuring,
+    Caches,
+    LeftoverAppData,
+    Duplicates,
+    Suggestions,
+}
+
+/// <summary>Where a full discovery is (T-66): the step, and the counts of the step that has them.</summary>
+public sealed record DiscoveryProgress(DiscoveryStep Step, ScanProgress? Scan = null, HashProgress? Hashing = null);
+
+/// <summary>The result of a full discovery: the recommendations, the measured storage they were drawn from, and the scan's counts.</summary>
+public sealed record FullDiscovery(RecommendationSet Recommendations, StorageSummary Storage, ScanStatistics? Statistics = null);
 
 /// <summary>
 /// Discovery limited to the user's own folder (D-018). Duplicates are only looked for among files of at least
@@ -46,23 +59,32 @@ public sealed class Discovery(
     public Task<RecommendationSet> QuickAsync(CancellationToken cancellationToken) =>
         Task.Run(() => Builder().Build(Caches(cancellationToken)), cancellationToken);
 
-    public async Task<FullDiscovery> FullAsync(IProgress<ScanProgress>? progress, CancellationToken cancellationToken)
+    public async Task<FullDiscovery> FullAsync(IProgress<DiscoveryProgress>? progress, CancellationToken cancellationToken)
     {
-        var scan = await BackgroundScan.Start(scanner, profileRoot, progress, cancellationToken).Completion.ConfigureAwait(false);
+        var report = new Throttled(progress);
+        report.Step(DiscoveryStep.Measuring);
+        var scanProgress = progress is null ? null : new Forward<ScanProgress>(p => report.Counts(new DiscoveryProgress(DiscoveryStep.Measuring, Scan: p)));
+        var scan = await BackgroundScan.Start(scanner, profileRoot, scanProgress, cancellationToken).Completion.ConfigureAwait(false);
         return await Task.Run(
             () =>
             {
+                report.Step(DiscoveryStep.Caches);
                 var findings = new List<Finding>(Caches(cancellationToken));
+                report.Step(DiscoveryStep.LeftoverAppData);
                 findings.AddRange(ResidueDetector.Evaluate(locations, registrations, scanner, protection, exclusions, clock.GetUtcNow(), cancellationToken).Findings);
 
                 var summary = StorageSummary.From(scan);
                 findings.AddRange(summary.LargestFolders(LargeFolderCount).Select(f => FindingSources.FromLargeFolder(f, summary.IsComplete)));
 
+                report.Step(DiscoveryStep.Duplicates);
                 var files = scan.Entries.OfType<FileEntry>().Where(f => !f.IsReparsePoint).ToArray();
-                var duplicates = new DuplicateFinder(identities).Find(files.Where(f => f.Size.Bytes >= DuplicateMinimumBytes), cancellationToken);
+                var hashProgress = progress is null ? null : new Forward<HashProgress>(p => report.Counts(new DiscoveryProgress(DiscoveryStep.Duplicates, Hashing: p)));
+                var duplicates = new DuplicateFinder(identities).Find(files.Where(f => f.Size.Bytes >= DuplicateMinimumBytes), hashProgress, cancellationToken);
                 findings.AddRange(duplicates.Groups.Select(g => FindingSources.FromDuplicates(g, protection)));
+
+                report.Step(DiscoveryStep.Suggestions);
                 findings.AddRange(VersionCandidates.Find(files).Select(FindingSources.FromVersionCandidates));
-                return new FullDiscovery(Builder().Build(findings), summary);
+                return new FullDiscovery(Builder().Build(findings), summary, scan.Statistics);
             },
             cancellationToken).ConfigureAwait(false);
     }
@@ -71,6 +93,38 @@ public sealed class Discovery(
         CacheCatalog.LoadDefault().Evaluate(locations, scanner, protection, exclusions, clock.GetUtcNow(), cancellationToken).Findings;
 
     private RecommendationBuilder Builder() => new(protection, exclusions, quarantineRetention?.Invoke());
+
+    /// <summary>Reports straight away, on the reporting thread; the receiver decides where to show it.</summary>
+    private sealed class Forward<T>(Action<T> report) : IProgress<T>
+    {
+        public void Report(T value) => report(value);
+    }
+
+    /// <summary>
+    /// Passes every step change on, but counts at most every <see cref="Interval"/>: the scan reports after every folder,
+    /// far more often than anyone can read, and each report costs the UI thread.
+    /// </summary>
+    private sealed class Throttled(IProgress<DiscoveryProgress>? progress)
+    {
+        private static readonly TimeSpan Interval = TimeSpan.FromMilliseconds(150);
+        private long last;
+
+        public void Step(DiscoveryStep step)
+        {
+            last = System.Diagnostics.Stopwatch.GetTimestamp();
+            progress?.Report(new DiscoveryProgress(step));
+        }
+
+        public void Counts(DiscoveryProgress value)
+        {
+            var now = System.Diagnostics.Stopwatch.GetTimestamp();
+            if (System.Diagnostics.Stopwatch.GetElapsedTime(last, now) >= Interval || value.Hashing is { } h && h.FilesDone == h.FilesTotal)
+            {
+                last = now;
+                progress?.Report(value);
+            }
+        }
+    }
 }
 
 /// <summary>The latest discovery results, shared by the pages that show them.</summary>

@@ -60,6 +60,12 @@ public sealed record VerifiedDuplicateGroup
             .ToArray();
 }
 
+/// <summary>
+/// How far full-content verification has got. The total is known before hashing starts: every candidate is read in
+/// full once, so <see cref="BytesDone"/> of <see cref="BytesTotal"/> is a measured share of the work, not a guess.
+/// </summary>
+public sealed record HashProgress(long BytesDone, long BytesTotal, int FilesDone, int FilesTotal);
+
 public sealed record VerificationResult(
     IReadOnlyList<VerifiedDuplicateGroup> Groups,
     IReadOnlyList<InaccessibleEvidence> Unreadable,
@@ -69,19 +75,34 @@ public sealed record VerificationResult(
 /// <param name="identities">Reports physical file identities so hard links are not mistaken for copies; null treats every path as distinct.</param>
 public sealed class DuplicateVerifier(IFileIdentityProvider? identities = null)
 {
-    public VerificationResult Verify(IEnumerable<CandidateGroup> candidates, CancellationToken cancellationToken = default)
+    public VerificationResult Verify(IEnumerable<CandidateGroup> candidates, CancellationToken cancellationToken = default) =>
+        Verify(candidates, null, cancellationToken);
+
+    /// <param name="progress">Reported after each file, whether it was hashed, skipped as changed, or unreadable.</param>
+    public VerificationResult Verify(IEnumerable<CandidateGroup> candidates, IProgress<HashProgress>? progress, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(candidates);
+        var all = candidates.ToArray();
         var groups = new List<VerifiedDuplicateGroup>();
         var unreadable = new List<InaccessibleEvidence>();
         var changed = new List<FileEntry>();
+        var (bytesTotal, filesTotal) = (all.Sum(c => c.Files.Sum(f => f.Size.Bytes)), all.Sum(c => c.Files.Count));
+        var (bytesDone, filesDone) = (0L, 0);
+        progress?.Report(new HashProgress(0, bytesTotal, 0, filesTotal));
 
-        foreach (var candidate in candidates)
+        foreach (var candidate in all)
         {
             var hashed = new List<HashedFile>();
             foreach (var file in candidate.Files)
             {
                 cancellationToken.ThrowIfCancellationRequested();
+                if (filesDone > 0)
+                {
+                    progress?.Report(new HashProgress(bytesDone, bytesTotal, filesDone, filesTotal));
+                }
+
+                bytesDone += file.Size.Bytes;
+                filesDone++;
                 try
                 {
                     using var handle = ContentReader.OpenRead(file.FullPath);
@@ -120,6 +141,7 @@ public sealed class DuplicateVerifier(IFileIdentityProvider? identities = null)
                 .Select(g => new VerifiedDuplicateGroup(candidate.Size, g.Key, g.ToArray())));
         }
 
+        progress?.Report(new HashProgress(bytesDone, bytesTotal, filesDone, filesTotal));
         return new VerificationResult(groups, unreadable, changed);
     }
 }
@@ -132,10 +154,14 @@ public sealed class DuplicateFinder(CandidateFinder candidates, DuplicateVerifie
     {
     }
 
-    public VerificationResult Find(IEnumerable<FileEntry> files, CancellationToken cancellationToken = default)
+    public VerificationResult Find(IEnumerable<FileEntry> files, CancellationToken cancellationToken = default) =>
+        Find(files, null, cancellationToken);
+
+    /// <param name="progress">Progress of the full-hash stage, the one that reads the most.</param>
+    public VerificationResult Find(IEnumerable<FileEntry> files, IProgress<HashProgress>? progress, CancellationToken cancellationToken = default)
     {
         var stageOne = candidates.Find(files, cancellationToken);
-        var stageTwo = verifier.Verify(stageOne.Groups, cancellationToken);
+        var stageTwo = verifier.Verify(stageOne.Groups, progress, cancellationToken);
         return new VerificationResult(
             stageTwo.Groups,
             [.. stageOne.Unreadable, .. stageTwo.Unreadable],

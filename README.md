@@ -68,7 +68,7 @@ Linux environments can't build or test Windows-specific code or the UI; CI cover
 
 ## Installing on another PC
 
-1. From the repo's [Releases page](https://github.com/PotentPlum/PCHealth/releases/latest), download `PCHealth-win-DeploymentTool.msi`.
+1. From the repo's [Releases page](https://github.com/PotentPlum/PCHealth/releases/latest), download `PCHealth-win.msi`.
 2. Run it. It installs **PC Health Monitor** into Program Files for all users and asks for administrator rights once (D-022).
    - The files aren't code-signed yet, so SmartScreen may warn: choose **More info → Run anyway**.
    - Before running, you can check the file against the SHA-256 shown next to it on the release page: run `Get-FileHash <file>` in PowerShell.

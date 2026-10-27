@@ -4,6 +4,27 @@
         xmlns:vm="clr-namespace:PCHealth.App.ViewModels"
         Title="PC Health Monitor" Icon="Assets/app.ico" Width="960" Height="640" MinWidth="640" MinHeight="420">
     <Window.Resources>
+        <BooleanToVisibilityConverter x:Key="Visible" />
+        <DataTemplate DataType="{x:Type vm:DiscoveryProgressViewModel}">
+            <Border Margin="0,0,0,12" Padding="12" BorderThickness="1" CornerRadius="6"
+                    BorderBrush="{DynamicResource {x:Static SystemColors.ActiveBorderBrushKey}}"
+                    Visibility="{Binding IsActive, Converter={StaticResource Visible}}">
+                <StackPanel>
+                    <ItemsControl ItemsSource="{Binding Steps}">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <TextBlock Text="{Binding}" />
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                    <ProgressBar Height="10" Margin="0,8,0,4" Minimum="0" Maximum="100"
+                                 Value="{Binding Percent, Mode=OneWay}" IsIndeterminate="{Binding IsIndeterminate}" />
+                    <TextBlock TextWrapping="Wrap" Text="{Binding Estimate}" />
+                    <TextBlock TextWrapping="Wrap" Margin="0,4,0,0" Text="{Binding Counts}" />
+                    <TextBlock TextWrapping="NoWrap" TextTrimming="CharacterEllipsis" Opacity="0.75" FontSize="12" Text="{Binding CurrentFolder}" />
+                </StackPanel>
+            </Border>
+        </DataTemplate>
         <DataTemplate DataType="{x:Type vm:FirstRunViewModel}">
             <ScrollViewer VerticalScrollBarVisibility="Auto">
                 <StackPanel Margin="24" MaxWidth="720" HorizontalAlignment="Left">
@@ -18,7 +39,8 @@
                         <Button Padding="14,6" Content="Look for wasted space" Command="{Binding StartCommand}" />
                         <Button Padding="14,6" Margin="8,0,0,0" Content="Stop" Command="{Binding CancelCommand}" />
                     </StackPanel>
-                    <TextBlock TextWrapping="Wrap" Text="{Binding Status}" />
+                    <TextBlock TextWrapping="Wrap" Margin="0,0,0,8" Text="{Binding Status}" />
+                    <ContentControl Content="{Binding Progress}" />
                     <Border Margin="0,16,0,0" Padding="16" BorderThickness="1" CornerRadius="6"
                             BorderBrush="{DynamicResource {x:Static SystemColors.ActiveBorderBrushKey}}"
                             DataContext="{Binding FirstFinding}">
@@ -41,7 +63,6 @@
                 </StackPanel>
             </ScrollViewer>
         </DataTemplate>
-        <BooleanToVisibilityConverter x:Key="Visible" />
         <DataTemplate DataType="{x:Type vm:OverviewViewModel}">
             <ScrollViewer VerticalScrollBarVisibility="Auto">
                 <StackPanel Margin="24" MaxWidth="820" HorizontalAlignment="Left">
@@ -102,6 +123,7 @@
                         <Button Padding="14,6" Content="Measure again" Command="{Binding MeasureCommand}" />
                         <Button Padding="14,6" Margin="8,0,0,0" Content="Stop" Command="{Binding CancelCommand}" />
                     </StackPanel>
+                    <ContentControl Content="{Binding Progress}" />
                     <StackPanel Visibility="{Binding HasMeasurement, Converter={StaticResource Visible}}">
                         <DockPanel Margin="0,0,0,4">
                             <Button DockPanel.Dock="Left" Padding="10,4" Margin="0,0,8,0" Content="Up" Command="{Binding UpCommand}" />

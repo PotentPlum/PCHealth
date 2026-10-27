@@ -139,6 +139,32 @@ public class DuplicateVerifierTests
         Assert.Equal("SHA-256:" + Convert.ToHexStringLower(SHA256.HashData(bytes)), group.ContentHash);
     }
 
+    [Fact]
+    public void Progress_counts_every_candidate_byte_once_against_a_total_known_up_front()
+    {
+        using var root = new TempRoot();
+        var files = new[]
+        {
+            Entry(root.CreateFile("a/1.bin", "same content")), Entry(root.CreateFile("b/2.bin", "same content")),
+            Entry(root.CreateFile("c/3.bin", "other!")), Entry(root.CreateFile("d/4.bin", "other?")), Entry(root.CreateFile("e/5.bin", "unique and longer")),
+        };
+        var reports = new List<HashProgress>();
+
+        new DuplicateFinder().Find(files, new SynchronousProgress<HashProgress>(reports.Add), TestContext.Current.CancellationToken);
+
+        // Only the same-content pair survives size and partial digest; each of its files is read in full once.
+        Assert.Equal(new HashProgress(0, 24, 0, 2), reports[0]);
+        Assert.Equal(new HashProgress(12, 24, 1, 2), reports[1]);
+        Assert.Equal(new HashProgress(24, 24, 2, 2), reports[^1]);
+        Assert.Equal(3, reports.Count);
+        Assert.True(reports.Zip(reports.Skip(1)).All(p => p.Second.BytesDone >= p.First.BytesDone));
+    }
+
+    private sealed class SynchronousProgress<T>(Action<T> report) : IProgress<T>
+    {
+        public void Report(T value) => report(value);
+    }
+
     private static VerificationResult Find(IEnumerable<FileEntry> files) =>
         new DuplicateFinder().Find(files, TestContext.Current.CancellationToken);
 }

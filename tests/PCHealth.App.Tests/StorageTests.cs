@@ -136,7 +136,7 @@ public sealed class StorageTests
 
         public Task<RecommendationSet> QuickAsync(CancellationToken cancellationToken) => Task.FromResult(new RecommendationSet([], []));
 
-        public Task<FullDiscovery> FullAsync(IProgress<ScanProgress>? progress, CancellationToken cancellationToken)
+        public Task<FullDiscovery> FullAsync(IProgress<DiscoveryProgress>? progress, CancellationToken cancellationToken)
         {
             Calls++;
             return Task.FromResult(Result ?? throw new InvalidOperationException("No result set."));

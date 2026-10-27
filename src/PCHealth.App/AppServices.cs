@@ -69,6 +69,7 @@ public static class AppServices
             sp.GetRequiredService<TimeProvider>(),
             () => sp.GetRequiredService<QuarantineStore>().Retention));
 
+        services.AddTransient(sp => new DiscoveryProgressViewModel(sp.GetRequiredService<AppSettings>(), paths, sp.GetRequiredService<TimeProvider>()));
         services.AddSingleton<PauseViewModel>();
         services.AddSingleton<FirstRunViewModel>();
         services.AddSingleton<OverviewViewModel>();

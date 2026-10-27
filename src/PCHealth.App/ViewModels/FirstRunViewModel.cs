@@ -19,12 +19,13 @@ public sealed class FirstRunViewModel : PageViewModel
     private string status = "Nothing has been looked at yet.";
     private Recommendation? firstFinding;
 
-    public FirstRunViewModel(IDiscovery discovery, FindingsStore findings, AppPaths paths)
+    public FirstRunViewModel(IDiscovery discovery, FindingsStore findings, AppPaths paths, DiscoveryProgressViewModel? progress = null)
         : base("Welcome")
     {
         this.discovery = discovery;
         this.findings = findings;
         this.paths = paths;
+        Progress = progress ?? new DiscoveryProgressViewModel();
         StartCommand = new AsyncRelayCommand(StartAsync, () => !IsRunning);
         CancelCommand = new RelayCommand(() => running?.Cancel(), () => IsRunning);
     }
@@ -44,6 +45,8 @@ public sealed class FirstRunViewModel : PageViewModel
     public string Network => NetworkStatement;
 
     public bool IsRunning => running is not null;
+
+    public DiscoveryProgressViewModel Progress { get; }
 
     public string Status
     {
@@ -76,7 +79,8 @@ public sealed class FirstRunViewModel : PageViewModel
             FirstFinding = Best(quick);
 
             Status = "Measuring your user folder. This can take a few minutes; nothing is changed.";
-            var full = await discovery.FullAsync(null, running.Token);
+            var full = await discovery.FullAsync(Progress.Start(), running.Token);
+            Progress.Complete(full);
             findings.Publish(full);
             FirstFinding ??= Best(full.Recommendations);
 
@@ -95,6 +99,7 @@ public sealed class FirstRunViewModel : PageViewModel
         }
         finally
         {
+            Progress.Stop();
             running.Dispose();
             running = null;
             Changed();

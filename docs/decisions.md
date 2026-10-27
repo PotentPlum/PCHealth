@@ -245,7 +245,7 @@ Running processes, open handles, services and scheduled tasks are checked by the
 ## D-022 Installed into Program Files
 **Accepted** (2026-10-27, user decision; T-65)
 
-- **Installer:** every release includes `PCHealth-win-DeploymentTool.msi` (`vpk pack --msi --instLocation PerMachine`). It is a standard Windows Installer package: it installs for all users into Program Files, appears in Apps & features, and asks for administrator rights once at install.
+- **Installer:** every release includes `PCHealth-win.msi` (`vpk pack --msi --instLocation PerMachine`). It is a standard Windows Installer package: it installs for all users into Program Files, appears in Apps & features, and asks for administrator rights once at install.
 - **Name and icon:** the app is shown as "PC Health Monitor" by "PotentPlum", with the T-68 icon.
 - **`Setup.exe`:** vpk still builds the one-click per-user `Setup.exe`, and existing per-user installs keep updating through it. The README points to the MSI.
 - **Updates:** they still come from GitHub Releases on the two buttons (D-010). The install folder isn't writable without administrator rights, so Velopack's `Update.exe` asks for them (UAC) when an update is applied. The app itself still never asks for elevation (D-019).

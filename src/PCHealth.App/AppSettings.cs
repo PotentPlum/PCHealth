@@ -3,7 +3,10 @@ using System.Text.Json;
 
 namespace PCHealth.App;
 
-/// <summary>The user's settings (spec §6.5), kept in one local JSON file. A missing file means the defaults.</summary>
+/// <summary>
+/// The user's settings (spec §6.5), kept in one local JSON file, plus the file and folder counts of the last full scan,
+/// which only serve to estimate the next scan's progress (T-66). A missing file means the defaults.
+/// </summary>
 public sealed class AppSettings
 {
     public const int MinRetentionDays = 1;
@@ -16,6 +19,18 @@ public sealed class AppSettings
     public int QuarantineRetentionDays { get; private set; } = DefaultRetentionDays;
 
     public TimeSpan QuarantineRetention => TimeSpan.FromDays(QuarantineRetentionDays);
+
+    /// <summary>How many files the last full scan counted; null before the first one.</summary>
+    public long? LastScanFiles { get; private set; }
+
+    public long? LastScanFolders { get; private set; }
+
+    public void RecordScan(long files, long folders)
+    {
+        ArgumentOutOfRangeException.ThrowIfNegative(files);
+        ArgumentOutOfRangeException.ThrowIfNegative(folders);
+        (LastScanFiles, LastScanFolders) = (files, folders);
+    }
 
     public void SetQuarantineRetentionDays(int days)
     {
@@ -46,12 +61,15 @@ public sealed class AppSettings
 
         if (document?.Version != CurrentVersion
             || document.QuarantineRetentionDays is not { } days
-            || days is < MinRetentionDays or > MaxRetentionDays)
+            || days is < MinRetentionDays or > MaxRetentionDays
+            || document.LastScanFiles < 0
+            || document.LastScanFolders < 0)
         {
             throw new InvalidDataException($"'{filePath}' has an unsupported format.");
         }
 
         settings.QuarantineRetentionDays = days;
+        (settings.LastScanFiles, settings.LastScanFolders) = (document.LastScanFiles, document.LastScanFolders);
         return settings;
     }
 
@@ -61,11 +79,11 @@ public sealed class AppSettings
         ArgumentException.ThrowIfNullOrWhiteSpace(filePath);
         Directory.CreateDirectory(Path.GetDirectoryName(Path.GetFullPath(filePath))!);
         var temporary = filePath + ".tmp";
-        File.WriteAllText(temporary, JsonSerializer.Serialize(new Document(CurrentVersion, QuarantineRetentionDays), Json));
+        File.WriteAllText(temporary, JsonSerializer.Serialize(new Document(CurrentVersion, QuarantineRetentionDays, LastScanFiles, LastScanFolders), Json));
         File.Move(temporary, filePath, overwrite: true);
     }
 
     private static readonly JsonSerializerOptions Json = new() { WriteIndented = true };
 
-    private sealed record Document(int Version, int? QuarantineRetentionDays);
+    private sealed record Document(int Version, int? QuarantineRetentionDays, long? LastScanFiles = null, long? LastScanFolders = null);
 }

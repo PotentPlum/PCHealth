@@ -2,6 +2,7 @@ using System.IO;
 using Microsoft.Extensions.DependencyInjection;
 using PCHealth.App.ViewModels;
 using PCHealth.Core;
+using PCHealth.Duplicates;
 using PCHealth.Inventory;
 using PCHealth.Policy;
 using PCHealth.Policy.Catalog;
@@ -85,7 +86,12 @@ public sealed class FirstRunTests : IDisposable
             new ProtectionPolicy([]), new ExclusionList(), profile, new ManualClock(Now));
 
         var quick = await discovery.QuickAsync(TestContext.Current.CancellationToken);
-        var full = await discovery.FullAsync(null, TestContext.Current.CancellationToken);
+        var reports = new List<DiscoveryProgress>();
+        var full = await discovery.FullAsync(new Recorder(reports), TestContext.Current.CancellationToken);
+
+        Assert.Equal(Enum.GetValues<DiscoveryStep>(), reports.Select(r => r.Step).Distinct());
+        Assert.Equal(new HashProgress(2 * big.Length, 2 * big.Length, 2, 2), reports.Last(r => r.Hashing is not null).Hashing);
+        Assert.Equal(4, full.Statistics!.FilesScanned);
 
         Assert.Equal(FindingCategory.Cache, Assert.Single(quick.ToAct).Category);
         Assert.Contains(full.Recommendations.ToAct, r => r.Category == FindingCategory.VerifiedDuplicate);
@@ -95,6 +101,17 @@ public sealed class FirstRunTests : IDisposable
     }
 
     public void Dispose() => root.Dispose();
+
+    private sealed class Recorder(List<DiscoveryProgress> reports) : IProgress<DiscoveryProgress>
+    {
+        public void Report(DiscoveryProgress value)
+        {
+            lock (reports)
+            {
+                reports.Add(value);
+            }
+        }
+    }
 
     private ServiceProvider Build(IDiscovery discovery) =>
         AppServices.Build(new AppPaths(root.Resolve("PCHealth")), s => s.AddSingleton(discovery));
@@ -130,7 +147,7 @@ public sealed class FirstRunTests : IDisposable
 
         public Task<RecommendationSet> QuickAsync(CancellationToken cancellationToken) => Task.FromResult(Quick);
 
-        public async Task<FullDiscovery> FullAsync(IProgress<ScanProgress>? progress, CancellationToken cancellationToken)
+        public async Task<FullDiscovery> FullAsync(IProgress<DiscoveryProgress>? progress, CancellationToken cancellationToken)
         {
             BeforeFull?.Invoke();
             if (WaitInFull)

@@ -76,7 +76,7 @@ jobs:
           ls Releases
           test -f Releases/PCHealth-win-Setup.exe
           test -f Releases/releases.win.json
-          ls Releases/*.msi
+          test -f Releases/PCHealth-win.msi
 
   linux-portable:
     name: Linux (portable projects)
