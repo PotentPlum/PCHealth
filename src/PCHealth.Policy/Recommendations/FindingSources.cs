@@ -117,6 +117,29 @@ public static class FindingSources
                 OperationKind.MoveToFolder, i.Path, i.IsDirectory, i.Size, i.IsDirectory ? null : i.LastWriteTimeUtc, destinationFolder: destination)).ToArray());
     }
 
+    /// <summary>Files of a folder to compress where they are (T-55). The saving is the estimate, never a measurement.</summary>
+    internal static Finding Compression(CompressionEstimate estimate, IReadOnlyList<FileEntry> files)
+    {
+        var count = files.Count == 1 ? "1 file" : $"{files.Count} files";
+        return new Finding(
+            FindingCategory.Compression,
+            $"Compress {count} in {Path.GetFileName(Path.TrimEndingDirectorySeparator(estimate.Folder))}",
+            $"You asked for an estimate: compressing could save about {estimate.Saving.Bytes:N0} bytes ({estimate.SavingRatio:P0} of {estimate.EligibleBytes.Bytes:N0} bytes). Savings depend on the files.",
+            [
+                new PathEvidence(estimate.Folder, "The folder you chose to estimate."),
+                new CheckEvidence("estimate", $"Estimated from {estimate.Saving.Basis}."),
+                new CheckEvidence("left out", $"{estimate.Skipped.Count} files are left out: already compressed formats, files too small to gain, or unreadable files."),
+            ],
+            new Confidence(ConfidenceLevel.Medium, "The saving is an estimate from a sample compressed in memory; files that were not sampled may compress differently."),
+            new Impact(
+                $"Compresses {count} where they are with Windows' own XPRESS compression. Their paths and contents stay the same.",
+                estimate.Saving,
+                "Opening them takes a little more processor time. When a compressed file is changed, Windows decompresses it and its saving is lost. "
+                    + "Only Windows 10 or later can read them; on other systems, or copied off this drive, they are ordinary files again."),
+            new Recovery(RecoveryMethod.Decompress, "Undo decompresses them where they are, if the drive has room for their full size."),
+            operations: files.Select(f => new ProposedOperation(OperationKind.CompressInPlace, f.FullPath, isDirectory: false, f.Size, f.LastWriteTimeUtc)).ToArray());
+    }
+
     /// <summary>A large folder is information about where space goes, not a proposal.</summary>
     public static Finding FromLargeFolder(FolderSize folder, bool scanComplete)
     {

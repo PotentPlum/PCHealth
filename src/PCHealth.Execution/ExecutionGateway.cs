@@ -39,7 +39,8 @@ public sealed class ExecutionGateway(
     QuarantineStore quarantine,
     GlobalPause pause,
     TimeProvider? clock = null,
-    Restorer? restorer = null)
+    Restorer? restorer = null,
+    IFileCompression? compression = null)
 {
     public const string NeedsElevationReason = "needs administrator rights, not supported yet.";
 
@@ -57,6 +58,7 @@ public sealed class ExecutionGateway(
         "quarantine on the same volume",
         "Recycle Bin suitable: local drive, turned on, large enough",
         "destination is a real folder, not protected or excluded, on the same drive, with nothing to overwrite",
+        "compression supported: NTFS, not encrypted, not already compressed",
     ];
 
     private static readonly StringComparison PathComparison =
@@ -109,6 +111,11 @@ public sealed class ExecutionGateway(
             return Refuse(approved, "A copy that is meant to stay was also chosen for removal; at least one copy always stays. Nothing was changed.");
         }
 
+        if (kinds[0] == OperationKind.CompressInPlace && compression is null)
+        {
+            return Refuse(approved, "Compression is not available here; nothing was changed.");
+        }
+
         if (kinds[0] == OperationKind.MoveToQuarantine && recommendation.QuarantineRetention != quarantine.Retention)
         {
             return Refuse(approved, "The quarantine period changed after this was shown; nothing was changed. Look at it again before approving.");
@@ -141,8 +148,13 @@ public sealed class ExecutionGateway(
             // A move records its destination before acting, so an interruption can be settled from either path.
             approved.Select(o => new LedgerItem(o.Path, o.IsDirectory, Before(o), RecoveryLocation: o.Destination)).ToArray(),
 
-            // A move within one drive frees nothing.
-            expectedBytes: operation == LedgerOperation.MoveToFolder ? 0 : approved.Sum(o => o.ExpectedSize.Bytes),
+            // A move within one drive frees nothing; compression is expected to free what was estimated.
+            expectedBytes: operation switch
+            {
+                LedgerOperation.MoveToFolder => 0,
+                LedgerOperation.CompressInPlace => recommendation.Impact.PotentiallyReclaimable?.Bytes,
+                _ => approved.Sum(o => o.ExpectedSize.Bytes),
+            },
             observedBytes: null,
             recommendation.Recovery.Method,
             recommendation.Recovery.Limitations,
@@ -162,7 +174,11 @@ public sealed class ExecutionGateway(
             var (item, outcome) = Run(record.Id, i, approved[i], items[i]);
             items[i] = item;
             outcomes[i] = outcome;
-            if (outcome.Status == ItemStatus.Done && operation != LedgerOperation.MoveToFolder)
+            if (outcome.Status == ItemStatus.Done && operation == LedgerOperation.CompressInPlace)
+            {
+                freed += Math.Max(0, (item.Before.SizeOnDiskBytes ?? 0) - (item.After?.SizeOnDiskBytes ?? 0));
+            }
+            else if (outcome.Status == ItemStatus.Done && operation != LedgerOperation.MoveToFolder)
             {
                 freed += item.Before.SizeBytes;
             }
@@ -243,10 +259,19 @@ public sealed class ExecutionGateway(
             {
                 platform.MoveToFolder(operation.Path, operation.Destination!, operation.IsDirectory);
             }
+            else if (operation.Kind == OperationKind.CompressInPlace)
+            {
+                compression!.Compress(operation.Path);
+            }
             else
             {
                 recycledTo = platform.MoveToRecycleBin(operation.Path, operation.IsDirectory);
             }
+        }
+        catch (CompressionNotBeneficialException)
+        {
+            const string reason = "Compressing it would not save space, so it was left as it is.";
+            return (item with { Status = ItemStatus.Skipped, Error = reason }, new ItemOutcome(operation, ItemStatus.Skipped, reason));
         }
         catch (PermanentlyDeletedException ex)
         {
@@ -263,6 +288,11 @@ public sealed class ExecutionGateway(
         }
 
         // 5. Verify.
+        if (operation.Kind == OperationKind.CompressInPlace)
+        {
+            return VerifyCompressed(operation, item);
+        }
+
         if (platform.Inspect(operation.Path) is not null)
         {
             return Failed(operation, item, "It is still at its original path after the move.");
@@ -295,6 +325,33 @@ public sealed class ExecutionGateway(
         return (item with { Status = ItemStatus.Done }, new ItemOutcome(operation, ItemStatus.Done, null));
     }
 
+    /// <summary>A compressed file is still there with the same size and contents, and now takes less space on disk.</summary>
+    private (LedgerItem, ItemOutcome) VerifyCompressed(ProposedOperation operation, LedgerItem item)
+    {
+        if (platform.Inspect(operation.Path) is not { } state || state.SizeBytes != item.Before.SizeBytes)
+        {
+            return Failed(operation, item, "It is not as it was after compressing; check it.");
+        }
+
+        long onDisk;
+        try
+        {
+            if (!compression!.IsCompressed(operation.Path))
+            {
+                return Failed(operation, item, "It is not stored compressed after compressing.");
+            }
+
+            onDisk = compression.SizeOnDisk(operation.Path);
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            return Failed(operation, item, $"It was compressed, but the result could not be measured: {ex.Message}");
+        }
+
+        item = item with { After = new ItemMetadata(state.SizeBytes, state.LastWriteTimeUtc, state.CreationTimeUtc, state.Attributes, onDisk) };
+        return (item with { Status = ItemStatus.Done }, new ItemOutcome(operation, ItemStatus.Done, null));
+    }
+
     /// <summary>The reason the item must be left alone, or null when every check passed.</summary>
     private string? Revalidate(ProposedOperation operation)
     {
@@ -317,7 +374,10 @@ public sealed class ExecutionGateway(
 
         if (resolved.IsReparsePoint)
         {
-            return "It is a link; links are never changed.";
+            // A WOF-compressed file is stored behind a reparse point of its own.
+            return operation.Kind == OperationKind.CompressInPlace && compression!.IsCompressed(operation.Path)
+                ? "It is already compressed."
+                : "It is a link; links are never changed.";
         }
 
         if (!string.Equals(Path.TrimEndingDirectorySeparator(resolved.FinalPath!), Path.TrimEndingDirectorySeparator(operation.Path), PathComparison))
@@ -386,6 +446,11 @@ public sealed class ExecutionGateway(
         if (operation.Kind == OperationKind.MoveToFolder && DestinationProblem(operation, resolved.FinalPath!) is { } destination)
         {
             return destination;
+        }
+
+        if (operation.Kind == OperationKind.CompressInPlace && compression!.CannotCompress(resolved.FinalPath!) is { } unsupported)
+        {
+            return unsupported;
         }
 
         return null;
@@ -494,16 +559,41 @@ public sealed class ExecutionGateway(
             : $"The copy that stays, '{kept}', no longer has the same contents, so this copy was left alone.";
     }
 
-    /// <summary>The item's metadata as recorded before anything changes; a folder keeps the size measured when it was found.</summary>
+    /// <summary>
+    /// The item's metadata as recorded before anything changes; a folder keeps the size measured when it was found, and
+    /// a file about to be compressed also records its size on disk.
+    /// </summary>
     private ItemMetadata Before(ProposedOperation operation) =>
         platform.Inspect(operation.Path) is { } state
-            ? new ItemMetadata(operation.IsDirectory ? operation.ExpectedSize.Bytes : state.SizeBytes, state.LastWriteTimeUtc, state.CreationTimeUtc, state.Attributes)
+            ? new ItemMetadata(
+                operation.IsDirectory ? operation.ExpectedSize.Bytes : state.SizeBytes,
+                state.LastWriteTimeUtc,
+                state.CreationTimeUtc,
+                state.Attributes,
+                operation.Kind == OperationKind.CompressInPlace ? SizeOnDisk(operation.Path) : null)
             : new ItemMetadata(operation.ExpectedSize.Bytes, operation.ExpectedLastWriteTimeUtc);
+
+    private long? SizeOnDisk(string path)
+    {
+        try
+        {
+            return compression?.SizeOnDisk(path);
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            return null;
+        }
+    }
 
     /// <param name="destination">The path is the folder a move goes into, not an item that changes.</param>
     private string? PolicyBlock(string path, OperationKind kind, bool destination = false)
     {
-        var decision = kind == OperationKind.MoveToFolder ? protection.CheckMove(path, destination) : protection.Check(path);
+        var decision = kind switch
+        {
+            OperationKind.MoveToFolder => protection.CheckMove(path, destination),
+            OperationKind.CompressInPlace => protection.CheckCompress(path),
+            _ => protection.Check(path),
+        };
         if (decision is { IsBlocked: true } blocked)
         {
             return blocked.Reason;

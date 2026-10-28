@@ -11,7 +11,7 @@ public sealed record StartupReport(IReadOnlyList<LedgerTransaction> Resolved, IR
 /// resolves each item from what is actually on disk (spec §9). Nothing is moved or deleted here except empty slots of
 /// moves that never happened; anything ambiguous is marked failed with an explanation for the user.
 /// </summary>
-public sealed class InterruptedOperations(TransactionLedger ledger, QuarantineStore quarantine)
+public sealed class InterruptedOperations(TransactionLedger ledger, QuarantineStore quarantine, IFileCompression? compression = null)
 {
     /// <summary>Run once at startup, before any new operation.</summary>
     public StartupReport Resolve()
@@ -26,6 +26,8 @@ public sealed class InterruptedOperations(TransactionLedger ledger, QuarantineSt
             {
                 LedgerOperation.MoveToQuarantine => ResolveQuarantineMove(item, slots.GetValueOrDefault(position)),
                 LedgerOperation.MoveToFolder => ResolveMove(item),
+                LedgerOperation.CompressInPlace => ResolveCompression(item),
+                LedgerOperation.Restore when transaction.Checks.FirstOrDefault() == Restorer.DecompressCheck => ResolveDecompression(item),
                 LedgerOperation.Restore => ResolveRestore(item, Restorer.PlaceOf(transaction)),
                 LedgerOperation.PurgeQuarantine => ResolvePurge(item),
                 _ => ResolveRecycle(item),
@@ -102,6 +104,54 @@ public sealed class InterruptedOperations(TransactionLedger ledger, QuarantineSt
             (true, true) => item with { Status = ItemStatus.Failed, Error = $"Found both at the original path and {place} ('{item.RecoveryLocation}'); both were left for you to check." },
             _ => item with { Status = ItemStatus.Failed, Error = $"Found neither at the original path nor {place}." },
         };
+    }
+
+    /// <summary>Compression never changes a file's contents, so an interrupted one is settled by asking whether it is compressed.</summary>
+    private LedgerItem ResolveCompression(LedgerItem item)
+    {
+        if (item.Status is ItemStatus.Failed or ItemStatus.Skipped)
+        {
+            return item;
+        }
+
+        if (!File.Exists(item.OriginalPath))
+        {
+            return item with { Status = ItemStatus.Failed, Error = "It is no longer at its path; it was moved or deleted after the interruption." };
+        }
+
+        try
+        {
+            return compression is not null && compression.IsCompressed(item.OriginalPath)
+                ? item with { Status = ItemStatus.Done, After = item.Before with { SizeOnDiskBytes = compression.SizeOnDisk(item.OriginalPath) } }
+                : item with { Status = ItemStatus.Skipped, Error = compression is null
+                    ? "Interrupted; whether it was compressed could not be checked here. Its contents are unchanged either way."
+                    : "Interrupted before it was compressed; it was left as it was." };
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            return item with { Status = ItemStatus.Failed, Error = $"Interrupted, and its state could not be checked: {ex.Message}. Its contents are unchanged either way." };
+        }
+    }
+
+    private LedgerItem ResolveDecompression(LedgerItem item)
+    {
+        if (item.Status is ItemStatus.Done or ItemStatus.Failed or ItemStatus.Skipped)
+        {
+            return item;
+        }
+
+        try
+        {
+            return compression is null
+                ? item with { Status = ItemStatus.Failed, Error = "Interrupted; whether it was decompressed could not be checked here. Its contents are unchanged either way." }
+                : compression.IsCompressed(item.OriginalPath)
+                    ? item with { Status = ItemStatus.Skipped, Error = "Interrupted before it was decompressed; it is still compressed." }
+                    : item with { Status = ItemStatus.Done };
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            return item with { Status = ItemStatus.Failed, Error = $"Interrupted, and its state could not be checked: {ex.Message}" };
+        }
     }
 
     /// <summary>A move to a folder records its destination before acting, so the item is found at one of two paths.</summary>

@@ -62,6 +62,9 @@ public enum RecoveryMethod
 
     /// <summary>Undo moves the items back from the folder they were moved to (T-51).</summary>
     MoveBack,
+
+    /// <summary>Undo decompresses the files where they are (T-55).</summary>
+    Decompress,
 }
 
 /// <summary>Whether the change can be undone, how, until when, and with what limits.</summary>

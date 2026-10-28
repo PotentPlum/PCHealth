@@ -11,6 +11,9 @@ public enum LedgerOperation
     /// <summary>Items moved into a folder the user chose. Each item's recovery location is where it went.</summary>
     MoveToFolder,
 
+    /// <summary>Files compressed where they are. Before and after record each file's size on disk.</summary>
+    CompressInPlace,
+
     /// <summary>Quarantined items deleted permanently because their retention period ended.</summary>
     PurgeQuarantine,
 
@@ -25,6 +28,7 @@ public static class LedgerOperations
         OperationKind.MoveToRecycleBin => LedgerOperation.MoveToRecycleBin,
         OperationKind.MoveToQuarantine => LedgerOperation.MoveToQuarantine,
         OperationKind.MoveToFolder => LedgerOperation.MoveToFolder,
+        OperationKind.CompressInPlace => LedgerOperation.CompressInPlace,
         _ => throw new ArgumentOutOfRangeException(nameof(kind)),
     };
 }
@@ -56,11 +60,13 @@ public enum ItemStatus
 }
 
 /// <summary>What was known about an item at one moment.</summary>
+/// <param name="SizeOnDiskBytes">The space the file takes on disk, measured; recorded for compression (T-55).</param>
 public sealed record ItemMetadata(
     long SizeBytes,
     DateTimeOffset? LastWriteTimeUtc = null,
     DateTimeOffset? CreationTimeUtc = null,
-    FileAttributes? Attributes = null);
+    FileAttributes? Attributes = null,
+    long? SizeOnDiskBytes = null);
 
 /// <summary>One affected path in a transaction, with before/after metadata and where it can be recovered from.</summary>
 /// <param name="RecoveryLocation">Where the item went, e.g. its quarantine path; null until known or when there is none.</param>
