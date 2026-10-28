@@ -1,0 +1,4 @@
+<Event xmlns="http://schemas.microsoft.com/win/2004/08/events/event">
+  <System><Provider Name="Microsoft-Windows-WindowsUpdateClient" /><EventID>20</EventID><TimeCreated SystemTime="2026-10-24T03:10:00Z" /></System>
+  <EventData><Data Name="errorCode">0x80070643</Data><Data Name="updateTitle">Security Intelligence Update (KB2267602)</Data></EventData>
+</Event>

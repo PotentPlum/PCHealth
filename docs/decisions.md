@@ -384,3 +384,22 @@ Running processes, open handles, services and scheduled tasks are checked by the
 - **Startup items** are matched to processes by program path. Items that run inside `svchost.exe` or `rundll32.exe` are not attributed, because the host's usage can't be told apart.
 - **Shown separately, never combined:** CPU time and share of all processors, memory, and samples seen are shown side by side with the window and caveats. There is no composite score (spec §5.4).
 - **Boot timing** is the newest event 100 in `Microsoft-Windows-Diagnostics-Performance/Operational`, read through the Windows Event Log API (`wevtapi.dll`, no new dependency). Windows lets only administrators read that log by default, so without the rights the app says "not available without administrator rights".
+
+## D-034 Timeline sources
+**Accepted** (2026-10-28; T-60)
+
+- **One model:** `TimelineEvent` (time, source, kind, summary, evidence). Summaries are built from each event's data, not from Windows' message text, so they read the same on every language.
+- **Event logs, read with the Event Log API (no new dependency):**
+  - Application log: app crashes (Application Error 1000), problem reports (Windows Error Reporting 1001), hangs (Application Hang 1002), and MSI installs and removals (MsiInstaller 1033, 1034, 11707, 11724).
+  - System log: unexpected shutdowns (Kernel-Power 41, EventLog 6008), service and driver start failures (Service Control Manager 7000–7034; 7026 is the driver list), and Windows Update installs and failures (WindowsUpdateClient 19 and 20).
+  - At most 2,000 events per log, newest first.
+- **Reliability Monitor:** read from `Win32_ReliabilityRecords` through the built-in WMI scripting COM object. Records that repeat an event already read from the logs are left out, so nothing shows twice.
+- **Read-only, and gaps are listed:** no log is cleared or written. A log or record that can't be read, or an event that can't be parsed, is listed as not read with the reason.
+
+## D-035 "When did it start?": possible explanations only
+**Accepted** (2026-10-28; T-61)
+
+- **Window:** 7 days before the chosen day and 1 day after. Everything the timeline holds in that window is shown, newest first.
+- **Highlighted:** updates installed or failed, apps installed or removed, drivers that did not load, and startup changes before the chosen day, closest first. Startup changes are new services (Service Control Manager 7045, added to the timeline for this).
+- **Wording rules, checked by tests:** every highlight starts "Possibly related" and the summary says they are "not proven causes". No text uses "caused", "root cause", "defective", "faulty", "bad driver" or "culprit". A driver that did not load is described as something that "can matter, or can be harmless". A driver is never judged by its age or signature.
+- **Nothing changes and nothing is downloaded:** the flow only reads the timeline (D-034). It lives on the Maintenance page next to the startup items it refers to.

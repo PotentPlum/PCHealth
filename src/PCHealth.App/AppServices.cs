@@ -95,6 +95,8 @@ public static class AppServices
         services.AddSingleton<Func<Maintenance.ResourceObserver>>(sp => () => new Maintenance.ResourceObserver(
             sp.GetRequiredService<Maintenance.IProcessSampler>(), sp.GetRequiredService<TimeProvider>()));
         services.AddSingleton<Func<Maintenance.BootTiming>>(_ => Maintenance.Windows.WindowsBootTiming.Read);
+        services.AddSingleton<Maintenance.ITimelineSources, Maintenance.Windows.WindowsTimelineSources>();
+        services.AddSingleton<InvestigateViewModel>();
         services.AddSingleton<MaintenanceViewModel>();
         services.AddSingleton<ActivityViewModel>();
         services.AddSingleton<SettingsViewModel>();

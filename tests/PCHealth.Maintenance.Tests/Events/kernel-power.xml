@@ -1,0 +1,4 @@
+<Event xmlns="http://schemas.microsoft.com/win/2004/08/events/event">
+  <System><Provider Name="Microsoft-Windows-Kernel-Power" Guid="{331c3b3a-2005-44c2-ac5e-77220c37d6b4}" /><EventID>41</EventID><TimeCreated SystemTime="2026-10-25T07:00:30.5Z" /><EventRecordID>9001</EventRecordID></System>
+  <EventData><Data Name="BugcheckCode">209</Data><Data Name="BugcheckParameter1">0x0</Data><Data Name="SleepInProgress">0</Data><Data Name="PowerButtonTimestamp">0</Data></EventData>
+</Event>

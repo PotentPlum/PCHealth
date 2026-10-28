@@ -1,0 +1,4 @@
+<Event xmlns="http://schemas.microsoft.com/win/2004/08/events/event">
+  <System><Provider Name="MsiInstaller" /><EventID Qualifiers="0">1033</EventID><TimeCreated SystemTime="2026-10-23T18:30:00Z" /></System>
+  <EventData><Data>Old VPN Client</Data><Data>3.1.0</Data><Data>1033</Data><Data>0</Data><Data>Old VPN Ltd</Data><Data>(NULL)</Data></EventData>
+</Event>

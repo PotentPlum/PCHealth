@@ -1,0 +1,4 @@
+<Event xmlns="http://schemas.microsoft.com/win/2004/08/events/event">
+  <System><Provider Name="EventLog" /><EventID Qualifiers="32768">6008</EventID><TimeCreated SystemTime="2026-10-25T07:00:40Z" /></System>
+  <EventData><Data>22:41:07</Data><Data>24/10/2026</Data><Data></Data><Data></Data><Data>1234</Data></EventData>
+</Event>

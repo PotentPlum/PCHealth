@@ -1,0 +1,23 @@
+<Event xmlns="http://schemas.microsoft.com/win/2004/08/events/event">
+  <System>
+    <Provider Name="Application Error" Guid="{a0e9b465-b939-57d7-b27d-95d8e925ff57}" />
+    <EventID>1000</EventID>
+    <TimeCreated SystemTime="2026-10-27T08:15:02.0000000Z" />
+    <EventRecordID>48211</EventRecordID>
+    <Channel>Application</Channel>
+  </System>
+  <EventData>
+    <Data Name="AppName">photoeditor.exe</Data>
+    <Data Name="AppVersion">4.2.0.0</Data>
+    <Data Name="AppTimeStamp">65f0a1b2</Data>
+    <Data Name="ModuleName">gpudriver64.dll</Data>
+    <Data Name="ModuleVersion">31.0.15.5222</Data>
+    <Data Name="ModuleTimeStamp">66a1b2c3</Data>
+    <Data Name="ExceptionCode">c0000005</Data>
+    <Data Name="FaultingOffset">00000000000a1b2c</Data>
+    <Data Name="ProcessId">0x1a2b</Data>
+    <Data Name="ProcessCreationTime">0x1db27f0a1b2c3d4</Data>
+    <Data Name="AppPath">C:\Program Files\PhotoEditor\photoeditor.exe</Data>
+    <Data Name="ModulePath">C:\Windows\System32\DriverStore\gpudriver64.dll</Data>
+  </EventData>
+</Event>
