@@ -132,11 +132,35 @@
                         <TextBlock TextWrapping="Wrap" Text="{Binding Total}" />
                         <TextBlock TextWrapping="Wrap" Text="{Binding FilesHere}" />
                         <TextBlock TextWrapping="Wrap" FontStyle="Italic" Text="{Binding Reclaimable}" />
-                        <TextBlock TextWrapping="Wrap" Opacity="0.85" Margin="0,4,0,12" Text="{Binding Completeness}" />
+                        <TextBlock TextWrapping="Wrap" Opacity="0.85" Margin="0,4,0,8" Text="{Binding Completeness}" />
+                        <Button HorizontalAlignment="Left" Padding="10,4" Margin="0,0,0,8" Content="Estimate compression for this folder"
+                                ToolTip="Reads a sample of the files to estimate what compressing them might save. Nothing is changed."
+                                Command="{Binding EstimateCompressionCommand}" />
+                        <TextBlock TextWrapping="Wrap" Margin="0,0,0,8" Text="{Binding CompressionMessage}" />
+                        <Border Margin="0,0,0,12" Padding="12" BorderThickness="1" CornerRadius="6"
+                                BorderBrush="{DynamicResource {x:Static SystemColors.ActiveBorderBrushKey}}"
+                                Visibility="{Binding HasEstimate, Converter={StaticResource Visible}}">
+                            <StackPanel>
+                                <ItemsControl ItemsSource="{Binding CompressionEstimate}">
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate>
+                                            <TextBlock TextWrapping="Wrap" Margin="0,0,0,4" Text="{Binding}" />
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                                <Button HorizontalAlignment="Left" Padding="12,4" Margin="0,4,0,0" Content="Compress…" Command="{Binding CompressCommand}"
+                                        ToolTip="Shows every file before anything is done." />
+                            </StackPanel>
+                        </Border>
                         <ItemsControl ItemsSource="{Binding Folders}">
                             <ItemsControl.ItemTemplate>
                                 <DataTemplate DataType="{x:Type vm:StorageFolderViewModel}">
-                                    <Button HorizontalContentAlignment="Stretch" Margin="0,0,0,6" Padding="12,6"
+                                    <DockPanel Margin="0,0,0,6">
+                                    <Button DockPanel.Dock="Right" Margin="6,0,0,0" Padding="10,4" VerticalAlignment="Center" Content="Estimate compression"
+                                            ToolTip="Reads a sample of the files to estimate what compressing them might save. Nothing is changed."
+                                            Command="{Binding DataContext.EstimateCompressionCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
+                                            CommandParameter="{Binding}" />
+                                    <Button HorizontalContentAlignment="Stretch" Padding="12,6"
                                             Command="{Binding DataContext.OpenCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
                                             CommandParameter="{Binding}">
                                         <StackPanel>
@@ -152,6 +176,7 @@
                                             <TextBlock TextWrapping="Wrap" FontStyle="Italic" Text="{Binding Reclaimable}" />
                                         </StackPanel>
                                     </Button>
+                                    </DockPanel>
                                 </DataTemplate>
                             </ItemsControl.ItemTemplate>
                         </ItemsControl>
@@ -547,6 +572,61 @@
                     </TabItem>
                 </TabControl>
             </DockPanel>
+        </DataTemplate>
+        <DataTemplate DataType="{x:Type vm:MaintenanceViewModel}">
+            <ScrollViewer VerticalScrollBarVisibility="Auto">
+                <StackPanel Margin="24" MaxWidth="900" HorizontalAlignment="Left">
+                    <TextBlock FontSize="24" Text="Maintenance" />
+                    <TextBlock TextWrapping="Wrap" Margin="0,4,0,8" Text="{Binding Summary}" />
+                    <TextBlock TextWrapping="Wrap" FontStyle="Italic" Opacity="0.85" Margin="0,0,0,8" Text="{Binding PrivacyText}" />
+                    <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
+                        <Button Padding="12,4" FontWeight="SemiBold" Content="Read startup items" Command="{Binding ReadCommand}" />
+                        <Button Padding="12,4" Margin="8,0,0,0" Content="{Binding ObserveText}" Command="{Binding ObserveCommand}"
+                                ToolTip="Measures CPU time and memory of running programs at low priority. Nothing is changed." />
+                        <Button Padding="12,4" Margin="8,0,0,0" Content="Stop" Command="{Binding StopCommand}" />
+                    </StackPanel>
+                    <TextBlock TextWrapping="Wrap" Margin="0,0,0,4" Text="{Binding BootTiming}" />
+                    <TextBlock TextWrapping="Wrap" Margin="0,0,0,4" Text="{Binding ObservationSummary}" />
+                    <ItemsControl Margin="0,0,0,8" ItemsSource="{Binding Caveats}">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <TextBlock TextWrapping="Wrap" FontStyle="Italic" Text="{Binding}" />
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                    <ItemsControl ItemsSource="{Binding Items}">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate DataType="{x:Type vm:MaintenanceItemViewModel}">
+                                <Border Margin="0,0,0,10" Padding="12" BorderThickness="1" CornerRadius="6"
+                                        BorderBrush="{DynamicResource {x:Static SystemColors.ActiveBorderBrushKey}}">
+                                    <StackPanel>
+                                        <TextBlock FontSize="15" FontWeight="SemiBold" TextWrapping="Wrap">
+                                            <Run Text="{Binding Name, Mode=OneWay}" />
+                                            <Run Text=" · " />
+                                            <Run Text="{Binding Mechanism, Mode=OneWay}" />
+                                        </TextBlock>
+                                        <TextBlock TextWrapping="Wrap" Text="{Binding State}" />
+                                        <TextBlock TextWrapping="Wrap" FontFamily="Consolas" FontSize="12" Text="{Binding Location}" />
+                                        <TextBlock TextWrapping="Wrap" FontFamily="Consolas" FontSize="12" Text="{Binding Command}" />
+                                        <TextBlock TextWrapping="Wrap" Text="{Binding Program}" />
+                                        <TextBlock TextWrapping="Wrap" Text="{Binding Publisher}" />
+                                        <TextBlock TextWrapping="Wrap" Text="{Binding Observation}" />
+                                        <TextBlock TextWrapping="Wrap" Margin="0,4,0,0" Opacity="0.85" Text="{Binding HowToChange}" />
+                                    </StackPanel>
+                                </Border>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                    <TextBlock FontWeight="SemiBold" Margin="0,8,0,4" Text="Not read" />
+                    <ItemsControl ItemsSource="{Binding NotRead}">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <TextBlock TextWrapping="Wrap" Text="{Binding}" />
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </StackPanel>
+            </ScrollViewer>
         </DataTemplate>
         <DataTemplate DataType="{x:Type vm:ActivityViewModel}">
             <ScrollViewer VerticalScrollBarVisibility="Auto">

@@ -4,6 +4,7 @@ using PCHealth.App.ViewModels;
 using PCHealth.Execution;
 using PCHealth.Execution.Windows;
 using PCHealth.Inventory;
+using PCHealth.Inventory.Compression;
 using PCHealth.Inventory.Windows;
 using PCHealth.Ledger;
 using PCHealth.Policy;
@@ -81,12 +82,20 @@ public static class AppServices
         services.AddSingleton<PauseViewModel>();
         services.AddSingleton<FirstRunViewModel>();
         services.AddSingleton<OverviewViewModel>();
+        services.AddSingleton<IChunkCompressor>(_ => new WofCompressor());
+        services.AddSingleton(sp => new CompressionEstimates(new RecursiveScanner(), sp.GetRequiredService<IChunkCompressor>()));
         services.AddSingleton<StorageViewModel>();
         services.AddSingleton<DuplicatesViewModel>();
         services.AddSingleton<IOrganizeFolders>(sp => new WindowsOrganizeFolders(sp.GetRequiredService<IPathResolver>()));
         services.AddSingleton(sp => new OrganizeAnalysis(sp.GetRequiredService<IOrganizeFolders>(), new RecursiveScanner(), sp.GetRequiredService<ExclusionList>()));
         services.AddSingleton<IFolderPicker, WpfFolderPicker>();
         services.AddSingleton<OrganizeViewModel>();
+        services.AddSingleton<Maintenance.IStartupSources, Maintenance.Windows.WindowsStartupSources>();
+        services.AddSingleton<Maintenance.IProcessSampler, Maintenance.Windows.WindowsProcessSampler>();
+        services.AddSingleton<Func<Maintenance.ResourceObserver>>(sp => () => new Maintenance.ResourceObserver(
+            sp.GetRequiredService<Maintenance.IProcessSampler>(), sp.GetRequiredService<TimeProvider>()));
+        services.AddSingleton<Func<Maintenance.BootTiming>>(_ => Maintenance.Windows.WindowsBootTiming.Read);
+        services.AddSingleton<MaintenanceViewModel>();
         services.AddSingleton<ActivityViewModel>();
         services.AddSingleton<SettingsViewModel>();
         services.AddSingleton(sp => new BenchmarkViewModel(BenchmarkViewModel.DefaultReportsFolder(), clock: sp.GetRequiredService<TimeProvider>()));

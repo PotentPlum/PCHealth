@@ -163,42 +163,19 @@ Result: Mechanism decided: WOF XPRESS8K, not NTFS LZNT1 (D-030). `CompressionEst
 ### T-55 Compress and decompress through the gateway · `done` · W · deps: T-54
 Result: `CompressInPlace` operation (recovery `Decompress`, category `Compression`, `RecommendationBuilder.ForCompression`). The gateway checks NTFS, encryption, existing compression, placeholders and use right before each file, skips with a reason (also when not beneficial), and records size on disk before and after, so the observed bytes are measured. Undo decompresses files still compressed and refuses up front when free space is too small; interruptions are settled at startup. `WofCompression` implements it with WOF XPRESS8K. D-031; 7 portable tests and 2 Windows tests on the CI runner.
 
-### T-56 Compression in the app · `todo` · W · deps: T-55
-Refs: §5.3, §7 · area: src/PCHealth.App
-Done when:
-- On the Storage page, a folder offers "Estimate compression". The preview shows the estimate, the performance and compatibility trade-offs, and that savings depend on the files.
-- After approval, Activity shows the measured saving, and Undo is available.
-- The app never recommends compression on age alone.
-- Tests drive the view model.
+### T-56 Compression in the app · `done` · W · deps: T-55
+Result: The Storage page offers "Estimate compression" for each folder and for the folder being looked at. It shows the estimate with its sample and basis, the read and compatibility trade-offs, and that savings depend on the files. "Compress…" goes to the preview, which shows the estimated saving for the selected files. After approval the gateway compresses, and Activity shows "Compressed N items: X saved (measured)" with Undo. Compression is offered only when the user asks for an estimate, never from age. 2 view-model tests.
 
 ### Slice 7: Startup and background analysis (read-only)
 
-### T-57 Startup inventory · `todo` · W · deps: —
-Refs: §5.4 "Startup and background resource analysis" · area: new `src/PCHealth.Maintenance` (net10.0) + `src/PCHealth.Maintenance.Windows`
-Done when:
-- Startup items are read, unelevated where Windows allows, with each item's mechanism, command, publisher (from the signature if any), whether the file exists, and the enabled state from `StartupApproved`. The sources:
-  - Run and RunOnce keys in HKCU and HKLM, including WOW6432Node
-  - the Startup folders
-  - scheduled tasks with logon or boot triggers
-  - auto-start services
-- Anything that could not be read is reported as such.
-- Nothing is changed. Tests read fixture registry hives or fakes and run on the CI runner.
+### T-57 Startup inventory · `done` · W · deps: —
+Result: New `PCHealth.Maintenance` (portable `StartupInventoryReader`, task XML parsing, StartupApproved decoding, command parsing) and `PCHealth.Maintenance.Windows` (`WindowsStartupSources`). It reads Run/RunOnce in both hives and views, the Startup folders (`.lnk` targets), boot or logon scheduled tasks and automatic services, each with mechanism, command, program, file existence, publisher (WinVerifyTrust, cache only) and enabled state, and lists every source it could not read. Nothing is changed. D-032; 11 portable tests on fakes and 3 Windows tests on the CI runner.
 
-### T-58 Resource observation · `todo` · W · deps: T-57
-Refs: §5.4, §6.1, §6.5 · area: src/PCHealth.Maintenance.Windows
-Done when:
-- On the user's request, a bounded observation window (default 2 minutes, cancellable, low priority) samples per-process CPU time and working set and maps processes to startup items by image path.
-- Boot timing comes from the Diagnostics-Performance log if it is readable; otherwise it is "not available without administrator rights".
-- Measurements are shown separately with their window and caveats. There is no combined score.
-- Tests use fake samples; one CI test observes a fixture process.
+### T-58 Resource observation · `done` · W · deps: T-57
+Result: `ResourceObserver` samples per-process CPU time and working set on request: a bounded window (2 minutes by default, at most 30), cancellable, on a lowest-priority thread. It groups by program path, lists protected processes as unmeasured, and maps startup items by image path (shared hosts are not attributed). Results carry their window and caveats, with no combined score. Boot timing comes from Diagnostics-Performance event 100 through `wevtapi`, or reads "not available without administrator rights". D-033; 5 portable tests with scripted samples, and 2 Windows tests, one of which observes a busy fixture PowerShell process.
 
-### T-59 Maintenance page · `todo` · W · deps: T-58
-Refs: §5.4, §7 · area: src/PCHealth.App
-Done when:
-- A "Maintenance" page lists startup items with their mechanism, evidence and the latest observation.
-- Each item explains how the user can change it themselves (Task Manager Startup, Services, Task Scheduler). The app changes nothing.
-- The privacy and permissions text says what is read.
-- Tests drive the view model.
+### T-59 Maintenance page · `done` · W · deps: T-58
+Result: New "Maintenance" page. It lists startup items with mechanism, state and its evidence, where each is registered, the command, the program and whether it exists, the publisher, and the latest observation, plus boot timing or why it is unavailable. Each item says how to change it yourself (Task Manager Startup apps, Task Scheduler, Services); the app changes nothing. The page states what it reads and that results stay in memory. The observation is started and stopped by the user, and its measurements are shown side by side with caveats. 3 view-model tests on fakes.
 
 ### Slice 8: Diagnostic timeline
 

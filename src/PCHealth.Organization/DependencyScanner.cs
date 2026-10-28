@@ -3,6 +3,7 @@ using System.Text.RegularExpressions;
 using System.Xml;
 using System.Xml.Linq;
 using PCHealth.Core;
+using PCHealth.Inventory;
 
 namespace PCHealth.Organization;
 

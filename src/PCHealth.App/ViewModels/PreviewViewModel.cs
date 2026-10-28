@@ -86,6 +86,14 @@ public sealed class PreviewViewModel : PageViewModel
         get
         {
             var selected = Items.Where(i => i.IsSelected).ToArray();
+            if (Recommendation.Recovery.Method == RecoveryMethod.Decompress && Recommendation.Impact.PotentiallyReclaimable is { } estimate)
+            {
+                var all = Items.Sum(i => i.Operation.ExpectedSize.Bytes);
+                var share = all == 0 ? 0 : (double)selected.Sum(i => i.Operation.ExpectedSize.Bytes) / all;
+                return $"{selected.Length} of {Items.Count} files selected: about {SizeText.Bytes((long)(estimate.Bytes * share))} could be saved "
+                    + $"(estimated from {estimate.Basis}). The saving is measured after compressing and shown in Activity.";
+            }
+
             if (Recommendation.Recovery.Method == RecoveryMethod.MoveBack)
             {
                 return $"{selected.Length} of {Items.Count} items selected. A move within one drive frees no space. {Recommendation.Impact.WhatChanges}";

@@ -17,6 +17,7 @@ public sealed class MainViewModel : ObservableObject
         StorageViewModel storage,
         DuplicatesViewModel duplicates,
         OrganizeViewModel organize,
+        MaintenanceViewModel maintenance,
         ActivityViewModel activity,
         BenchmarkViewModel benchmark,
         SettingsViewModel settings,
@@ -79,6 +80,22 @@ public sealed class MainViewModel : ObservableObject
             opened.Add(page);
             Current = page;
         };
+        storage.PreviewRequested += (_, compression) =>
+        {
+            var page = preview(compression.Recommendation);
+            page.Finished += (_, _) =>
+            {
+                if (page.Execution is not null)
+                {
+                    compression.Removed(new HashSet<string>());
+                }
+
+                opened.Remove(page);
+                Current = storage;
+            };
+            opened.Add(page);
+            Current = page;
+        };
         organize.PreviewRequested += (_, move) =>
         {
             var page = preview(move.Recommendation);
@@ -96,7 +113,7 @@ public sealed class MainViewModel : ObservableObject
             opened.Add(page);
             Current = page;
         };
-        Pages = [overview, storage, duplicates, organize, activity, benchmark, settings, updates];
+        Pages = [overview, storage, duplicates, organize, maintenance, activity, benchmark, settings, updates];
         FirstRun = firstRun;
         current = FirstRunViewModel.IsNeeded(paths) ? firstRun : overview;
         firstRun.Completed += (_, _) => Current = overview;

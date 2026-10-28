@@ -9,6 +9,8 @@
     <Project Path="src/PCHealth.Inventory.Windows/PCHealth.Inventory.Windows.csproj" />
     <Project Path="src/PCHealth.Inventory/PCHealth.Inventory.csproj" />
     <Project Path="src/PCHealth.Ledger/PCHealth.Ledger.csproj" />
+    <Project Path="src/PCHealth.Maintenance.Windows/PCHealth.Maintenance.Windows.csproj" />
+    <Project Path="src/PCHealth.Maintenance/PCHealth.Maintenance.csproj" />
     <Project Path="src/PCHealth.Organization/PCHealth.Organization.csproj" />
     <Project Path="src/PCHealth.Policy/PCHealth.Policy.csproj" />
   </Folder>
@@ -25,6 +27,8 @@
     <Project Path="tests/PCHealth.Inventory.Tests/PCHealth.Inventory.Tests.csproj" />
     <Project Path="tests/PCHealth.Inventory.Windows.Tests/PCHealth.Inventory.Windows.Tests.csproj" />
     <Project Path="tests/PCHealth.Ledger.Tests/PCHealth.Ledger.Tests.csproj" />
+    <Project Path="tests/PCHealth.Maintenance.Tests/PCHealth.Maintenance.Tests.csproj" />
+    <Project Path="tests/PCHealth.Maintenance.Windows.Tests/PCHealth.Maintenance.Windows.Tests.csproj" />
     <Project Path="tests/PCHealth.Organization.Tests/PCHealth.Organization.Tests.csproj" />
     <Project Path="tests/PCHealth.Policy.Tests/PCHealth.Policy.Tests.csproj" />
     <Project Path="tests/PCHealth.Testing.Tests/PCHealth.Testing.Tests.csproj" />

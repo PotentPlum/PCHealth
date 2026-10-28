@@ -35,6 +35,7 @@ public sealed class ActivityEntryViewModel
                 LedgerOperation.MoveToQuarantine => $"Moved {items} to quarantine",
                 LedgerOperation.MoveToRecycleBin => $"Moved {items} to the Recycle Bin",
                 LedgerOperation.MoveToFolder => $"Moved {items} to another folder",
+                LedgerOperation.CompressInPlace => $"Compressed {items}: {SizeText.Bytes(Transaction.ObservedBytes ?? 0)} saved (measured)",
                 LedgerOperation.PurgeQuarantine => $"Deleted {items} from quarantine permanently",
                 _ => $"Put {items} back",
             };
