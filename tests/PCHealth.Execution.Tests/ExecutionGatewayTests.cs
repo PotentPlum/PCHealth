@@ -7,7 +7,7 @@ using PCHealth.Testing;
 namespace PCHealth.Execution.Tests;
 
 /// <summary>The gateway pipeline against fixture files, a fake platform layer and a fake path resolver.</summary>
-public class ExecutionGatewayTests
+public partial class ExecutionGatewayTests
 {
     private static readonly DateTimeOffset Now = new(2026, 10, 21, 12, 0, 0, TimeSpan.Zero);
 
@@ -471,6 +471,8 @@ public class ExecutionGatewayTests
         }
 
         public void MoveToQuarantine(string finalPath, string destination, bool isDirectory) => Move(finalPath, destination, isDirectory, null);
+
+        public void MoveToFolder(string finalPath, string destination, bool isDirectory) => Move(finalPath, destination, isDirectory, null);
 
         private void Move(string source, string destination, bool isDirectory, List<string>? log)
         {

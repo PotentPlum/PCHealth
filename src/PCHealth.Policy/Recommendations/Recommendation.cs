@@ -120,6 +120,7 @@ public sealed record Recommendation
             {
                 RecoveryMethod.RecycleBin => $"Yes, from the Recycle Bin{until}. {Recovery.Limitations}",
                 RecoveryMethod.Quarantine => $"Yes, from quarantine{(until.Length > 0 ? until : $" for {QuarantineRetention.TotalDays:0} days")}; after that it is deleted permanently. {Recovery.Limitations}",
+                RecoveryMethod.MoveBack => $"Yes: Undo moves the items back where they were, unless something now exists there. {Recovery.Limitations}",
                 _ => $"No. {Recovery.Limitations}",
             };
         }
@@ -177,6 +178,10 @@ public sealed record Recommendation
         return $"{finding.Category}:{Convert.ToHexStringLower(SHA256.HashData(Encoding.UTF8.GetBytes(text)))[..16]}";
     }
 }
+
+/// <summary>An item the user chose to move, as measured during the scan (T-51).</summary>
+/// <param name="LastWriteTimeUtc">For files: the last-write time seen; the move is refused if it changed.</param>
+public sealed record MoveCandidate(string Path, bool IsDirectory, MeasuredSize Size, DateTimeOffset? LastWriteTimeUtc = null);
 
 /// <summary>The outcome of checking the files a user chose to remove: an action to preview, or why it is refused.</summary>
 public sealed record UserChoice(Recommendation? Recommendation, string? Refusal)
@@ -294,6 +299,71 @@ public sealed class RecommendationBuilder(ProtectionPolicy protection, Exclusion
         return new UserChoice(Build(FindingSources.ChosenVersions(group, chosen)), null);
     }
 
+    /// <summary>
+    /// Checks items the user chose to move into a folder they chose (T-51, spec §5.2). Refused when nothing is chosen,
+    /// when the destination or a chosen item is protected or excluded, when two items share a name, or when one item
+    /// is inside another. Otherwise the result moves exactly those items; the gateway checks everything again,
+    /// including the destination, right before acting.
+    /// </summary>
+    /// <param name="why">Why the user is moving them, e.g. the suggestion they came from; shown in Activity.</param>
+    public UserChoice ForMove(IReadOnlyCollection<MoveCandidate> items, string destinationFolder, string why)
+    {
+        ArgumentNullException.ThrowIfNull(items);
+        ArgumentException.ThrowIfNullOrWhiteSpace(why);
+        if (exclusions.IsExcluded(FindingCategory.Organization))
+        {
+            return new UserChoice(null, "You excluded organizing in Settings, so nothing is moved.");
+        }
+
+        if (items.Count == 0)
+        {
+            return new UserChoice(null, "Choose at least one item to move.");
+        }
+
+        if (string.IsNullOrWhiteSpace(destinationFolder) || !Path.IsPathFullyQualified(destinationFolder))
+        {
+            return new UserChoice(null, "Choose the folder to move them to.");
+        }
+
+        var destination = Path.TrimEndingDirectorySeparator(destinationFolder);
+        if (protection.CheckMove(destination, asDestination: true) is { IsBlocked: true } protectedDestination)
+        {
+            return new UserChoice(null, $"The destination can't be used: {protectedDestination.Reason}");
+        }
+
+        if (exclusions.MatchPath(destination) is { } excludedDestination)
+        {
+            return new UserChoice(null, $"You excluded '{excludedDestination.Value}', so nothing is moved into it.");
+        }
+
+        if (items.Select(i => protection.CheckMove(i.Path)).FirstOrDefault(d => d.IsBlocked) is { } protectedItem)
+        {
+            return new UserChoice(null, protectedItem.Reason);
+        }
+
+        if (items.Select(i => exclusions.MatchPath(i.Path) is { } e ? $"You excluded '{e.Value}', so '{i.Path}' cannot be moved." : null).FirstOrDefault(r => r is not null) is { } refusal)
+        {
+            return new UserChoice(null, refusal);
+        }
+
+        var comparer = OperatingSystem.IsWindows() ? StringComparer.OrdinalIgnoreCase : StringComparer.Ordinal;
+        var clash = items.GroupBy(i => Path.GetFileName(Path.TrimEndingDirectorySeparator(i.Path)), comparer).FirstOrDefault(g => g.Count() > 1);
+        if (clash is not null)
+        {
+            return new UserChoice(null, $"Two chosen items are both named '{clash.Key}', so they can't go into one folder.");
+        }
+
+        var comparison = OperatingSystem.IsWindows() ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal;
+        var nested = items.FirstOrDefault(i => items.Any(o => o.IsDirectory && o != i
+            && i.Path.StartsWith(Path.TrimEndingDirectorySeparator(o.Path) + Path.DirectorySeparatorChar, comparison)));
+        if (nested is not null)
+        {
+            return new UserChoice(null, $"'{nested.Path}' is inside another chosen folder; choose one or the other.");
+        }
+
+        return new UserChoice(Build(FindingSources.Move(items, destination, why)), null);
+    }
+
     private string? Blocked(IEnumerable<string> paths)
     {
         foreach (var path in paths)
@@ -318,7 +388,8 @@ public sealed class RecommendationBuilder(ProtectionPolicy protection, Exclusion
         var blocked = new List<BlockedOperation>();
         foreach (var operation in finding.Operations)
         {
-            if (protection.Check(operation.Path) is { IsBlocked: true } decision)
+            var check = operation.Kind == OperationKind.MoveToFolder ? protection.CheckMove(operation.Path) : protection.Check(operation.Path);
+            if (check is { IsBlocked: true } decision)
             {
                 blocked.Add(new BlockedOperation(operation, decision.Reason));
             }

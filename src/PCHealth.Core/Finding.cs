@@ -8,6 +8,9 @@ public enum FindingCategory
     VersionCandidate,
     Cache,
     AppResidue,
+
+    /// <summary>Files or folders the user chose to move into another folder (spec §5.2).</summary>
+    Organization,
 }
 
 /// <summary>An app that must not be running while a finding is acted on, e.g. a browser whose cache it changes (T-46).</summary>

@@ -66,8 +66,14 @@ public sealed class RecommendationItemViewModel : ObservableObject
     {
         RecoveryMethod.RecycleBin => "Recycle Bin",
         RecoveryMethod.Quarantine => "quarantine",
+        RecoveryMethod.MoveBack => "move back",
         _ => "none",
     };
 
-    private static string Verb(OperationKind kind) => kind == OperationKind.MoveToQuarantine ? "quarantine" : "move to the Recycle Bin";
+    private static string Verb(OperationKind kind) => kind switch
+    {
+        OperationKind.MoveToQuarantine => "quarantine",
+        OperationKind.MoveToFolder => "move to a folder",
+        _ => "move to the Recycle Bin",
+    };
 }

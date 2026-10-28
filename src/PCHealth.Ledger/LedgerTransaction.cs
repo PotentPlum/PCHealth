@@ -8,6 +8,9 @@ public enum LedgerOperation
     MoveToRecycleBin,
     MoveToQuarantine,
 
+    /// <summary>Items moved into a folder the user chose. Each item's recovery location is where it went.</summary>
+    MoveToFolder,
+
     /// <summary>Quarantined items deleted permanently because their retention period ended.</summary>
     PurgeQuarantine,
 
@@ -21,6 +24,7 @@ public static class LedgerOperations
     {
         OperationKind.MoveToRecycleBin => LedgerOperation.MoveToRecycleBin,
         OperationKind.MoveToQuarantine => LedgerOperation.MoveToQuarantine,
+        OperationKind.MoveToFolder => LedgerOperation.MoveToFolder,
         _ => throw new ArgumentOutOfRangeException(nameof(kind)),
     };
 }

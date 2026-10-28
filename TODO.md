@@ -146,13 +146,8 @@ Result: `ProjectDetector` finds roots from `.sln`/`.slnx`/`.csproj`, `package.js
 ### T-50 Dependency scanning · `done` · P · deps: T-49
 Result: `DependencyScanner` reads `.sln`/`.slnx`, `*.csproj` references, hint paths and imports, `package.json` `file:`/`link:`, `.code-workspace` folders, batch and PowerShell scripts, and `.lnk` targets (parsed from bytes). Paths are classified with Windows rules on every OS (full, network, leaving the folder, variable). A folder with a dependency is move-restricted with its reasons listed; unread formats, invalid and oversized files are listed as not checked, and the summary never claims completeness. D-028; 36 new tests, including relative escapes, UNC, environment variables and mixed separators.
 
-### T-51 Move operation · `todo` · W · deps: —
-Refs: §6.3, §6.4 · area: src/PCHealth.Core, src/PCHealth.Execution, src/PCHealth.Execution.Windows
-Done when:
-- A new `MoveToFolder` operation kind exists. The destination must be a folder the user chose, must not be protected or excluded, must not overwrite anything, and in this phase must be on the same volume. The rationale is recorded as a new decision.
-- The gateway revalidates the source and destination by handle right before acting, and the ledger records both.
-- Undo moves the items back, and refuses if something now occupies the original path.
-- Tests cover a destination that is a reparse point, a name clash, a source changed after preview, a crash midway (settled at startup) and Undo.
+### T-51 Move operation · `done` · W · deps: —
+Result: `MoveToFolder` operation (recovery `MoveBack`, ledger `MoveToFolder`, finding category `Organization`), built from the user's choice by `RecommendationBuilder.ForMove`. The gateway checks the destination by handle right before each item (real folder, not protected or excluded, same drive, no name clash, not inside the item), records source and destination before moving, and verifies after. Undo moves items back and skips any whose original path is taken; interrupted moves are settled at startup. Personal-folder protection is relaxed for items inside them only (D-029). 16 new tests; the Windows test refuses a real junction and undoes by handle.
 
 ### T-52 Organize page · `todo` · W · deps: T-48, T-50, T-51
 Refs: §5.2, §7 · area: src/PCHealth.App

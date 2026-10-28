@@ -96,6 +96,27 @@ public static class FindingSources
             operations: chosen.Select(f => new ProposedOperation(OperationKind.MoveToRecycleBin, f.FullPath, isDirectory: false, f.Size, f.LastWriteTimeUtc)).ToArray());
     }
 
+    /// <summary>Items the user chose to move into a folder they chose (T-51). Nothing is deleted, so nothing is reclaimed.</summary>
+    internal static Finding Move(IReadOnlyCollection<MoveCandidate> items, string destination, string why)
+    {
+        var count = items.Count == 1 ? "1 item" : $"{items.Count} items";
+        return new Finding(
+            FindingCategory.Organization,
+            $"Move {count} to {Path.GetFileName(destination)}",
+            why,
+            [
+                .. items.Select(i => (Evidence)new PathEvidence(i.Path, $"{(i.IsDirectory ? "Folder" : "File")} · {i.Size.Bytes} bytes measured")),
+                new PathEvidence(destination, "The folder you chose to move them to."),
+            ],
+            new Confidence(ConfidenceLevel.High, "You chose these items and the folder yourself."),
+            new Impact(
+                $"Moves {count} into {destination}. Nothing is deleted.",
+                aftereffects: "Shortcuts, recent-file lists and programs that use the old paths will not find the items at their new place."),
+            new Recovery(RecoveryMethod.MoveBack, "Undo works while the items are still where they were moved to."),
+            operations: items.Select(i => new ProposedOperation(
+                OperationKind.MoveToFolder, i.Path, i.IsDirectory, i.Size, i.IsDirectory ? null : i.LastWriteTimeUtc, destinationFolder: destination)).ToArray());
+    }
+
     /// <summary>A large folder is information about where space goes, not a proposal.</summary>
     public static Finding FromLargeFolder(FolderSize folder, bool scanComplete)
     {

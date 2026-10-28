@@ -167,5 +167,7 @@ public sealed class WindowsRecycleBinTests : IDisposable
         public string MoveToRecycleBin(string finalPath, bool isDirectory) => WindowsRecycleBin.Recycle(finalPath, isDirectory);
 
         public void MoveToQuarantine(string finalPath, string destination, bool isDirectory) => throw new IOException("Not used here.");
+
+        public void MoveToFolder(string finalPath, string destination, bool isDirectory) => throw new IOException("Not used here.");
     }
 }

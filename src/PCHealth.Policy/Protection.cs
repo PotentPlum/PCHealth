@@ -69,7 +69,24 @@ public sealed class ProtectionPolicy
 
     public IReadOnlyList<ProtectedLocation> Locations { get; }
 
-    public ProtectionDecision Check(string finalPath)
+    public ProtectionDecision Check(string finalPath) => Check(finalPath, MoveRole.None);
+
+    /// <summary>
+    /// The protection for a move the user chose item by item into a folder they chose (T-51, D-029). It deletes
+    /// nothing, so items inside personal folders may move, and a personal folder may receive them. The personal
+    /// folders themselves, every other protected location, folders that contain one, and program files stay protected.
+    /// </summary>
+    public ProtectionDecision CheckMove(string finalPath, bool asDestination = false) =>
+        Check(finalPath, asDestination ? MoveRole.Destination : MoveRole.Item);
+
+    private enum MoveRole
+    {
+        None,
+        Item,
+        Destination,
+    }
+
+    private ProtectionDecision Check(string finalPath, MoveRole role)
     {
         var target = Normalize(finalPath);
 
@@ -80,16 +97,21 @@ public sealed class ProtectionPolicy
 
         foreach (var location in Locations)
         {
-            if (IsSameOrBelow(target, location.Path))
+            var movable = location.Kind == ProtectionKind.PersonalFolder
+                && (role == MoveRole.Destination || (role == MoveRole.Item && !string.Equals(target, location.Path, PathComparison)));
+            if (!movable && IsSameOrBelow(target, location.Path))
             {
                 return ProtectionDecision.Block(location.Kind, $"'{target}' is protected: {location.Reason}");
             }
         }
 
         // Changing a folder changes everything in it, so a folder that contains a protected location is protected too.
+        // A personal folder that receives a move is the one exception: putting items into it changes nothing already there.
         foreach (var location in Locations)
         {
-            if (IsSameOrBelow(location.Path, target))
+            var receives = role == MoveRole.Destination && location.Kind == ProtectionKind.PersonalFolder
+                && string.Equals(target, location.Path, PathComparison);
+            if (!receives && IsSameOrBelow(location.Path, target))
             {
                 return ProtectionDecision.Block(
                     location.Kind,
@@ -97,7 +119,7 @@ public sealed class ProtectionPolicy
             }
         }
 
-        if (BinaryExtensions.Contains(Path.GetExtension(target)))
+        if (role != MoveRole.Destination && BinaryExtensions.Contains(Path.GetExtension(target)))
         {
             return ProtectionDecision.Block(
                 ProtectionKind.ApplicationBinary,

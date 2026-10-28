@@ -56,6 +56,7 @@ public sealed class ExecutionGateway(
         "no administrator rights needed",
         "quarantine on the same volume",
         "Recycle Bin suitable: local drive, turned on, large enough",
+        "destination is a real folder, not protected or excluded, on the same drive, with nothing to overwrite",
     ];
 
     private static readonly StringComparison PathComparison =
@@ -117,7 +118,7 @@ public sealed class ExecutionGateway(
         var outcomes = new ItemOutcome?[approved.Count];
         for (var i = 0; i < approved.Count; i++)
         {
-            if (PolicyBlock(approved[i].Path) is { } reason)
+            if (PolicyBlock(approved[i].Path, approved[i].Kind) is { } reason)
             {
                 outcomes[i] = new ItemOutcome(approved[i], ItemStatus.Skipped, reason);
             }
@@ -137,8 +138,11 @@ public sealed class ExecutionGateway(
             TransactionState.Pending,
             $"{recommendation.WhatWeFound}: {recommendation.WhyItMatters}",
             Checks,
-            approved.Select(o => new LedgerItem(o.Path, o.IsDirectory, Before(o))).ToArray(),
-            expectedBytes: approved.Sum(o => o.ExpectedSize.Bytes),
+            // A move records its destination before acting, so an interruption can be settled from either path.
+            approved.Select(o => new LedgerItem(o.Path, o.IsDirectory, Before(o), RecoveryLocation: o.Destination)).ToArray(),
+
+            // A move within one drive frees nothing.
+            expectedBytes: operation == LedgerOperation.MoveToFolder ? 0 : approved.Sum(o => o.ExpectedSize.Bytes),
             observedBytes: null,
             recommendation.Recovery.Method,
             recommendation.Recovery.Limitations,
@@ -158,7 +162,7 @@ public sealed class ExecutionGateway(
             var (item, outcome) = Run(record.Id, i, approved[i], items[i]);
             items[i] = item;
             outcomes[i] = outcome;
-            if (outcome.Status == ItemStatus.Done)
+            if (outcome.Status == ItemStatus.Done && operation != LedgerOperation.MoveToFolder)
             {
                 freed += item.Before.SizeBytes;
             }
@@ -235,6 +239,10 @@ public sealed class ExecutionGateway(
                 slot = quarantine.Prepare(transactionId, position, operation.Path, operation.IsDirectory, item.Before);
                 platform.MoveToQuarantine(operation.Path, slot.ContentPath, operation.IsDirectory);
             }
+            else if (operation.Kind == OperationKind.MoveToFolder)
+            {
+                platform.MoveToFolder(operation.Path, operation.Destination!, operation.IsDirectory);
+            }
             else
             {
                 recycledTo = platform.MoveToRecycleBin(operation.Path, operation.IsDirectory);
@@ -269,6 +277,15 @@ public sealed class ExecutionGateway(
 
             quarantine.MarkStored(slot);
             item = item with { RecoveryLocation = slot.ContentPath };
+        }
+        else if (operation.Kind == OperationKind.MoveToFolder)
+        {
+            if (platform.Inspect(operation.Destination!) is not { } moved || moved.IsDirectory != operation.IsDirectory)
+            {
+                return Failed(operation, item, $"It is not at '{operation.Destination}' after the move.");
+            }
+
+            item = item with { After = new ItemMetadata(operation.IsDirectory ? item.Before.SizeBytes : moved.SizeBytes, moved.LastWriteTimeUtc, moved.CreationTimeUtc, moved.Attributes) };
         }
         else
         {
@@ -324,7 +341,7 @@ public sealed class ExecutionGateway(
             return "It changed between a file and a folder since it was found.";
         }
 
-        if (PolicyBlock(resolved.FinalPath!) is { } blocked)
+        if (PolicyBlock(resolved.FinalPath!, operation.Kind) is { } blocked)
         {
             return blocked;
         }
@@ -366,7 +383,67 @@ public sealed class ExecutionGateway(
             return "It is on a different drive from the quarantine folder, so it cannot be quarantined.";
         }
 
+        if (operation.Kind == OperationKind.MoveToFolder && DestinationProblem(operation, resolved.FinalPath!) is { } destination)
+        {
+            return destination;
+        }
+
         return null;
+    }
+
+    /// <summary>
+    /// Why the item cannot go to the folder the user chose; null when that folder is real (no link anywhere on its
+    /// path), allowed, on the same drive, and has nothing with the item's name (D-029).
+    /// </summary>
+    private string? DestinationProblem(ProposedOperation operation, string source)
+    {
+        var folder = operation.DestinationFolder!;
+        var resolved = resolver.Resolve(folder);
+        if (!resolved.IsResolved)
+        {
+            return $"The destination '{folder}' could not be confirmed: {resolved.Message}";
+        }
+
+        if (resolved.IsReparsePoint
+            || !string.Equals(Path.TrimEndingDirectorySeparator(resolved.FinalPath!), folder, PathComparison))
+        {
+            return $"The destination '{folder}' is a link or leads elsewhere; items are only moved into real folders.";
+        }
+
+        if (!resolved.IsDirectory)
+        {
+            return $"The destination '{folder}' is not a folder.";
+        }
+
+        if (PolicyBlock(folder, operation.Kind, destination: true) is { } blocked)
+        {
+            return $"The destination can't be used: {blocked}";
+        }
+
+        var sourcePath = Path.TrimEndingDirectorySeparator(source);
+        if (string.Equals(Path.GetDirectoryName(sourcePath), folder, PathComparison))
+        {
+            return "It is already in that folder.";
+        }
+
+        if (operation.IsDirectory
+            && (string.Equals(folder, sourcePath, PathComparison) || folder.StartsWith(sourcePath + Path.DirectorySeparatorChar, PathComparison)))
+        {
+            return "A folder can't be moved into itself.";
+        }
+
+        var target = operation.Destination!;
+        if (platform.Inspect(target) is not null || resolver.Resolve(target).IsResolved)
+        {
+            return $"Something named '{Path.GetFileName(target)}' is already in the destination; nothing is overwritten.";
+        }
+
+        if (!platform.SameVolume(source, folder))
+        {
+            return "The destination is on a different drive. Moves between drives are not supported yet.";
+        }
+
+        return platform.NeedsElevation(folder) ? $"Moving into the destination {NeedsElevationReason}" : null;
     }
 
     /// <summary>
@@ -423,9 +500,11 @@ public sealed class ExecutionGateway(
             ? new ItemMetadata(operation.IsDirectory ? operation.ExpectedSize.Bytes : state.SizeBytes, state.LastWriteTimeUtc, state.CreationTimeUtc, state.Attributes)
             : new ItemMetadata(operation.ExpectedSize.Bytes, operation.ExpectedLastWriteTimeUtc);
 
-    private string? PolicyBlock(string path)
+    /// <param name="destination">The path is the folder a move goes into, not an item that changes.</param>
+    private string? PolicyBlock(string path, OperationKind kind, bool destination = false)
     {
-        if (protection.Check(path) is { IsBlocked: true } blocked)
+        var decision = kind == OperationKind.MoveToFolder ? protection.CheckMove(path, destination) : protection.Check(path);
+        if (decision is { IsBlocked: true } blocked)
         {
             return blocked.Reason;
         }
