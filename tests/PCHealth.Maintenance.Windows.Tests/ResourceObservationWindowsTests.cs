@@ -8,19 +8,20 @@ public sealed class ResourceObservationWindowsTests
     [Fact]
     public async Task A_busy_fixture_process_is_seen_with_its_cpu_time_and_memory()
     {
-        using var busy = Process.Start(new ProcessStartInfo("cmd.exe")
+        // A loop that keeps one processor busy for 20 seconds, then ends by itself.
+        using var busy = Process.Start(new ProcessStartInfo("powershell.exe")
         {
-            ArgumentList = { "/c", "for /L %i in (1,1,200000000) do @rem" },
+            ArgumentList = { "-NoProfile", "-NonInteractive", "-Command", "$end = [DateTime]::UtcNow.AddSeconds(20); while ([DateTime]::UtcNow -lt $end) { }" },
             UseShellExecute = false,
             CreateNoWindow = true,
         })!;
         try
         {
             var result = await new ResourceObserver(new WindowsProcessSampler())
-                .ObserveAsync(TimeSpan.FromSeconds(3), TimeSpan.FromMilliseconds(500), TestContext.Current.CancellationToken);
+                .ObserveAsync(TimeSpan.FromSeconds(5), TimeSpan.FromMilliseconds(500), TestContext.Current.CancellationToken);
 
             var seen = result.Processes.Single(p => p.ProcessIds.Contains(busy.Id));
-            Assert.EndsWith(@"\cmd.exe", seen.ImagePath, StringComparison.OrdinalIgnoreCase);
+            Assert.EndsWith(@"\powershell.exe", seen.ImagePath, StringComparison.OrdinalIgnoreCase);
             Assert.True(seen.CpuTime > TimeSpan.Zero, $"cpu {seen.CpuTime}");
             Assert.True(seen.PeakWorkingSetBytes > 0);
             Assert.True(result.SampleCount >= 4);
