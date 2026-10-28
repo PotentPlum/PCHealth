@@ -12,6 +12,8 @@ public sealed class AppSettings
     public const int MinRetentionDays = 1;
     public const int MaxRetentionDays = 90;
     public const int DefaultRetentionDays = 14;
+    public const int MinArchiveMonths = 1;
+    public const int MaxArchiveMonths = 120;
 
     private const int CurrentVersion = 1;
 
@@ -19,6 +21,9 @@ public sealed class AppSettings
     public int QuarantineRetentionDays { get; private set; } = DefaultRetentionDays;
 
     public TimeSpan QuarantineRetention => TimeSpan.FromDays(QuarantineRetentionDays);
+
+    /// <summary>After how many months without changes a project is offered for archiving (T-53).</summary>
+    public int ArchiveAfterMonths { get; private set; } = Organization.ProjectArchive.DefaultMonths;
 
     /// <summary>How many files the last full scan counted; null before the first one.</summary>
     public long? LastScanFiles { get; private set; }
@@ -30,6 +35,13 @@ public sealed class AppSettings
         ArgumentOutOfRangeException.ThrowIfNegative(files);
         ArgumentOutOfRangeException.ThrowIfNegative(folders);
         (LastScanFiles, LastScanFolders) = (files, folders);
+    }
+
+    public void SetArchiveAfterMonths(int months)
+    {
+        ArgumentOutOfRangeException.ThrowIfLessThan(months, MinArchiveMonths);
+        ArgumentOutOfRangeException.ThrowIfGreaterThan(months, MaxArchiveMonths);
+        ArchiveAfterMonths = months;
     }
 
     public void SetQuarantineRetentionDays(int days)
@@ -63,13 +75,15 @@ public sealed class AppSettings
             || document.QuarantineRetentionDays is not { } days
             || days is < MinRetentionDays or > MaxRetentionDays
             || document.LastScanFiles < 0
-            || document.LastScanFolders < 0)
+            || document.LastScanFolders < 0
+            || document.ArchiveAfterMonths is < MinArchiveMonths or > MaxArchiveMonths)
         {
             throw new InvalidDataException($"'{filePath}' has an unsupported format.");
         }
 
         settings.QuarantineRetentionDays = days;
         (settings.LastScanFiles, settings.LastScanFolders) = (document.LastScanFiles, document.LastScanFolders);
+        settings.ArchiveAfterMonths = document.ArchiveAfterMonths ?? Organization.ProjectArchive.DefaultMonths;
         return settings;
     }
 
@@ -79,11 +93,12 @@ public sealed class AppSettings
         ArgumentException.ThrowIfNullOrWhiteSpace(filePath);
         Directory.CreateDirectory(Path.GetDirectoryName(Path.GetFullPath(filePath))!);
         var temporary = filePath + ".tmp";
-        File.WriteAllText(temporary, JsonSerializer.Serialize(new Document(CurrentVersion, QuarantineRetentionDays, LastScanFiles, LastScanFolders), Json));
+        File.WriteAllText(temporary, JsonSerializer.Serialize(new Document(CurrentVersion, QuarantineRetentionDays, LastScanFiles, LastScanFolders, ArchiveAfterMonths), Json));
         File.Move(temporary, filePath, overwrite: true);
     }
 
     private static readonly JsonSerializerOptions Json = new() { WriteIndented = true };
 
-    private sealed record Document(int Version, int? QuarantineRetentionDays, long? LastScanFiles = null, long? LastScanFolders = null);
+    /// <param name="ArchiveAfterMonths">Absent in files written before T-53; the default applies then.</param>
+    private sealed record Document(int Version, int? QuarantineRetentionDays, long? LastScanFiles = null, long? LastScanFolders = null, int? ArchiveAfterMonths = null);
 }

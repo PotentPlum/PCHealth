@@ -152,12 +152,8 @@ Result: `MoveToFolder` operation (recovery `MoveBack`, ledger `MoveToFolder`, fi
 ### T-52 Organize page · `done` · W · deps: T-48, T-50, T-51
 Result: New "Organize" page (`OrganizeViewModel`, `OrganizeAnalysis`). It scans Desktop, Downloads and Documents (known-folder API) on request and shows suggested categories with confidence, evidence and paths, plus projects with size, activity and dependency findings. Files inside a project stay with it. The user unticks items and picks a destination with the folder dialog; the preview lists every move with its destination. Move-restricted projects can't be ticked and say why; sensitive categories need a second confirmation. Moves run through the gateway, appear in Activity and can be undone. 6 view-model tests on a fixture tree.
 
-### T-53 Archive suggestions for inactive projects · `todo` · W · deps: T-52
-Refs: §5.2, §5.3 · area: src/PCHealth.Organization, src/PCHealth.App
-Done when:
-- Projects inactive past a threshold the user can change (default 12 months) can be moved to an archive folder the user chose. The move uses the T-51 operation and respects move restrictions.
-- The wording never implies the project can be deleted.
-- Tests cover the threshold and a restricted project.
+### T-53 Archive suggestions for inactive projects · `done` · W · deps: T-52
+Result: `ProjectArchive` marks projects whose newest file is older than a threshold (default 12 months, 1–120, saved in settings and changed on the Organize page). Inactive projects can be moved whole into an archive folder the user picks, through the T-51 move; restricted projects can't be ticked. The wording states facts and what archiving does; tests check it never says delete, remove, unused or similar. 8 portable tests and 1 view-model test.
 
 ### Slice 6: Optional compression
 

@@ -485,6 +485,24 @@
                         <ScrollViewer VerticalScrollBarVisibility="Auto">
                             <StackPanel Margin="12" MaxWidth="900" HorizontalAlignment="Left">
                                 <TextBlock TextWrapping="Wrap" FontStyle="Italic" Margin="0,0,0,12" Text="{Binding ProjectsExplanation}" />
+                                <Border Margin="0,0,0,12" Padding="12" BorderThickness="1" CornerRadius="6"
+                                        BorderBrush="{DynamicResource {x:Static SystemColors.ActiveBorderBrushKey}}">
+                                    <StackPanel>
+                                        <TextBlock FontWeight="SemiBold" Text="Archive inactive projects" />
+                                        <TextBlock TextWrapping="Wrap" Margin="0,4,0,8" Text="{Binding ArchiveHelp}" />
+                                        <StackPanel Orientation="Horizontal">
+                                            <TextBlock VerticalAlignment="Center" Text="Months without changes:" />
+                                            <TextBox Width="60" Margin="8,0,0,0" Text="{Binding ArchiveMonths, UpdateSourceTrigger=PropertyChanged}" />
+                                            <Button Padding="12,2" Margin="8,0,0,0" Content="Save" Command="{Binding SaveArchiveMonthsCommand}" />
+                                            <Button Padding="12,2" Margin="8,0,0,0" Content="Choose archive folder…" Command="{Binding BrowseArchiveCommand}" />
+                                        </StackPanel>
+                                        <TextBlock TextWrapping="Wrap" Margin="0,8,0,0" Text="{Binding ArchiveSummary}" />
+                                        <TextBlock TextWrapping="Wrap" FontWeight="SemiBold" Text="{Binding ArchiveFolderText}" />
+                                        <Button HorizontalAlignment="Left" Padding="12,4" Margin="0,8,0,0" Content="Archive ticked inactive projects…"
+                                                Command="{Binding ArchiveCommand}" ToolTip="Shows every move before anything is done." />
+                                        <TextBlock TextWrapping="Wrap" Margin="0,6,0,0" Foreground="DarkRed" Text="{Binding ArchiveMessage}" />
+                                    </StackPanel>
+                                </Border>
                                 <ItemsControl ItemsSource="{Binding Projects}">
                                     <ItemsControl.ItemTemplate>
                                         <DataTemplate DataType="{x:Type vm:OrganizeProjectViewModel}">
@@ -503,6 +521,8 @@
                                                         <TextBlock TextWrapping="Wrap" Text="{Binding Kind}" />
                                                         <TextBlock TextWrapping="Wrap" Text="{Binding Size}" />
                                                         <TextBlock TextWrapping="Wrap" Text="{Binding Activity}" />
+                                                        <TextBlock TextWrapping="Wrap" FontStyle="Italic" Text="{Binding Inactive}"
+                                                                   Visibility="{Binding IsInactive, Converter={StaticResource Visible}}" />
                                                         <TextBlock TextWrapping="Wrap" Text="{Binding Sync}" />
                                                         <TextBlock TextWrapping="Wrap" Margin="0,4,0,0" Text="{Binding Dependencies}" />
                                                         <ItemsControl ItemsSource="{Binding Reasons}">

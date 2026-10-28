@@ -1,4 +1,5 @@
 using System.Collections.ObjectModel;
+using System.Globalization;
 using System.IO;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
@@ -156,13 +157,28 @@ public sealed class OrganizeProjectViewModel : ObservableObject
         get => isSelected;
         set => SetProperty(ref isSelected, value && CanSelect);
     }
+
+    /// <summary>Not changed for at least the archive threshold (T-53).</summary>
+    public bool IsInactive { get; private set; }
+
+    /// <summary>What archiving would do for an inactive project; null otherwise. Never a suggestion to delete it.</summary>
+    public string? Inactive { get; private set; }
+
+    public void UpdateInactivity(DateTimeOffset nowUtc, int months)
+    {
+        IsInactive = ProjectArchive.IsInactive(Report.Project, nowUtc, months);
+        Inactive = IsInactive ? ProjectArchive.Describe(Report.Project, months) : null;
+        OnPropertyChanged(nameof(IsInactive));
+        OnPropertyChanged(nameof(Inactive));
+    }
 }
 
 /// <summary>
 /// The Organize page (spec §5.2, T-52): suggested categories for loose files in Desktop, Downloads and Documents, and
 /// the projects there, each with its evidence and paths. The user ticks items and picks a destination folder; the
 /// policy checks the choice; the preview lists every move; the gateway moves the items, and Activity can undo it.
-/// Folders with path dependencies can't be selected, and sensitive categories need a second confirmation.
+/// Folders with path dependencies can't be selected, and sensitive categories need a second confirmation. Projects
+/// not changed for a threshold the user sets can be archived: moved whole into an archive folder the user chose (T-53).
 /// </summary>
 public sealed class OrganizeViewModel : PageViewModel
 {
@@ -171,14 +187,35 @@ public sealed class OrganizeViewModel : PageViewModel
     private readonly ExclusionList exclusions;
     private readonly Func<RecommendationBuilder> builder;
     private readonly IFolderPicker picker;
+    private readonly AppSettings settings;
+    private readonly AppPaths paths;
+    private readonly TimeProvider clock;
+    private string archiveMonths;
+    private string? archiveFolder;
+    private string? archiveMessage;
     private string summary = "Nothing has been looked at yet. Look for suggestions to see what could be organized; nothing changes until you approve a preview.";
     private string? destination;
     private string? projectsMessage;
     private bool isBusy;
 
-    public OrganizeViewModel(OrganizeAnalysis analysis, ProtectionPolicy protection, ExclusionList exclusions, Func<RecommendationBuilder> builder, IFolderPicker picker)
+    public OrganizeViewModel(
+        OrganizeAnalysis analysis,
+        ProtectionPolicy protection,
+        ExclusionList exclusions,
+        Func<RecommendationBuilder> builder,
+        IFolderPicker picker,
+        AppSettings settings,
+        AppPaths paths,
+        TimeProvider clock)
         : base("Organize")
     {
+        this.settings = settings;
+        this.paths = paths;
+        this.clock = clock;
+        archiveMonths = settings.ArchiveAfterMonths.ToString(CultureInfo.CurrentCulture);
+        SaveArchiveMonthsCommand = new RelayCommand(SaveArchiveMonths);
+        BrowseArchiveCommand = new RelayCommand(() => ArchiveFolder = picker.Pick("Choose your archive folder", ArchiveFolder) ?? ArchiveFolder);
+        ArchiveCommand = new RelayCommand(Archive);
         this.analysis = analysis;
         this.protection = protection;
         this.exclusions = exclusions;
@@ -249,6 +286,53 @@ public sealed class OrganizeViewModel : PageViewModel
 
     public IRelayCommand MoveProjectsCommand { get; }
 
+    /// <summary>The archive threshold in months, as typed; saved by <see cref="SaveArchiveMonthsCommand"/>.</summary>
+    public string ArchiveMonths
+    {
+        get => archiveMonths;
+        set => SetProperty(ref archiveMonths, value);
+    }
+
+    public string ArchiveHelp =>
+        $"Projects with no file changed for this many months ({AppSettings.MinArchiveMonths} to {AppSettings.MaxArchiveMonths}) can be archived: moved whole "
+        + "into an archive folder you choose. Not being changed is not a sign a project is no longer needed, so nothing is ever deleted.";
+
+    public string ArchiveSummary
+    {
+        get
+        {
+            var inactive = Projects.Count(p => p.IsInactive);
+            return $"{inactive} {(inactive == 1 ? "project has" : "projects have")} not changed for {settings.ArchiveAfterMonths} months or more.";
+        }
+    }
+
+    /// <summary>The folder the user chose to archive projects into.</summary>
+    public string? ArchiveFolder
+    {
+        get => archiveFolder;
+        set
+        {
+            if (SetProperty(ref archiveFolder, value))
+            {
+                OnPropertyChanged(nameof(ArchiveFolderText));
+            }
+        }
+    }
+
+    public string ArchiveFolderText => ArchiveFolder is null ? "No archive folder chosen yet." : $"Archive folder: {ArchiveFolder}";
+
+    public string? ArchiveMessage
+    {
+        get => archiveMessage;
+        set => SetProperty(ref archiveMessage, value);
+    }
+
+    public IRelayCommand SaveArchiveMonthsCommand { get; }
+
+    public IRelayCommand BrowseArchiveCommand { get; }
+
+    public IRelayCommand ArchiveCommand { get; }
+
     /// <summary>Takes items that were moved off the page, and groups that are then empty. Other groups keep their ticks.</summary>
     public void Moved(IReadOnlySet<string> paths)
     {
@@ -275,6 +359,8 @@ public sealed class OrganizeViewModel : PageViewModel
         {
             Projects.Remove(project);
         }
+
+        OnPropertyChanged(nameof(ArchiveSummary));
     }
 
     private async Task AnalyzeAsync()
@@ -314,8 +400,12 @@ public sealed class OrganizeViewModel : PageViewModel
 
         foreach (var project in result.Projects.OrderBy(p => p.Project.Root, StringComparer.OrdinalIgnoreCase))
         {
-            Projects.Add(new OrganizeProjectViewModel(project, Blocked(project.Project.Root)));
+            var item = new OrganizeProjectViewModel(project, Blocked(project.Project.Root));
+            item.UpdateInactivity(clock.GetUtcNow(), settings.ArchiveAfterMonths);
+            Projects.Add(item);
         }
+
+        OnPropertyChanged(nameof(ArchiveSummary));
 
         var looked = string.Join(", ", result.Folders.Select(f => f.Kind));
         var notRead = result.Triage.NotRead.Count == 0 ? "" : $" {result.Triage.NotRead.Count} paths could not be read, so this is not complete.";
@@ -355,20 +445,55 @@ public sealed class OrganizeViewModel : PageViewModel
             "You chose to move these project folders. Their dependency scan found no paths outside them.");
     }
 
+    private void SaveArchiveMonths()
+    {
+        if (!int.TryParse(ArchiveMonths, NumberStyles.Integer, CultureInfo.CurrentCulture, out var months)
+            || months is < AppSettings.MinArchiveMonths or > AppSettings.MaxArchiveMonths)
+        {
+            ArchiveMessage = $"Enter a whole number of months from {AppSettings.MinArchiveMonths} to {AppSettings.MaxArchiveMonths}.";
+            return;
+        }
+
+        settings.SetArchiveAfterMonths(months);
+        settings.Save(paths.Settings);
+        foreach (var project in Projects)
+        {
+            project.UpdateInactivity(clock.GetUtcNow(), months);
+        }
+
+        ArchiveMessage = null;
+        OnPropertyChanged(nameof(ArchiveSummary));
+    }
+
+    private void Archive()
+    {
+        var chosen = Projects.Where(p => p.IsSelected && p.IsInactive).Select(p => p.Report.Project).ToArray();
+        ArchiveMessage = chosen.Length == 0
+            ? "Tick at least one project that has not changed for the set number of months."
+            : Request(
+                chosen.Select(p => new MoveCandidate(p.Root, true, p.TotalSize)).ToArray(),
+                $"Not changed for {settings.ArchiveAfterMonths} months or more; you chose to archive it. It is moved whole, not deleted.",
+                ArchiveFolder,
+                "Choose your archive folder first.");
+    }
+
     /// <returns>Why the choice was refused; null when it went to the preview.</returns>
-    private string? Request(IReadOnlyCollection<MoveCandidate> items, string why)
+    private string? Request(IReadOnlyCollection<MoveCandidate> items, string why) =>
+        Request(items, why, Destination, "Choose the folder to move them to first.");
+
+    private string? Request(IReadOnlyCollection<MoveCandidate> items, string why, string? folder, string noFolder)
     {
         if (items.Count == 0)
         {
             return "Choose at least one item to move.";
         }
 
-        if (Destination is null)
+        if (folder is null)
         {
-            return "Choose the folder to move them to first.";
+            return noFolder;
         }
 
-        var choice = builder().ForMove(items, Destination, why);
+        var choice = builder().ForMove(items, folder, why);
         if (choice.Recommendation is { } recommendation)
         {
             PreviewRequested?.Invoke(this, new ChosenRemoval(recommendation, Moved));
