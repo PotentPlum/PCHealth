@@ -173,6 +173,70 @@ public sealed class OrganizePageTests : IDisposable
         Assert.Equal("You excluded organizing in Settings, so nothing is suggested.", page.Summary);
     }
 
+    [Fact]
+    public void Inactive_projects_follow_the_threshold_and_a_restricted_one_is_never_archived()
+    {
+        Age("user/Documents/Code/Clean", months: 20);
+        Age("user/Documents/Code/Tied", months: 20);
+        root.CreateFile("user/Documents/Code/Fresh/Cargo.toml", "[package]");
+        using var services = TestServices.Build(root);
+        var main = services.GetRequiredService<MainViewModel>();
+        var page = Open(services);
+        main.Current = page;
+        OrganizeProjectViewModel Project(string name) => page.Projects.Single(p => p.Name == name);
+
+        Assert.True(Project("Clean").IsInactive && Project("Tied").IsInactive);
+        Assert.False(Project("Fresh").IsInactive);
+        Assert.Null(Project("Fresh").Inactive);
+        Assert.Equal("2 projects have not changed for 12 months or more.", page.ArchiveSummary);
+        Assert.Contains("Archiving moves the whole folder into your archive folder", Project("Clean").Inactive);
+
+        page.ArchiveMonths = "24";
+        page.SaveArchiveMonthsCommand.Execute(null);
+        Assert.False(Project("Clean").IsInactive);
+        Assert.Equal("0 projects have not changed for 24 months or more.", page.ArchiveSummary);
+        Assert.Equal(24, AppSettings.Load(services.GetRequiredService<AppPaths>().Settings).ArchiveAfterMonths);
+
+        page.ArchiveMonths = "0";
+        page.SaveArchiveMonthsCommand.Execute(null);
+        Assert.Equal("Enter a whole number of months from 1 to 120.", page.ArchiveMessage);
+        page.ArchiveMonths = "12";
+        page.SaveArchiveMonthsCommand.Execute(null);
+        Assert.Null(page.ArchiveMessage);
+
+        Project("Tied").IsSelected = true;
+        Project("Fresh").IsSelected = true;
+        page.ArchiveCommand.Execute(null);
+        Assert.False(Project("Tied").IsSelected);
+        Assert.Equal("Tick at least one project that has not changed for the set number of months.", page.ArchiveMessage);
+
+        Project("Clean").IsSelected = true;
+        page.ArchiveCommand.Execute(null);
+        Assert.Equal("Choose your archive folder first.", page.ArchiveMessage);
+
+        var archive = root.CreateDirectory("user/Documents/Archive");
+        ((TestServices.FixturePicker)services.GetRequiredService<IFolderPicker>()).Next = archive;
+        page.BrowseArchiveCommand.Execute(null);
+        page.ArchiveCommand.Execute(null);
+
+        var preview = Assert.IsType<PreviewViewModel>(main.Current);
+        Assert.Equal(root.Resolve("user/Documents/Code/Clean"), Assert.Single(preview.Items).Path);
+        Assert.Contains("It is moved whole, not deleted.", preview.Recommendation.WhyItMatters);
+        preview.ApproveCommand.Execute(null);
+
+        Assert.Equal(ExecutionStatus.Completed, preview.Execution!.Status);
+        Assert.True(File.Exists(Path.Combine(archive, "Clean", "package.json")));
+        Assert.True(Directory.Exists(root.Resolve("user/Documents/Code/Fresh")));
+    }
+
+    private void Age(string folder, int months)
+    {
+        foreach (var file in Directory.EnumerateFiles(root.Resolve(folder), "*", SearchOption.AllDirectories))
+        {
+            File.SetLastWriteTimeUtc(file, DateTime.UtcNow.AddMonths(-months));
+        }
+    }
+
     private static OrganizeViewModel Open(ServiceProvider services)
     {
         var page = services.GetRequiredService<OrganizeViewModel>();
