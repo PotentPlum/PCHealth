@@ -362,3 +362,16 @@ Running processes, open handles, services and scheduled tasks are checked by the
 - **Undo:** decompresses the files that are still compressed, where they are. Files written since are already decompressed by Windows and are left out. Before anything changes, Undo checks each drive has room for the files' full size, and refuses with the numbers if not. Interrupted compressions and decompressions are settled at startup by asking WOF; the contents are unchanged either way.
 - **Protection:** compression keeps the path and the contents and can be undone. Like a move (D-029), files *inside* personal folders may be compressed; program files and every other protected location may not.
 - **Access:** the WOF call is tried with a read handle first. A write handle is used only when Windows asks for one.
+
+## D-032 Reading startup items
+**Accepted** (2026-10-28; T-57)
+
+- **Projects:** a portable `PCHealth.Maintenance` parses and assembles startup items from an `IStartupSources` interface, and `PCHealth.Maintenance.Windows` reads them. Nothing in either project changes anything.
+- **Sources, all read without elevation:**
+  - the `Run` and `RunOnce` keys in HKCU and HKLM, native and `WOW6432Node`;
+  - the per-user and all-users Startup folders, with `.lnk` targets parsed from bytes (the parser moved to `PCHealth.Inventory`);
+  - scheduled tasks with a boot or logon trigger, read through the Task Scheduler COM API as their XML definitions;
+  - Win32 services with automatic start (drivers are left out).
+- **Enabled state:** for Run entries and Startup folder items, it comes from Task Manager's `StartupApproved` records (an odd first byte means disabled; no record means enabled). For tasks it comes from the task and trigger settings; RunOnce entries and automatic services are listed as enabled, saying why. A state that could not be read is `Unknown`, never assumed.
+- **Publisher:** `WinVerifyTrust` checks the file's own signature with revocation checks off and URL retrieval from cache only, so no network is used. The signer's name is read from the embedded certificate. Files signed only in a Windows catalog show as "no signature in the file itself", which is not called a problem.
+- **Not read is reported:** a key, folder, task folder, task or service that can't be read is listed with the reason, and the inventory says it is incomplete.

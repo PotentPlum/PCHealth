@@ -168,16 +168,8 @@ Result: The Storage page offers "Estimate compression" for each folder and for t
 
 ### Slice 7: Startup and background analysis (read-only)
 
-### T-57 Startup inventory · `todo` · W · deps: —
-Refs: §5.4 "Startup and background resource analysis" · area: new `src/PCHealth.Maintenance` (net10.0) + `src/PCHealth.Maintenance.Windows`
-Done when:
-- Startup items are read, unelevated where Windows allows, with each item's mechanism, command, publisher (from the signature if any), whether the file exists, and the enabled state from `StartupApproved`. The sources:
-  - Run and RunOnce keys in HKCU and HKLM, including WOW6432Node
-  - the Startup folders
-  - scheduled tasks with logon or boot triggers
-  - auto-start services
-- Anything that could not be read is reported as such.
-- Nothing is changed. Tests read fixture registry hives or fakes and run on the CI runner.
+### T-57 Startup inventory · `done` · W · deps: —
+Result: New `PCHealth.Maintenance` (portable `StartupInventoryReader`, task XML parsing, StartupApproved decoding, command parsing) and `PCHealth.Maintenance.Windows` (`WindowsStartupSources`). It reads Run/RunOnce in both hives and views, the Startup folders (`.lnk` targets), boot or logon scheduled tasks and automatic services, each with mechanism, command, program, file existence, publisher (WinVerifyTrust, cache only) and enabled state, and lists every source it could not read. Nothing is changed. D-032; 11 portable tests on fakes and 3 Windows tests on the CI runner.
 
 ### T-58 Resource observation · `todo` · W · deps: T-57
 Refs: §5.4, §6.1, §6.5 · area: src/PCHealth.Maintenance.Windows

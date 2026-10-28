@@ -1,13 +1,13 @@
 using System.Buffers.Binary;
 using System.Text;
 
-namespace PCHealth.Organization;
+namespace PCHealth.Inventory;
 
 /// <summary>
 /// Reads the target of a Windows shortcut (<c>.lnk</c>, [MS-SHLLINK]) from its bytes, without asking the shell to resolve
 /// it, so reading never touches the target or the network.
 /// </summary>
-internal static class ShellLink
+public static class ShellLink
 {
     private const int HeaderSize = 0x4C;
     private const uint HasLinkTargetIdList = 0x1;
