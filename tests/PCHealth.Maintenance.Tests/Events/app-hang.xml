@@ -1,0 +1,4 @@
+<Event xmlns="http://schemas.microsoft.com/win/2004/08/events/event">
+  <System><Provider Name="Application Hang" /><EventID Qualifiers="0">1002</EventID><TimeCreated SystemTime="2026-10-26T19:01:00Z" /><EventRecordID>48100</EventRecordID></System>
+  <EventData><Data>notes.exe</Data><Data>1.0.0.0</Data><Data>3a8c</Data></EventData>
+</Event>

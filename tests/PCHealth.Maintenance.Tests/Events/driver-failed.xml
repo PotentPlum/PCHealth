@@ -1,0 +1,4 @@
+<Event xmlns="http://schemas.microsoft.com/win/2004/08/events/event">
+  <System><Provider Name="Service Control Manager" /><EventID>7026</EventID><TimeCreated SystemTime="2026-10-25T07:01:11Z" /></System>
+  <EventData><Data Name="param1">oldvpn</Data></EventData>
+</Event>

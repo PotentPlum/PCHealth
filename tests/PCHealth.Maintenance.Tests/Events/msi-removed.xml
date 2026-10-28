@@ -1,0 +1,4 @@
+<Event xmlns="http://schemas.microsoft.com/win/2004/08/events/event">
+  <System><Provider Name="MsiInstaller" /><EventID>11724</EventID><TimeCreated SystemTime="2026-10-22T18:30:00Z" /></System>
+  <EventData><Data>Product: Trial Suite -- Removal completed successfully.</Data><Data>(NULL)</Data></EventData>
+</Event>

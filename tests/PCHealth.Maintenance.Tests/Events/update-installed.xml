@@ -1,0 +1,4 @@
+<Event xmlns="http://schemas.microsoft.com/win/2004/08/events/event">
+  <System><Provider Name="Microsoft-Windows-WindowsUpdateClient" /><EventID>19</EventID><TimeCreated SystemTime="2026-10-24T03:12:00Z" /></System>
+  <EventData><Data Name="updateTitle">2026-10 Cumulative Update for Windows 11 (KB5099999)</Data><Data Name="updateGuid">{00000000-0000-0000-0000-000000000000}</Data><Data Name="updateRevisionNumber">1</Data></EventData>
+</Event>

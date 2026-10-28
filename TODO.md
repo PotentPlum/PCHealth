@@ -179,18 +179,8 @@ Result: New "Maintenance" page. It lists startup items with mechanism, state and
 
 ### Slice 8: Diagnostic timeline
 
-### T-60 Timeline events · `todo` · W · deps: —
-Refs: §5.4 "Crash and driver investigation" · area: src/PCHealth.Maintenance(.Windows)
-Done when:
-- These events are read into one `TimelineEvent` model (time, source, kind, summary, evidence), unelevated where possible:
-  - app crashes and hangs (Application 1000/1001/1002)
-  - unexpected shutdowns (Kernel-Power 41, EventLog 6008)
-  - service and driver start failures (Service Control Manager 7000–7034)
-  - Windows Update installs
-  - MSI installs and removals
-  - reliability records
-- Any source that could not be read is listed.
-- Tests parse recorded event XML fixtures, and one CI test reads the runner's real logs read-only.
+### T-60 Timeline events · `done` · W · deps: —
+Result: `TimelineReader` reads app crashes and hangs (1000/1001/1002), unexpected shutdowns (Kernel-Power 41, EventLog 6008), service and driver start failures (SCM 7000–7034), Windows Update installs and failures (19/20), MSI installs and removals, and Reliability Monitor records (WMI, minus duplicates) into one `TimelineEvent` model with evidence. Every source that could not be read is listed. D-034; 14 portable tests on recorded event XML and 5 Windows tests that read the runner's real logs read-only.
 
 ### T-61 Guided slowdown investigation · `todo` · W · deps: T-60, T-57
 Refs: §5.4, §7 · area: src/PCHealth.App

@@ -5,6 +5,10 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <InternalsVisibleTo Include="PCHealth.Maintenance.Windows.Tests" />
+  </ItemGroup>
+
+  <ItemGroup>
     <ProjectReference Include="../PCHealth.Maintenance/PCHealth.Maintenance.csproj" />
   </ItemGroup>
 

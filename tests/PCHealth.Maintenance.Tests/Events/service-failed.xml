@@ -1,0 +1,4 @@
+<Event xmlns="http://schemas.microsoft.com/win/2004/08/events/event">
+  <System><Provider Name="Service Control Manager" EventSourceName="Service Control Manager" /><EventID Qualifiers="49152">7000</EventID><TimeCreated SystemTime="2026-10-25T07:01:10Z" /></System>
+  <EventData><Data Name="param1">Vendor Update Service</Data><Data Name="param2">%%2</Data></EventData>
+</Event>

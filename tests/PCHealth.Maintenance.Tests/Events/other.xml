@@ -1,0 +1,4 @@
+<Event xmlns="http://schemas.microsoft.com/win/2004/08/events/event">
+  <System><Provider Name="Service Control Manager" /><EventID>7036</EventID><TimeCreated SystemTime="2026-10-22T18:30:00Z" /></System>
+  <EventData><Data Name="param1">Print Spooler</Data><Data Name="param2">running</Data></EventData>
+</Event>
