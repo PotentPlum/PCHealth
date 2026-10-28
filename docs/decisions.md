@@ -296,3 +296,20 @@ Running processes, open handles, services and scheduled tasks are checked by the
   - **Office file cache:** it can hold documents waiting to upload to OneDrive or SharePoint.
   - **Steam shader cache:** it lives in Steam's install folder, which isn't a catalog location.
 - **Checked on Windows:** every rule's location is checked on the CI Windows runner. Its token must resolve, each segment must be a valid name, and the full path must not be protected.
+
+## D-027 File triage suggestions
+**Accepted** (2026-10-28; T-48)
+
+- **Where:** a new portable project, `PCHealth.Organization`. It works on read-only scans of Desktop, Downloads and Documents and never changes a file.
+- **Rules, not a model:** suggestions come from names, extensions, sizes, times, sibling folders, zip listings and document properties. Each one carries a confidence and its evidence:
+  - **Installers:** `.msi`/`.msix`/`.appx` packages (High); `.exe` files whose name says setup or install (Medium); other programs in Downloads (Low).
+  - **Archives already extracted:** a folder with the archive's name is next to it. For a zip, its listing is compared with the folder by relative path and size (High when every file is there; Medium for some; Low for none or an unreadable zip). Other archive formats are not opened (Medium). Listings above 10,000 entries are not compared.
+  - **Disk images:** by extension (High; `.img` Medium).
+  - **Screenshots:** names that Windows and common tools give screenshots, in several languages (High); images in a folder named Screenshots (Medium).
+  - **Possible financial or tax documents:** bank data formats such as `.ofx` (High); English, Dutch and German keywords in the name or in the document properties (Medium for one, High for both).
+  - **Possible signed documents:** a PDF with a signature dictionary (High; validity not checked); keywords in the name (Medium).
+  - **Likely older versions:** older files in a same-folder version group (T-41's stem rules), Medium.
+- **Bounded property reads:** PDFs are read only in their first 64 KB and last 256 KB, and Office files only in `docProps/core.xml`. Properties in compressed object streams are missed, which is why matches stay "possible".
+- **One category per file:** the sensitive categories are tried first, so a possible tax document is never filed under a category that may be preselected.
+- **Sensitive:** financial and signed documents. They are never preselected. Elsewhere only High-confidence suggestions start ticked.
+- **Exclusions:** files and folders use the existing kinds. Triage categories are a new exclusion kind, `TriageCategory`, so they can't be confused with finding categories. An excluded category withholds its files; it does not move them into another category.

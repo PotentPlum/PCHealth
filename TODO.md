@@ -137,20 +137,8 @@ Result: 13 new rules (Chrome and Edge script caches, Firefox cache and startup c
 
 ### Slice 5: File organization
 
-### T-48 File triage suggestions · `todo` · P · deps: —
-Refs: §5.2 · area: new `src/PCHealth.Organization` (net10.0)
-Done when:
-- For Desktop, Downloads and Documents, rule-based suggestions group files into these suggested categories, each with a confidence and the evidence behind it:
-  - installers
-  - archives that already have an extracted folder next to them
-  - disk images
-  - screenshots
-  - possible financial or tax documents, matched by name and properties
-  - possible signed documents
-  - likely superseded files
-- Categories that may hold personal or sensitive documents are marked sensitive. They are never preselected and are always shown as suggestions.
-- Exclusions apply at file, folder and category level. Category exclusions are a new exclusion kind.
-- Tests run on a generated fixture tree.
+### T-48 File triage suggestions · `done` · P · deps: —
+Result: New `PCHealth.Organization` project; `FileTriage` suggests installers, extracted archives (zip listing compared by path and size), disk images, screenshots, possible financial/tax and signed documents (name keywords, PDF and Office properties, PDF signature dictionary) and likely older versions, each with a confidence and evidence. Financial and signed are sensitive and never preselected. New `TriageCategory` exclusion kind. D-027; 14 new tests on a fixture tree.
 
 ### T-49 Project detection · `todo` · P · deps: T-48
 Refs: §5.2 · area: src/PCHealth.Organization
