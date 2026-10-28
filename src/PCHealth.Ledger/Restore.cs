@@ -56,7 +56,13 @@ public sealed record RestoreResult(LedgerTransaction? Restore, RestoreSupport Su
 /// item goes back to its original path unless something now exists there, in which case it stays where it is. Every
 /// restore is itself a ledger transaction that follows the pending, applied, verified/failed states.
 /// </summary>
-public sealed class Restorer(TransactionLedger ledger, QuarantineStore quarantine, IFileMover? mover = null, TimeProvider? clock = null, IRecycleBin? recycleBin = null)
+public sealed class Restorer(
+    TransactionLedger ledger,
+    QuarantineStore quarantine,
+    IFileMover? mover = null,
+    TimeProvider? clock = null,
+    IRecycleBin? recycleBin = null,
+    IFileCompression? compression = null)
 {
     private readonly IFileMover mover = mover ?? new PlainFileMover();
     private readonly TimeProvider clock = clock ?? TimeProvider.System;
@@ -77,6 +83,19 @@ public sealed class Restorer(TransactionLedger ledger, QuarantineStore quarantin
         if (transaction.State == TransactionState.Pending)
         {
             return new(false, "This change has not finished. It is resolved when the app next starts.");
+        }
+
+        if (transaction.Operation == LedgerOperation.CompressInPlace)
+        {
+            if (compression is null)
+            {
+                return new(false, "Undo is not available here. Compressed files open as usual; Windows decompresses a file when it is next written.");
+            }
+
+            var compressed = CompressedEntries(transaction).Count;
+            return compressed == 0
+                ? new(false, "No file from this change is still compressed: they were written to, moved or deleted since.")
+                : new(true, $"{compressed} files can be decompressed where they are, if the drive has room for their full size.");
         }
 
         if (transaction.Operation == LedgerOperation.MoveToFolder)
@@ -115,6 +134,11 @@ public sealed class Restorer(TransactionLedger ledger, QuarantineStore quarantin
         if (!support.CanRestore)
         {
             return new RestoreResult(null, support);
+        }
+
+        if (original.Operation == LedgerOperation.CompressInPlace)
+        {
+            return Decompress(original, support);
         }
 
         var entries = original.Operation switch
@@ -225,6 +249,98 @@ public sealed class Restorer(TransactionLedger ledger, QuarantineStore quarantin
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or InvalidOperationException)
         {
             return item with { Status = ItemStatus.Failed, Error = ex.Message };
+        }
+    }
+
+    /// <summary>
+    /// Decompresses the files of a compression that are still compressed. Refused up front, with nothing changed, when
+    /// a drive lacks the room the files need at their full size.
+    /// </summary>
+    private RestoreResult Decompress(LedgerTransaction original, RestoreSupport support)
+    {
+        var entries = CompressedEntries(original);
+        foreach (var volume in entries.GroupBy(i => Path.GetPathRoot(i.OriginalPath) ?? "", StringComparer.OrdinalIgnoreCase))
+        {
+            var needed = volume.Sum(i => Math.Max(0, i.Before.SizeBytes - Measure(i.OriginalPath)));
+            var free = compression!.FreeSpace(volume.First().OriginalPath);
+            if (free < needed)
+            {
+                return new RestoreResult(null, new RestoreSupport(
+                    false, $"Decompressing needs {needed:N0} bytes free on {volume.Key}, but only {free:N0} bytes are free. Nothing was changed; free up space and try again."));
+            }
+        }
+
+        var record = new LedgerTransaction(
+            Guid.NewGuid(),
+            clock.GetUtcNow(),
+            LedgerOperation.Restore,
+            TransactionState.Pending,
+            $"You asked to undo the change made on {original.CreatedUtc:u}.",
+            [DecompressCheck, "the drive has room for the full size"],
+            entries.Select(i => new LedgerItem(i.OriginalPath, false, i.After ?? i.Before)).ToArray(),
+            expectedBytes: null,
+            observedBytes: null,
+            RecoveryMethod.None,
+            "A decompression is not undone automatically. To compress the files again, act on the estimate again.")
+        {
+            RelatesTo = original.Id,
+        };
+        ledger.Save(record);
+
+        var items = record.Items.Select(item =>
+        {
+            try
+            {
+                compression!.Decompress(item.OriginalPath);
+                return item with { Status = ItemStatus.Done, After = Observe(item.OriginalPath, false) is { } after ? after with { SizeOnDiskBytes = Measure(item.OriginalPath) } : null };
+            }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+            {
+                return item with { Status = ItemStatus.Failed, Error = $"It stays compressed: {ex.Message}" };
+            }
+        }).ToArray();
+        record = record with { State = TransactionState.Applied, Items = items };
+        ledger.Save(record);
+        var done = items.Count(i => i.Status == ItemStatus.Done);
+        var finished = record with
+        {
+            State = done == items.Length ? TransactionState.Verified : TransactionState.Failed,
+            Outcome = done == items.Length ? $"{done} files are decompressed." : $"{done} of {items.Length} files are decompressed; the others stay compressed.",
+        };
+        ledger.Save(finished);
+        return new RestoreResult(finished, support);
+    }
+
+    /// <summary>The first check of a decompression record, which tells startup recovery how to settle it.</summary>
+    internal const string DecompressCheck = "the file is still compressed";
+
+    private long Measure(string path)
+    {
+        try
+        {
+            return compression!.SizeOnDisk(path);
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            return 0;
+        }
+    }
+
+    /// <summary>The files of a compression that are still there and still compressed.</summary>
+    private IReadOnlyList<LedgerItem> CompressedEntries(LedgerTransaction transaction) =>
+        compression is null
+            ? []
+            : transaction.Items.Where(i => i.Status == ItemStatus.Done && File.Exists(i.OriginalPath) && Compressed(i.OriginalPath)).ToArray();
+
+    private bool Compressed(string path)
+    {
+        try
+        {
+            return compression!.IsCompressed(path);
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            return false;
         }
     }
 

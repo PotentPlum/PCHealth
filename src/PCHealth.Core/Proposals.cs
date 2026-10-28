@@ -8,6 +8,9 @@ public enum OperationKind
 
     /// <summary>Moves the item into a folder the user chose, on the same volume (T-51, D-029).</summary>
     MoveToFolder,
+
+    /// <summary>Compresses a file where it is, with WOF XPRESS8K (T-55, D-030); its path and contents stay the same.</summary>
+    CompressInPlace,
 }
 
 /// <summary>
@@ -53,6 +56,11 @@ public sealed record ProposedOperation
             throw new ArgumentException("A move to a folder, and only a move to a folder, names the full path of its destination.", nameof(destinationFolder));
         }
 
+        if (kind == OperationKind.CompressInPlace && (isDirectory || keptCopy is not null))
+        {
+            throw new ArgumentException("Compression applies to one file at a time and has no kept copy.", nameof(isDirectory));
+        }
+
         if (kind == OperationKind.MoveToFolder && keptCopy is not null)
         {
             throw new ArgumentException("A move to a folder has no kept copy.", nameof(keptCopy));
@@ -95,6 +103,7 @@ public sealed record ProposedOperation
         OperationKind.MoveToRecycleBin => RecoveryMethod.RecycleBin,
         OperationKind.MoveToQuarantine => RecoveryMethod.Quarantine,
         OperationKind.MoveToFolder => RecoveryMethod.MoveBack,
+        OperationKind.CompressInPlace => RecoveryMethod.Decompress,
         _ => throw new ArgumentOutOfRangeException(nameof(kind)),
     };
 }

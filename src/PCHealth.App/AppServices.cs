@@ -25,6 +25,7 @@ public static class AppServices
         services.AddSingleton(TimeProvider.System);
         services.AddSingleton<IPathResolver, WindowsPathResolver>();
         services.AddSingleton<IPlatformOperations, WindowsPlatformOperations>();
+        services.AddSingleton<IFileCompression, WofCompression>();
         services.AddSingleton(sp => new ProtectionPolicy(WindowsProtectedLocations.Discover(sp.GetRequiredService<IPathResolver>()).Concat(OwnData(paths))));
         services.AddSingleton(_ => ExclusionList.Load(paths.Exclusions));
         services.AddSingleton(_ => TransactionLedger.Open(paths.Ledger));
@@ -43,14 +44,17 @@ public static class AppServices
             sp.GetRequiredService<QuarantineStore>(),
             sp.GetRequiredService<GlobalPause>(),
             sp.GetRequiredService<TimeProvider>(),
-            sp.GetRequiredService<Restorer>()));
+            sp.GetRequiredService<Restorer>(),
+            sp.GetRequiredService<IFileCompression>()));
         services.AddSingleton(sp => new Restorer(
             sp.GetRequiredService<TransactionLedger>(),
             sp.GetRequiredService<QuarantineStore>(),
             new HandleMove(),
             sp.GetRequiredService<TimeProvider>(),
-            new WindowsRecycleBinRestore()));
-        services.AddSingleton(sp => new InterruptedOperations(sp.GetRequiredService<TransactionLedger>(), sp.GetRequiredService<QuarantineStore>()));
+            new WindowsRecycleBinRestore(),
+            sp.GetRequiredService<IFileCompression>()));
+        services.AddSingleton(sp => new InterruptedOperations(
+            sp.GetRequiredService<TransactionLedger>(), sp.GetRequiredService<QuarantineStore>(), sp.GetRequiredService<IFileCompression>()));
         services.AddSingleton<StartupTasks>();
         services.AddSingleton<FindingsStore>();
         services.AddSingleton(_ => DeclinedRecommendations.Load(paths.Declines));

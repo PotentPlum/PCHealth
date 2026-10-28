@@ -79,6 +79,13 @@ public sealed class ProtectionPolicy
     public ProtectionDecision CheckMove(string finalPath, bool asDestination = false) =>
         Check(finalPath, asDestination ? MoveRole.Destination : MoveRole.Item);
 
+    /// <summary>
+    /// The protection for compressing a file the user chose (T-55, D-031). Compression keeps the path and the contents
+    /// and can be undone, so it is checked like a moved item: files inside personal folders may be compressed; program
+    /// files and every other protected location may not.
+    /// </summary>
+    public ProtectionDecision CheckCompress(string finalPath) => Check(finalPath, MoveRole.Item);
+
     private enum MoveRole
     {
         None,

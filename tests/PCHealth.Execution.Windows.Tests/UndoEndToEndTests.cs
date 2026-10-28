@@ -152,6 +152,50 @@ public sealed class UndoEndToEndTests : IDisposable
         Assert.False(File.Exists(Path.Combine(archive, "notes.txt")));
     }
 
+    [Fact]
+    public void A_file_is_compressed_in_place_measured_and_decompressed_by_undo()
+    {
+        var log = Create("Logs/app.log", string.Concat(Enumerable.Repeat("2026-10-28 12:00:00 INFO request served in 12 ms\n", 4000)));
+        var noise = Path.Combine(canonical, "Logs", "noise.bin");
+        var random = new byte[64 * 1024];
+        new Random(3).NextBytes(random);
+        File.WriteAllBytes(noise, random);
+        var compression = new WofCompression();
+        var recommendation = CompressAll(log, noise);
+        var gateway = new ExecutionGateway(
+            new WindowsPathResolver(), new WindowsPlatformOperations(), new ProtectionPolicy([]), new ExclusionList(), ledger, quarantine, new GlobalPause(), compression: compression);
+
+        var result = gateway.Execute(recommendation, recommendation.Operations);
+
+        Assert.Equal(ItemStatus.Done, result.Items[0].Status);
+        Assert.Equal(ItemStatus.Skipped, result.Items[1].Status);
+        Assert.True(compression.IsCompressed(log));
+        Assert.StartsWith("2026-10-28 12:00:00 INFO", File.ReadAllText(log));
+        var item = ledger.Find(result.TransactionId!.Value)!.Items[0];
+        Assert.True(item.After!.SizeOnDiskBytes < item.Before.SizeOnDiskBytes, $"{item.Before.SizeOnDiskBytes} -> {item.After.SizeOnDiskBytes}");
+
+        var undo = new Restorer(ledger, quarantine, new HandleMove(), compression: compression).Restore(result.TransactionId!.Value);
+
+        Assert.Equal(TransactionState.Verified, undo.Restore!.State);
+        Assert.False(compression.IsCompressed(log));
+        Assert.Equal(new FileInfo(log).Length, compression.SizeOnDisk(log), tolerance: 4096);
+    }
+
+    [Fact]
+    public void Writing_to_a_compressed_file_decompresses_it()
+    {
+        var log = Create("Logs/app.log", string.Concat(Enumerable.Repeat("all work and no play\n", 5000)));
+        var compression = new WofCompression();
+        Assert.Null(compression.CannotCompress(log));
+        compression.Compress(log);
+        Assert.True(compression.IsCompressed(log));
+        Assert.Equal("It is already compressed.", compression.CannotCompress(log));
+
+        File.AppendAllText(log, "one more line\n");
+
+        Assert.False(compression.IsCompressed(log));
+    }
+
     public void Dispose()
     {
         ledger.Dispose();
@@ -164,6 +208,15 @@ public sealed class UndoEndToEndTests : IDisposable
     private Restorer Restorer() => new(ledger, quarantine, new HandleMove());
 
     private static Recommendation Recommend(params string[] files) => Recommend(files, isDirectory: false);
+
+    private static Recommendation CompressAll(params string[] files)
+    {
+        var entries = files.Select(f => new FileEntry(f, new MeasuredSize(new FileInfo(f).Length), File.GetAttributes(f), File.GetLastWriteTimeUtc(f))).ToArray();
+        var estimate = new CompressionEstimate(
+            Path.GetDirectoryName(files[0])!, CompressionAlgorithm.Xpress8K, new EstimatedSize(1000, "a test sample"),
+            new MeasuredSize(entries.Sum(e => e.Size.Bytes)), entries.Length, 0, 0, []);
+        return new RecommendationBuilder(new ProtectionPolicy([]), new ExclusionList()).ForCompression(estimate, entries).Recommendation!;
+    }
 
     private static Recommendation MoveTo(string destination, string file)
     {

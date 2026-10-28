@@ -121,6 +121,7 @@ public sealed record Recommendation
                 RecoveryMethod.RecycleBin => $"Yes, from the Recycle Bin{until}. {Recovery.Limitations}",
                 RecoveryMethod.Quarantine => $"Yes, from quarantine{(until.Length > 0 ? until : $" for {QuarantineRetention.TotalDays:0} days")}; after that it is deleted permanently. {Recovery.Limitations}",
                 RecoveryMethod.MoveBack => $"Yes: Undo moves the items back where they were, unless something now exists there. {Recovery.Limitations}",
+                RecoveryMethod.Decompress => $"Yes: Undo decompresses the files. {Recovery.Limitations}",
                 _ => $"No. {Recovery.Limitations}",
             };
         }
@@ -364,6 +365,39 @@ public sealed class RecommendationBuilder(ProtectionPolicy protection, Exclusion
         return new UserChoice(Build(FindingSources.Move(items, destination, why)), null);
     }
 
+    /// <summary>
+    /// Turns a compression estimate the user looked at into an action (T-55/T-56, spec §5.3): every eligible file of the
+    /// folder, compressed where it is. Refused when compression is excluded, nothing is eligible, or the estimate
+    /// promises no saving. Protected and excluded files are left out, as for any recommendation.
+    /// </summary>
+    /// <param name="files">The files the estimate looked at; skipped ones are left out again here.</param>
+    public UserChoice ForCompression(CompressionEstimate estimate, IReadOnlyCollection<FileEntry> files)
+    {
+        ArgumentNullException.ThrowIfNull(estimate);
+        ArgumentNullException.ThrowIfNull(files);
+        if (exclusions.IsExcluded(FindingCategory.Compression))
+        {
+            return new UserChoice(null, "You excluded compression in Settings, so nothing is compressed.");
+        }
+
+        var skipped = estimate.Skipped.Select(s => s.Path).ToHashSet(StringComparer.Ordinal);
+        var eligible = files.Where(f => !f.IsReparsePoint && !skipped.Contains(f.FullPath)).ToArray();
+        if (eligible.Length == 0)
+        {
+            return new UserChoice(null, "No file here can be compressed.");
+        }
+
+        if (estimate.Saving.Bytes <= 0)
+        {
+            return new UserChoice(null, "The estimate found nothing to save, so compression is not offered.");
+        }
+
+        var recommendation = Build(FindingSources.Compression(estimate, eligible));
+        return recommendation.Operations.Count == 0
+            ? new UserChoice(null, "Every file here is protected or excluded.")
+            : new UserChoice(recommendation, null);
+    }
+
     private string? Blocked(IEnumerable<string> paths)
     {
         foreach (var path in paths)
@@ -388,7 +422,12 @@ public sealed class RecommendationBuilder(ProtectionPolicy protection, Exclusion
         var blocked = new List<BlockedOperation>();
         foreach (var operation in finding.Operations)
         {
-            var check = operation.Kind == OperationKind.MoveToFolder ? protection.CheckMove(operation.Path) : protection.Check(operation.Path);
+            var check = operation.Kind switch
+            {
+                OperationKind.MoveToFolder => protection.CheckMove(operation.Path),
+                OperationKind.CompressInPlace => protection.CheckCompress(operation.Path),
+                _ => protection.Check(operation.Path),
+            };
             if (check is { IsBlocked: true } decision)
             {
                 blocked.Add(new BlockedOperation(operation, decision.Reason));

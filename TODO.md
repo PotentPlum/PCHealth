@@ -160,13 +160,8 @@ Result: `ProjectArchive` marks projects whose newest file is older than a thresh
 ### T-54 Compression savings estimate · `done` · W · deps: —
 Result: Mechanism decided: WOF XPRESS8K, not NTFS LZNT1 (D-030). `CompressionEstimator` (Inventory) compresses a bounded sample in memory: 32 MB in total, at most 1 MB per file, chunks spread through each file. It skips already compressed formats, files under 4 KB and links, with reasons, and reports an `EstimatedSize` with its sample size and basis (`CompressionEstimate` in Core). `WofCompressor` uses the Windows Compression API's raw XPRESS Huffman. Files are only read. 6 portable tests (incompressible, empty folder, sample bound, nothing changed) and 3 Windows tests.
 
-### T-55 Compress and decompress through the gateway · `todo` · W · deps: T-54
-Refs: §5.3, §6.3, §6.4 · area: src/PCHealth.Core, src/PCHealth.Execution, src/PCHealth.Execution.Windows
-Done when:
-- `CompressInPlace` is an operation kind with the usual revalidation. The ledger records the size before and the measured size on disk after.
-- Undo decompresses, and refuses up front if the free space is too small.
-- Files that are in use, encrypted, already compressed, or on unsupported volumes are skipped with a reason.
-- Tests run on fixture files in CI.
+### T-55 Compress and decompress through the gateway · `done` · W · deps: T-54
+Result: `CompressInPlace` operation (recovery `Decompress`, category `Compression`, `RecommendationBuilder.ForCompression`). The gateway checks NTFS, encryption, existing compression, placeholders and use right before each file, skips with a reason (also when not beneficial), and records size on disk before and after, so the observed bytes are measured. Undo decompresses files still compressed and refuses up front when free space is too small; interruptions are settled at startup. `WofCompression` implements it with WOF XPRESS8K. D-031; 7 portable tests and 2 Windows tests on the CI runner.
 
 ### T-56 Compression in the app · `todo` · W · deps: T-55
 Refs: §5.3, §7 · area: src/PCHealth.App
