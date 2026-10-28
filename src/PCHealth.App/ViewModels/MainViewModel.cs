@@ -17,6 +17,7 @@ public sealed class MainViewModel : ObservableObject
         StorageViewModel storage,
         DuplicatesViewModel duplicates,
         OrganizeViewModel organize,
+        MaintenanceViewModel maintenance,
         ActivityViewModel activity,
         BenchmarkViewModel benchmark,
         SettingsViewModel settings,
@@ -112,7 +113,7 @@ public sealed class MainViewModel : ObservableObject
             opened.Add(page);
             Current = page;
         };
-        Pages = [overview, storage, duplicates, organize, activity, benchmark, settings, updates];
+        Pages = [overview, storage, duplicates, organize, maintenance, activity, benchmark, settings, updates];
         FirstRun = firstRun;
         current = FirstRunViewModel.IsNeeded(paths) ? firstRun : overview;
         firstRun.Completed += (_, _) => Current = overview;

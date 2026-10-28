@@ -5,6 +5,7 @@ using PCHealth.Core;
 using PCHealth.Execution;
 using PCHealth.Inventory.Compression;
 using PCHealth.Ledger;
+using PCHealth.Maintenance;
 using PCHealth.Organization;
 using PCHealth.Policy;
 using PCHealth.Testing;
@@ -28,6 +29,13 @@ internal static class TestServices
             s.AddSingleton<IFolderPicker>(new FixturePicker());
             s.AddSingleton<IChunkCompressor>(new DeflateChunks());
             s.AddSingleton<IFileCompression>(new FakeCompression());
+            s.AddSingleton<IStartupSources>(new FakeStartupSources());
+            s.AddSingleton<Func<ResourceObserver>>(sp => () =>
+            {
+                var clock = new ManualClock(DateTimeOffset.UtcNow);
+                return new ResourceObserver(new FakeSampler(), clock, (step, _) => { clock.Advance(step); return Task.CompletedTask; });
+            });
+            s.AddSingleton<Func<BootTiming>>(() => BootTiming.Unavailable("Boot timing is not available without administrator rights."));
             s.AddSingleton(sp => new Restorer(
                 sp.GetRequiredService<TransactionLedger>(),
                 sp.GetRequiredService<QuarantineStore>(),
@@ -80,6 +88,47 @@ internal static class TestServices
         public void Compress(string path) => Compressed.Add(path);
 
         public void Decompress(string path) => Compressed.Remove(path);
+    }
+
+    /// <summary>Startup items as plain data: a Run entry, a task and a service, and one place that can't be read.</summary>
+    internal sealed class FakeStartupSources : IStartupSources
+    {
+        private const string UpdaterTask =
+            "<Task xmlns=\"http://schemas.microsoft.com/windows/2004/02/mit/task\"><Triggers><LogonTrigger /></Triggers>"
+            + "<Actions><Exec><Command>C:\\Apps\\Vendor\\update.exe</Command></Exec></Actions></Task>";
+
+        public IReadOnlyList<(string Name, string Command)> RunValues(RunKey key) =>
+            key == new RunKey(Hive.CurrentUser, false, false) ? [("Chat", @"C:\Apps\Chat\chat.exe --minimized")]
+            : key == new RunKey(Hive.LocalMachine, false, false) ? throw new UnauthorizedAccessException("Access is denied.")
+            : [];
+
+        public IReadOnlyDictionary<string, byte[]> Approved(Hive hive, string subkey) =>
+            new Dictionary<string, byte[]> { ["Chat"] = [0x03, 0, 0, 0] };
+
+        public IReadOnlyList<(string Folder, Hive Hive)> StartupFolders() => [];
+
+        public IReadOnlyList<string> FilesIn(string folder) => [];
+
+        public byte[] ReadAllBytes(string path) => [];
+
+        public TaskList Tasks() => new([new TaskDefinition(@"\Vendor\Updater", UpdaterTask)], []);
+
+        public ServiceList Services() => new([new ServiceDefinition("VendorSvc", "Vendor Service", @"C:\Apps\Vendor\svc.exe", 2, false, 0x10)], []);
+
+        public string ExpandEnvironment(string text) => text;
+
+        public bool Exists(string path) => path.Contains("Chat", StringComparison.Ordinal);
+
+        public Signature SignatureOf(string path) => new(SignatureState.Valid, "Chat Inc");
+    }
+
+    /// <summary>The chat app uses 4 seconds of CPU over the window; the updater never runs.</summary>
+    internal sealed class FakeSampler : IProcessSampler
+    {
+        private int calls;
+
+        public IReadOnlyList<ProcessSample> Sample() =>
+            [new ProcessSample(10, "chat", @"C:\Apps\Chat\chat.exe", TimeSpan.FromSeconds(calls++ == 0 ? 1 : 5), 200_000_000)];
     }
 
     /// <summary>Desktop, Downloads and Documents as folders in the fixture.</summary>

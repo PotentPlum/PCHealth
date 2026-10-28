@@ -174,13 +174,8 @@ Result: New `PCHealth.Maintenance` (portable `StartupInventoryReader`, task XML 
 ### T-58 Resource observation · `done` · W · deps: T-57
 Result: `ResourceObserver` samples per-process CPU time and working set on request: a bounded window (2 minutes by default, at most 30), cancellable, on a lowest-priority thread. It groups by program path, lists protected processes as unmeasured, and maps startup items by image path (shared hosts are not attributed). Results carry their window and caveats, with no combined score. Boot timing comes from Diagnostics-Performance event 100 through `wevtapi`, or reads "not available without administrator rights". D-033; 5 portable tests with scripted samples, and 2 Windows tests, one of which observes a busy fixture `cmd.exe`.
 
-### T-59 Maintenance page · `todo` · W · deps: T-58
-Refs: §5.4, §7 · area: src/PCHealth.App
-Done when:
-- A "Maintenance" page lists startup items with their mechanism, evidence and the latest observation.
-- Each item explains how the user can change it themselves (Task Manager Startup, Services, Task Scheduler). The app changes nothing.
-- The privacy and permissions text says what is read.
-- Tests drive the view model.
+### T-59 Maintenance page · `done` · W · deps: T-58
+Result: New "Maintenance" page. It lists startup items with mechanism, state and its evidence, where each is registered, the command, the program and whether it exists, the publisher, and the latest observation, plus boot timing or why it is unavailable. Each item says how to change it yourself (Task Manager Startup apps, Task Scheduler, Services); the app changes nothing. The page states what it reads and that results stay in memory. The observation is started and stopped by the user, and its measurements are shown side by side with caveats. 3 view-model tests on fakes.
 
 ### Slice 8: Diagnostic timeline
 

@@ -90,6 +90,12 @@ public static class AppServices
         services.AddSingleton(sp => new OrganizeAnalysis(sp.GetRequiredService<IOrganizeFolders>(), new RecursiveScanner(), sp.GetRequiredService<ExclusionList>()));
         services.AddSingleton<IFolderPicker, WpfFolderPicker>();
         services.AddSingleton<OrganizeViewModel>();
+        services.AddSingleton<Maintenance.IStartupSources, Maintenance.Windows.WindowsStartupSources>();
+        services.AddSingleton<Maintenance.IProcessSampler, Maintenance.Windows.WindowsProcessSampler>();
+        services.AddSingleton<Func<Maintenance.ResourceObserver>>(sp => () => new Maintenance.ResourceObserver(
+            sp.GetRequiredService<Maintenance.IProcessSampler>(), sp.GetRequiredService<TimeProvider>()));
+        services.AddSingleton<Func<Maintenance.BootTiming>>(_ => Maintenance.Windows.WindowsBootTiming.Read);
+        services.AddSingleton<MaintenanceViewModel>();
         services.AddSingleton<ActivityViewModel>();
         services.AddSingleton<SettingsViewModel>();
         services.AddSingleton(sp => new BenchmarkViewModel(BenchmarkViewModel.DefaultReportsFolder(), clock: sp.GetRequiredService<TimeProvider>()));
