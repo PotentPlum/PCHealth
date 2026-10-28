@@ -375,3 +375,12 @@ Running processes, open handles, services and scheduled tasks are checked by the
 - **Enabled state:** for Run entries and Startup folder items, it comes from Task Manager's `StartupApproved` records (an odd first byte means disabled; no record means enabled). For tasks it comes from the task and trigger settings; RunOnce entries and automatic services are listed as enabled, saying why. A state that could not be read is `Unknown`, never assumed.
 - **Publisher:** `WinVerifyTrust` checks the file's own signature with revocation checks off and URL retrieval from cache only, so no network is used. The signer's name is read from the embedded certificate. Files signed only in a Windows catalog show as "no signature in the file itself", which is not called a problem.
 - **Not read is reported:** a key, folder, task folder, task or service that can't be read is listed with the reason, and the inventory says it is incomplete.
+
+## D-033 Observing resources and boot timing
+**Accepted** (2026-10-28; T-58)
+
+- **Only on request.** An observation runs when the user starts it: two minutes by default, at most 30, sampling every 5 seconds on a lowest-priority thread, and it can be stopped at any time. What was seen until a stop is kept and labeled as a shorter window.
+- **What is measured:** each process's CPU time between the first and last sample it was seen in, and its working set (peak and average). These are read with `Process` and limited-information handles (`QueryFullProcessImageName`), which need no elevation for most processes. Processes Windows protects are listed as unmeasured instead of showing zero. Processes are grouped by program path.
+- **Startup items** are matched to processes by program path. Items that run inside `svchost.exe` or `rundll32.exe` are not attributed, because the host's usage can't be told apart.
+- **Shown separately, never combined:** CPU time and share of all processors, memory, and samples seen are shown side by side with the window and caveats. There is no composite score (spec §5.4).
+- **Boot timing** is the newest event 100 in `Microsoft-Windows-Diagnostics-Performance/Operational`, read through the Windows Event Log API (`wevtapi.dll`, no new dependency). Windows lets only administrators read that log by default, so without the rights the app says "not available without administrator rights".

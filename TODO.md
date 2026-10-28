@@ -171,13 +171,8 @@ Result: The Storage page offers "Estimate compression" for each folder and for t
 ### T-57 Startup inventory · `done` · W · deps: —
 Result: New `PCHealth.Maintenance` (portable `StartupInventoryReader`, task XML parsing, StartupApproved decoding, command parsing) and `PCHealth.Maintenance.Windows` (`WindowsStartupSources`). It reads Run/RunOnce in both hives and views, the Startup folders (`.lnk` targets), boot or logon scheduled tasks and automatic services, each with mechanism, command, program, file existence, publisher (WinVerifyTrust, cache only) and enabled state, and lists every source it could not read. Nothing is changed. D-032; 11 portable tests on fakes and 3 Windows tests on the CI runner.
 
-### T-58 Resource observation · `todo` · W · deps: T-57
-Refs: §5.4, §6.1, §6.5 · area: src/PCHealth.Maintenance.Windows
-Done when:
-- On the user's request, a bounded observation window (default 2 minutes, cancellable, low priority) samples per-process CPU time and working set and maps processes to startup items by image path.
-- Boot timing comes from the Diagnostics-Performance log if it is readable; otherwise it is "not available without administrator rights".
-- Measurements are shown separately with their window and caveats. There is no combined score.
-- Tests use fake samples; one CI test observes a fixture process.
+### T-58 Resource observation · `done` · W · deps: T-57
+Result: `ResourceObserver` samples per-process CPU time and working set on request: a bounded window (2 minutes by default, at most 30), cancellable, on a lowest-priority thread. It groups by program path, lists protected processes as unmeasured, and maps startup items by image path (shared hosts are not attributed). Results carry their window and caveats, with no combined score. Boot timing comes from Diagnostics-Performance event 100 through `wevtapi`, or reads "not available without administrator rights". D-033; 5 portable tests with scripted samples, and 2 Windows tests, one of which observes a busy fixture `cmd.exe`.
 
 ### T-59 Maintenance page · `todo` · W · deps: T-58
 Refs: §5.4, §7 · area: src/PCHealth.App
