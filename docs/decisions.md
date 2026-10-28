@@ -276,3 +276,23 @@ Running processes, open handles, services and scheduled tasks are checked by the
 - **Format version 2:** adding `closeFirst` raised the catalog schema to version 2. A catalog of any other version is refused rather than read, because an older file would silently lack the apps to close.
 - **What the user sees:** the recommendation, the preview and the combined preview say "Close Google Chrome first."
 - **Gateway:** before anything is recorded, the gateway asks the platform (`IPlatformOperations.RunningProcesses`) whether any named app is running, in any session. It refuses the whole request while one is. If that check can't be made, it also refuses (fail closed). It checks once per request. A file an app opens during the run is still caught per item by the existing in-use check, so a per-item process scan isn't needed.
+
+## D-026 Which app caches the catalog includes
+**Accepted** (2026-10-27; T-47)
+
+- **Rule for inclusion:** a folder goes into the catalog only if the app itself rebuilds or downloads it again without asking the user. Anything that holds sign-ins, settings, messages, offline content the user chose to keep, or changes not yet synced stays out.
+- **Added (13 rules):**
+  - Chrome and Edge script caches;
+  - Firefox cache and startup cache (the local profile only; bookmarks, history and sign-ins live in the roaming profile);
+  - Discord cache and script cache;
+  - Steam web cache;
+  - Visual Studio Code compiled-code cache and downloaded extension packages;
+  - pip, Yarn and Go build caches;
+  - Store apps' `TempState` folders, for files unchanged for at least 7 days.
+- **Close first:** browsers, Discord, Steam and VS Code are listed as apps to close first (D-025).
+- **Left out:**
+  - **New Teams cache:** clearing it resets the app and signs the user out.
+  - **Spotify `Storage`:** it is also the default place for downloaded offline music.
+  - **Office file cache:** it can hold documents waiting to upload to OneDrive or SharePoint.
+  - **Steam shader cache:** it lives in Steam's install folder, which isn't a catalog location.
+- **Checked on Windows:** every rule's location is checked on the CI Windows runner. Its token must resolve, each segment must be a valid name, and the full path must not be protected.

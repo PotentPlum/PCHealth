@@ -132,22 +132,8 @@ Done when:
 ### T-46 Catalog: apps that must be closed first · `done` · P · deps: —
 Result: Cache rules can list `closeFirst` apps (bare process name and display name); the Chrome and Edge caches name their browsers. Catalog schema version 2; `CacheCatalog.Load` refuses other versions and invalid rules. Recommendations and both previews say "Close X first.", and the gateway refuses the request while a named app runs (`IPlatformOperations.RunningProcesses`), or when it can't check. D-025; 4 new tests.
 
-### T-47 Catalog: more caches · `todo` · W · deps: T-46
-Refs: §5.1 · area: src/PCHealth.Policy/Catalog/known-caches.json
-Done when:
-- At least 10 new rules exist, each with a why, a "what is rebuilt" note and a fixture test. Candidates:
-  - Firefox cache2
-  - new Teams cache
-  - Discord cache and code cache
-  - Spotify storage
-  - Steam htmlcache and shader cache
-  - VS Code CachedData and CachedExtensionVSIXs
-  - pip cache
-  - Yarn cache
-  - Windows Store app TempState
-  - Office file cache
-- Only folders the app can document as regenerable are included. Anything that holds user data, sign-ins or offline content the user chose to keep stays out.
-- Every rule was checked on the CI Windows runner for its expected location format.
+### T-47 Catalog: more caches · `done` · W · deps: T-46
+Result: 13 new rules (Chrome and Edge script caches, Firefox cache and startup cache, Discord cache and script cache, Steam web cache, VS Code compiled-code cache and extension downloads, pip, Yarn and Go build caches, Store apps' `TempState`), each with a why, a rebuild note and a fixture test; apps that own a cache are named to close first. Teams, Spotify, Office file cache and Steam shader cache stay out (D-026). A test on the CI Windows runner checks every rule's location forms a full, unprotected path. 15 new tests.
 
 ### Slice 5: File organization
 

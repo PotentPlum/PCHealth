@@ -75,6 +75,107 @@
       "location": "{LocalAppData}/NuGet/v3-cache",
       "why": "Package metadata and downloads kept by NuGet.",
       "rebuild": "NuGet downloads them again on the next restore, which needs a network connection."
+    },
+    {
+      "id": "chrome-code-cache",
+      "name": "Google Chrome script cache",
+      "location": "{LocalAppData}/Google/Chrome/User Data/*/Code Cache",
+      "closeFirst": [{ "process": "chrome", "name": "Google Chrome" }],
+      "why": "Compiled website scripts Chrome keeps so pages start faster.",
+      "rebuild": "Chrome compiles scripts again as you visit sites; pages may start a little slower at first. Sign-ins and history are not stored here."
+    },
+    {
+      "id": "edge-code-cache",
+      "name": "Microsoft Edge script cache",
+      "location": "{LocalAppData}/Microsoft/Edge/User Data/*/Code Cache",
+      "closeFirst": [{ "process": "msedge", "name": "Microsoft Edge" }],
+      "why": "Compiled website scripts Edge keeps so pages start faster.",
+      "rebuild": "Edge compiles scripts again as you visit sites; pages may start a little slower at first. Sign-ins and history are not stored here."
+    },
+    {
+      "id": "firefox-cache",
+      "name": "Mozilla Firefox cache",
+      "location": "{LocalAppData}/Mozilla/Firefox/Profiles/*/cache2",
+      "closeFirst": [{ "process": "firefox", "name": "Mozilla Firefox" }],
+      "why": "Copies of web pages, images and scripts Firefox has downloaded.",
+      "rebuild": "Firefox downloads pages again as you visit them; sites load slower at first. Bookmarks, history and sign-ins are kept in the roaming profile, not here."
+    },
+    {
+      "id": "firefox-startup-cache",
+      "name": "Mozilla Firefox startup cache",
+      "location": "{LocalAppData}/Mozilla/Firefox/Profiles/*/startupCache",
+      "closeFirst": [{ "process": "firefox", "name": "Mozilla Firefox" }],
+      "why": "Precompiled parts of Firefox itself, kept to start faster.",
+      "rebuild": "Firefox rebuilds it on its next start, which may take a moment longer."
+    },
+    {
+      "id": "discord-cache",
+      "name": "Discord cache",
+      "location": "{RoamingAppData}/discord/Cache",
+      "closeFirst": [{ "process": "Discord", "name": "Discord" }],
+      "why": "Copies of images, avatars and other files Discord has downloaded.",
+      "rebuild": "Discord downloads them again as you browse servers and chats. Your account, messages and settings are not stored here."
+    },
+    {
+      "id": "discord-code-cache",
+      "name": "Discord script cache",
+      "location": "{RoamingAppData}/discord/Code Cache",
+      "closeFirst": [{ "process": "Discord", "name": "Discord" }],
+      "why": "Compiled scripts of the Discord app, kept to start faster.",
+      "rebuild": "Discord compiles them again on its next start, which may take a moment longer."
+    },
+    {
+      "id": "steam-html-cache",
+      "name": "Steam web cache",
+      "location": "{LocalAppData}/Steam/htmlcache",
+      "closeFirst": [{ "process": "steam", "name": "Steam" }, { "process": "steamwebhelper", "name": "Steam" }],
+      "why": "Copies of store and community pages the Steam client has shown.",
+      "rebuild": "Steam downloads the pages again as you open them. Games, saves and your sign-in are not stored here."
+    },
+    {
+      "id": "vscode-cached-data",
+      "name": "Visual Studio Code compiled code cache",
+      "location": "{RoamingAppData}/Code/CachedData",
+      "closeFirst": [{ "process": "Code", "name": "Visual Studio Code" }],
+      "why": "Compiled code of Visual Studio Code and its extensions, kept to start faster. Old versions are left behind after updates.",
+      "rebuild": "Visual Studio Code rebuilds it on its next start, which may take a moment longer. Settings and extensions are not stored here."
+    },
+    {
+      "id": "vscode-extension-downloads",
+      "name": "Visual Studio Code extension downloads",
+      "location": "{RoamingAppData}/Code/CachedExtensionVSIXs",
+      "closeFirst": [{ "process": "Code", "name": "Visual Studio Code" }],
+      "why": "Downloaded extension packages kept after they were installed.",
+      "rebuild": "Nothing is rebuilt. Installed extensions keep working; an extension is downloaded again only if it is reinstalled."
+    },
+    {
+      "id": "pip-cache",
+      "name": "pip package cache",
+      "location": "{LocalAppData}/pip/Cache",
+      "why": "Downloaded Python packages kept by pip.",
+      "rebuild": "pip downloads packages again the next time they are installed, which needs a network connection."
+    },
+    {
+      "id": "yarn-cache",
+      "name": "Yarn package cache",
+      "location": "{LocalAppData}/Yarn/Cache",
+      "why": "Downloaded JavaScript packages kept by Yarn.",
+      "rebuild": "Yarn downloads packages again the next time a project installs them, which needs a network connection."
+    },
+    {
+      "id": "go-build-cache",
+      "name": "Go build cache",
+      "location": "{LocalAppData}/go-build",
+      "why": "Compiled Go packages kept to speed up later builds.",
+      "rebuild": "Go rebuilds packages on the next build, which is slower once. It is the same cache `go clean -cache` empties."
+    },
+    {
+      "id": "store-app-temp",
+      "name": "Store apps' temporary files",
+      "location": "{LocalAppData}/Packages/*/TempState",
+      "minAgeDays": 7,
+      "why": "Temporary files of apps from the Microsoft Store. Windows treats this folder as disposable and may empty it at any time.",
+      "rebuild": "Nothing is rebuilt. An app that still needs a temporary file creates a new one."
     }
   ]
 }

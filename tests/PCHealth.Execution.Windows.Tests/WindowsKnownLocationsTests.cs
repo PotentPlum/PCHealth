@@ -37,6 +37,27 @@ public class WindowsKnownLocationsTests
     }
 
     [Fact]
+    public void Every_rule_location_forms_a_full_unprotected_path_on_this_machine()
+    {
+        var policy = WindowsProtectedLocations.CreateDefaultPolicy();
+
+        Assert.All(CacheCatalog.LoadDefault().Rules, rule =>
+        {
+            var segments = rule.Location.Split('/');
+            var root = locations.Resolve(segments[0][1..^1]);
+            Assert.NotNull(root);
+            var rest = segments.Skip(1).Select(s => s == "*" ? "Default" : s).ToArray();
+            Assert.All(rest, s => Assert.Equal(-1, s.IndexOfAny(Path.GetInvalidFileNameChars())));
+            var path = Path.Combine([root, .. rest]);
+
+            Assert.True(Path.IsPathFullyQualified(path), rule.Id);
+            Assert.Equal(path, Path.GetFullPath(path));
+            Assert.StartsWith(root, path, StringComparison.OrdinalIgnoreCase);
+            Assert.False(policy.Check(path).IsBlocked, $"{rule.Id}: {path}");
+        });
+    }
+
+    [Fact]
     public void Cache_locations_under_the_user_profile_are_not_protected_by_default()
     {
         var policy = WindowsProtectedLocations.CreateDefaultPolicy();
