@@ -149,14 +149,8 @@ Result: `DependencyScanner` reads `.sln`/`.slnx`, `*.csproj` references, hint pa
 ### T-51 Move operation · `done` · W · deps: —
 Result: `MoveToFolder` operation (recovery `MoveBack`, ledger `MoveToFolder`, finding category `Organization`), built from the user's choice by `RecommendationBuilder.ForMove`. The gateway checks the destination by handle right before each item (real folder, not protected or excluded, same drive, no name clash, not inside the item), records source and destination before moving, and verifies after. Undo moves items back and skips any whose original path is taken; interrupted moves are settled at startup. Personal-folder protection is relaxed for items inside them only (D-029). 16 new tests; the Windows test refuses a real junction and undoes by handle.
 
-### T-52 Organize page · `todo` · W · deps: T-48, T-50, T-51
-Refs: §5.2, §7 · area: src/PCHealth.App
-Done when:
-- An "Organize" page shows suggested groups with their evidence and paths.
-- The user can uncheck items and pick a destination before the preview. The preview lists every move.
-- Move-restricted folders can't be selected, and the page says why. Sensitive categories need a second confirmation.
-- Moves run through the gateway and appear in Activity with Undo.
-- Tests drive the view model on a fixture tree.
+### T-52 Organize page · `done` · W · deps: T-48, T-50, T-51
+Result: New "Organize" page (`OrganizeViewModel`, `OrganizeAnalysis`). It scans Desktop, Downloads and Documents (known-folder API) on request and shows suggested categories with confidence, evidence and paths, plus projects with size, activity and dependency findings. Files inside a project stay with it. The user unticks items and picks a destination with the folder dialog; the preview lists every move with its destination. Move-restricted projects can't be ticked and say why; sensitive categories need a second confirmation. Moves run through the gateway, appear in Activity and can be undone. 6 view-model tests on a fixture tree.
 
 ### T-53 Archive suggestions for inactive projects · `todo` · W · deps: T-52
 Refs: §5.2, §5.3 · area: src/PCHealth.Organization, src/PCHealth.App

@@ -79,6 +79,10 @@ public static class AppServices
         services.AddSingleton<OverviewViewModel>();
         services.AddSingleton<StorageViewModel>();
         services.AddSingleton<DuplicatesViewModel>();
+        services.AddSingleton<IOrganizeFolders>(sp => new WindowsOrganizeFolders(sp.GetRequiredService<IPathResolver>()));
+        services.AddSingleton(sp => new OrganizeAnalysis(sp.GetRequiredService<IOrganizeFolders>(), new RecursiveScanner(), sp.GetRequiredService<ExclusionList>()));
+        services.AddSingleton<IFolderPicker, WpfFolderPicker>();
+        services.AddSingleton<OrganizeViewModel>();
         services.AddSingleton<ActivityViewModel>();
         services.AddSingleton<SettingsViewModel>();
         services.AddSingleton(sp => new BenchmarkViewModel(BenchmarkViewModel.DefaultReportsFolder(), clock: sp.GetRequiredService<TimeProvider>()));
