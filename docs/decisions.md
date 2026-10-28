@@ -313,3 +313,23 @@ Running processes, open handles, services and scheduled tasks are checked by the
 - **One category per file:** the sensitive categories are tried first, so a possible tax document is never filed under a category that may be preselected.
 - **Sensitive:** financial and signed documents. They are never preselected. Elsewhere only High-confidence suggestions start ticked.
 - **Exclusions:** files and folders use the existing kinds. Triage categories are a new exclusion kind, `TriageCategory`, so they can't be confused with finding categories. An excluded category withholds its files; it does not move them into another category.
+
+## D-028 Dependency scanning before a move
+**Accepted** (2026-10-28; T-50)
+
+- **Formats read:**
+  - `.sln` project lines and `.slnx` `Path` attributes;
+  - `*.csproj` `ProjectReference`, `HintPath` and `Import`;
+  - `package.json` `file:`/`link:` dependencies;
+  - `.code-workspace` folders;
+  - `.bat`/`.cmd`/`.ps1` path-like tokens, outside comments;
+  - `.lnk` targets and working folders, read from the file's bytes per [MS-SHLLINK] without asking the shell to resolve them.
+- **Windows rules everywhere:** paths are classified the same way on every OS. Both separators count, as do drive letters (also drive-relative `C:x`), UNC and `\\?\` prefixes, and `..` segments. A reference is a dependency when it is a full or rooted path, a network path, climbs out of the folder, or starts with a variable (`%VAR%`, `$env:`, `$(Prop)`, `~`). A shortcut's target is always a full path, so every shortcut is a dependency.
+- **Variables the scanner understands:**
+  - `%~dp0`, `$PSScriptRoot` and `$(MSBuildThisFileDirectory)`/`$(MSBuildProjectDirectory)`/`$(ProjectDir)` are the file's own folder;
+  - `$(SolutionDir)` is assumed to be the scanned folder;
+  - build-tool properties (`$(MSBuildExtensionsPath)`, `$(NuGetPackageRoot)`, …) are not the user's files and are skipped;
+  - a variable in the middle of a path counts as one folder name;
+  - batch variables the script sets itself, and PowerShell variables other than `$env:` and `$HOME`, are skipped because their literal values are checked where they are written.
+- **Never a guarantee:** these are listed as "not checked": unreadable or invalid files, files over 4 MB (shortcuts over 1 MB), and formats that commonly hold paths but aren't parsed (other MSBuild projects, `.props`/`.targets`, shell and Python scripts, creative project files). Every summary says programs and settings elsewhere may still refer to the folder.
+- **Not searched:** manifests inside `node_modules`, `bin`, `obj`, `.git` and similar belong to dependencies or build output, as in project detection (T-49).

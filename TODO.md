@@ -143,19 +143,8 @@ Result: New `PCHealth.Organization` project; `FileTriage` suggests installers, e
 ### T-49 Project detection · `done` · P · deps: T-48
 Result: `ProjectDetector` finds roots from `.sln`/`.slnx`/`.csproj`, `package.json`, `pyproject.toml`, `Cargo.toml`, `.git`, and creative files (`.prproj`, `.aep`, `.blend`, `.als`, `.flp`, `.psd` with siblings), skipping manifests inside `node_modules`, `bin`, `obj` and similar. Each `DetectedProject` reports its files, measured size, last activity ("Not changed since …"), parent root, the sync service whose folder holds it, and its online-only files; it has no removal suggestion. 13 new tests, including nested roots and a OneDrive project.
 
-### T-50 Dependency scanning · `todo` · P · deps: T-49
-Refs: §5.2, §9 "Correctness" · area: src/PCHealth.Organization
-Done when:
-- These formats are parsed for absolute paths and paths that leave the folder:
-  - `.sln`/`.slnx` project paths
-  - `*.csproj` `ProjectReference`/`HintPath`/`Import`
-  - `package.json` `file:` and `link:` dependencies
-  - `.code-workspace` folders
-  - `.bat`, `.cmd` and `.ps1` scripts
-  - `.lnk` targets
-- A folder with such a dependency is move-restricted, and the reasons are listed.
-- Formats the scanner can't read are listed as "not checked", so a clean result never claims completeness.
-- Tests include adversarial paths: relative escapes, UNC, environment variables and mixed separators.
+### T-50 Dependency scanning · `done` · P · deps: T-49
+Result: `DependencyScanner` reads `.sln`/`.slnx`, `*.csproj` references, hint paths and imports, `package.json` `file:`/`link:`, `.code-workspace` folders, batch and PowerShell scripts, and `.lnk` targets (parsed from bytes). Paths are classified with Windows rules on every OS (full, network, leaving the folder, variable). A folder with a dependency is move-restricted with its reasons listed; unread formats, invalid and oversized files are listed as not checked, and the summary never claims completeness. D-028; 36 new tests, including relative escapes, UNC, environment variables and mixed separators.
 
 ### T-51 Move operation · `todo` · W · deps: —
 Refs: §6.3, §6.4 · area: src/PCHealth.Core, src/PCHealth.Execution, src/PCHealth.Execution.Windows
