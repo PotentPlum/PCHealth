@@ -18,6 +18,9 @@ public sealed class PreviewItemViewModel(ProposedOperation operation) : Observab
 
     public string Size => SizeText.Measured(Operation.ExpectedSize);
 
+    /// <summary>For a move: where the item goes, so the preview lists every move in full (T-52).</summary>
+    public string? MovesTo => Operation.Destination is { } destination ? $"→ {destination}" : null;
+
     public bool IsSelected
     {
         get => isSelected;
@@ -83,6 +86,11 @@ public sealed class PreviewViewModel : PageViewModel
         get
         {
             var selected = Items.Where(i => i.IsSelected).ToArray();
+            if (Recommendation.Recovery.Method == RecoveryMethod.MoveBack)
+            {
+                return $"{selected.Length} of {Items.Count} items selected. A move within one drive frees no space. {Recommendation.Impact.WhatChanges}";
+            }
+
             var bytes = selected.Sum(i => i.Operation.ExpectedSize.Bytes);
             return $"{selected.Length} of {Items.Count} items selected: about {SizeText.Bytes(bytes)} (estimated from sizes measured during the scan). "
                 + Recommendation.Impact.WhatChanges;

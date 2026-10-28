@@ -16,6 +16,7 @@ public sealed class MainViewModel : ObservableObject
         OverviewViewModel overview,
         StorageViewModel storage,
         DuplicatesViewModel duplicates,
+        OrganizeViewModel organize,
         ActivityViewModel activity,
         BenchmarkViewModel benchmark,
         SettingsViewModel settings,
@@ -78,7 +79,24 @@ public sealed class MainViewModel : ObservableObject
             opened.Add(page);
             Current = page;
         };
-        Pages = [overview, storage, duplicates, activity, benchmark, settings, updates];
+        organize.PreviewRequested += (_, move) =>
+        {
+            var page = preview(move.Recommendation);
+            page.Finished += (_, _) =>
+            {
+                var done = page.Execution?.Items.Where(i => i.Status == Ledger.ItemStatus.Done).Select(i => i.Operation.Path).ToHashSet(StringComparer.Ordinal) ?? [];
+                if (done.Count > 0)
+                {
+                    move.Removed(done);
+                }
+
+                opened.Remove(page);
+                Current = organize;
+            };
+            opened.Add(page);
+            Current = page;
+        };
+        Pages = [overview, storage, duplicates, organize, activity, benchmark, settings, updates];
         FirstRun = firstRun;
         current = FirstRunViewModel.IsNeeded(paths) ? firstRun : overview;
         firstRun.Completed += (_, _) => Current = overview;

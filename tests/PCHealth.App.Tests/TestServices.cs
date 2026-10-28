@@ -1,7 +1,9 @@
 using System.IO;
 using Microsoft.Extensions.DependencyInjection;
+using PCHealth.App.ViewModels;
 using PCHealth.Execution;
 using PCHealth.Ledger;
+using PCHealth.Organization;
 using PCHealth.Policy;
 using PCHealth.Testing;
 
@@ -20,6 +22,8 @@ internal static class TestServices
             s.AddSingleton<IPathResolver>(new PassThroughResolver());
             s.AddSingleton<IPlatformOperations>(new PlainPlatform(root));
             s.AddSingleton(new ProtectionPolicy([]));
+            s.AddSingleton<IOrganizeFolders>(new FixtureFolders(root));
+            s.AddSingleton<IFolderPicker>(new FixturePicker());
             s.AddSingleton(sp => new Restorer(
                 sp.GetRequiredService<TransactionLedger>(),
                 sp.GetRequiredService<QuarantineStore>(),
@@ -36,6 +40,21 @@ internal static class TestServices
                 : PathResolution.Rejected(PathRejectionReason.NotFound, "Not found.");
     }
 
+    /// <summary>Desktop, Downloads and Documents as folders in the fixture.</summary>
+    internal sealed class FixtureFolders(TempRoot root) : IOrganizeFolders
+    {
+        public IReadOnlyList<OrganizeFolder> Find() =>
+            [.. new[] { KnownFolder.Desktop, KnownFolder.Downloads, KnownFolder.Documents }.Select(k => new OrganizeFolder(k, root.CreateDirectory($"user/{k}")))];
+    }
+
+    /// <summary>Returns the folder a test sets, as if the user picked it.</summary>
+    internal sealed class FixturePicker : IFolderPicker
+    {
+        public string? Next { get; set; }
+
+        public string? Pick(string title, string? initialFolder) => Next;
+    }
+
     internal sealed class FixtureRecycleBin : IRecycleBin
     {
         public bool Holds(string location, string originalPath) => System.IO.File.Exists(location) || Directory.Exists(location);
@@ -47,6 +66,12 @@ internal static class TestServices
     {
         public ItemState? Inspect(string finalPath)
         {
+            if (Directory.Exists(finalPath))
+            {
+                var d = new DirectoryInfo(finalPath);
+                return new ItemState(true, 0, d.LastWriteTimeUtc, d.CreationTimeUtc, d.Attributes);
+            }
+
             var f = new FileInfo(finalPath);
             return f.Exists ? new ItemState(false, f.Length, f.LastWriteTimeUtc, f.CreationTimeUtc, f.Attributes) : null;
         }

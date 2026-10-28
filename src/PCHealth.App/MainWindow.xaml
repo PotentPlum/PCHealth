@@ -179,11 +179,14 @@
                         <ItemsControl.ItemTemplate>
                             <DataTemplate DataType="{x:Type vm:PreviewItemViewModel}">
                                 <CheckBox IsChecked="{Binding IsSelected}" Margin="0,2">
-                                    <TextBlock TextWrapping="Wrap">
-                                        <Run Text="{Binding Path, Mode=OneWay}" />
-                                        <Run Text=" · " />
-                                        <Run Text="{Binding Size, Mode=OneWay}" />
-                                    </TextBlock>
+                                    <StackPanel>
+                                        <TextBlock TextWrapping="Wrap">
+                                            <Run Text="{Binding Path, Mode=OneWay}" />
+                                            <Run Text=" · " />
+                                            <Run Text="{Binding Size, Mode=OneWay}" />
+                                        </TextBlock>
+                                        <TextBlock TextWrapping="Wrap" Margin="16,0,0,0" Text="{Binding MovesTo}" />
+                                    </StackPanel>
                                 </CheckBox>
                             </DataTemplate>
                         </ItemsControl.ItemTemplate>
@@ -402,6 +405,123 @@
                                         </DataTemplate>
                                     </ItemsControl.ItemTemplate>
                                 </ItemsControl>
+                            </StackPanel>
+                        </ScrollViewer>
+                    </TabItem>
+                </TabControl>
+            </DockPanel>
+        </DataTemplate>
+        <DataTemplate DataType="{x:Type vm:OrganizeViewModel}">
+            <DockPanel Margin="24,24,24,0">
+                <StackPanel DockPanel.Dock="Top" MaxWidth="900" HorizontalAlignment="Left">
+                    <TextBlock FontSize="24" Margin="0,0,0,8" Text="Organize" />
+                    <TextBlock TextWrapping="Wrap" Margin="0,0,0,8" Text="{Binding Summary}" />
+                    <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
+                        <Button Padding="12,4" FontWeight="SemiBold" Content="Look for suggestions" Command="{Binding AnalyzeCommand}"
+                                ToolTip="Reads Desktop, Downloads and Documents. Nothing is changed." />
+                        <Button Padding="12,4" Margin="8,0,0,0" Content="Choose destination folder…" Command="{Binding BrowseCommand}" />
+                    </StackPanel>
+                    <TextBlock TextWrapping="Wrap" FontWeight="SemiBold" Margin="0,0,0,8" Text="{Binding DestinationText}" />
+                </StackPanel>
+                <TabControl>
+                    <TabItem Header="Suggested categories">
+                        <ScrollViewer VerticalScrollBarVisibility="Auto">
+                            <ItemsControl Margin="12" MaxWidth="900" HorizontalAlignment="Left" ItemsSource="{Binding Groups}">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate DataType="{x:Type vm:OrganizeGroupViewModel}">
+                                        <Border Margin="0,0,0,12" Padding="16" BorderThickness="1" CornerRadius="6"
+                                                BorderBrush="{DynamicResource {x:Static SystemColors.ActiveBorderBrushKey}}">
+                                            <StackPanel>
+                                                <TextBlock FontSize="16" FontWeight="SemiBold" TextWrapping="Wrap" Text="{Binding Title}" />
+                                                <TextBlock TextWrapping="Wrap" Margin="0,4,0,4" Text="{Binding Explanation}" />
+                                                <TextBlock TextWrapping="Wrap" Margin="0,0,0,8" FontStyle="Italic" Text="{Binding SensitiveNote}"
+                                                           Visibility="{Binding Sensitive, Converter={StaticResource Visible}}" />
+                                                <ItemsControl ItemsSource="{Binding Items}">
+                                                    <ItemsControl.ItemTemplate>
+                                                        <DataTemplate DataType="{x:Type vm:OrganizeItemViewModel}">
+                                                            <Grid Margin="0,0,0,8">
+                                                                <Grid.ColumnDefinitions>
+                                                                    <ColumnDefinition Width="Auto" />
+                                                                    <ColumnDefinition Width="*" />
+                                                                    <ColumnDefinition Width="Auto" />
+                                                                </Grid.ColumnDefinitions>
+                                                                <CheckBox Grid.Column="0" VerticalAlignment="Top" Margin="0,2,8,0" IsChecked="{Binding IsSelected}"
+                                                                          IsEnabled="{Binding CanSelect}" ToolTip="Move this file" />
+                                                                <StackPanel Grid.Column="1">
+                                                                    <TextBlock TextWrapping="Wrap" FontFamily="Consolas" FontSize="12" Text="{Binding Path}" />
+                                                                    <TextBlock TextWrapping="Wrap" Opacity="0.85" Text="{Binding Confidence}" />
+                                                                    <ItemsControl ItemsSource="{Binding Evidence}">
+                                                                        <ItemsControl.ItemTemplate>
+                                                                            <DataTemplate>
+                                                                                <TextBlock TextWrapping="Wrap" FontSize="12" Text="{Binding}" />
+                                                                            </DataTemplate>
+                                                                        </ItemsControl.ItemTemplate>
+                                                                    </ItemsControl>
+                                                                    <TextBlock TextWrapping="Wrap" Foreground="DarkRed" Text="{Binding Blocked}" />
+                                                                </StackPanel>
+                                                                <StackPanel Grid.Column="2" Margin="12,0,0,0" MinWidth="180">
+                                                                    <TextBlock Text="{Binding Size}" />
+                                                                    <TextBlock Text="{Binding Modified}" />
+                                                                </StackPanel>
+                                                            </Grid>
+                                                        </DataTemplate>
+                                                    </ItemsControl.ItemTemplate>
+                                                </ItemsControl>
+                                                <CheckBox Margin="0,4,0,4" Content="{Binding ConfirmText}" IsChecked="{Binding Confirmed}"
+                                                          Visibility="{Binding Sensitive, Converter={StaticResource Visible}}" />
+                                                <Button HorizontalAlignment="Left" Padding="12,4" Margin="0,4,0,0" Content="{Binding MoveText}"
+                                                        ToolTip="Shows every move before anything is done."
+                                                        Command="{Binding DataContext.MoveGroupCommand, RelativeSource={RelativeSource AncestorType=ItemsControl, AncestorLevel=1}}"
+                                                        CommandParameter="{Binding}" />
+                                                <TextBlock TextWrapping="Wrap" Margin="0,6,0,0" Foreground="DarkRed" Text="{Binding Message}" />
+                                            </StackPanel>
+                                        </Border>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                        </ScrollViewer>
+                    </TabItem>
+                    <TabItem Header="Projects">
+                        <ScrollViewer VerticalScrollBarVisibility="Auto">
+                            <StackPanel Margin="12" MaxWidth="900" HorizontalAlignment="Left">
+                                <TextBlock TextWrapping="Wrap" FontStyle="Italic" Margin="0,0,0,12" Text="{Binding ProjectsExplanation}" />
+                                <ItemsControl ItemsSource="{Binding Projects}">
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate DataType="{x:Type vm:OrganizeProjectViewModel}">
+                                            <Border Margin="0,0,0,12" Padding="16" BorderThickness="1" CornerRadius="6"
+                                                    BorderBrush="{DynamicResource {x:Static SystemColors.ActiveBorderBrushKey}}">
+                                                <Grid>
+                                                    <Grid.ColumnDefinitions>
+                                                        <ColumnDefinition Width="Auto" />
+                                                        <ColumnDefinition Width="*" />
+                                                    </Grid.ColumnDefinitions>
+                                                    <CheckBox Grid.Column="0" VerticalAlignment="Top" Margin="0,2,8,0" IsChecked="{Binding IsSelected}"
+                                                              IsEnabled="{Binding CanSelect}" ToolTip="Move this project folder" />
+                                                    <StackPanel Grid.Column="1">
+                                                        <TextBlock FontSize="16" FontWeight="SemiBold" Text="{Binding Name}" />
+                                                        <TextBlock TextWrapping="Wrap" FontFamily="Consolas" FontSize="12" Text="{Binding Path}" />
+                                                        <TextBlock TextWrapping="Wrap" Text="{Binding Kind}" />
+                                                        <TextBlock TextWrapping="Wrap" Text="{Binding Size}" />
+                                                        <TextBlock TextWrapping="Wrap" Text="{Binding Activity}" />
+                                                        <TextBlock TextWrapping="Wrap" Text="{Binding Sync}" />
+                                                        <TextBlock TextWrapping="Wrap" Margin="0,4,0,0" Text="{Binding Dependencies}" />
+                                                        <ItemsControl ItemsSource="{Binding Reasons}">
+                                                            <ItemsControl.ItemTemplate>
+                                                                <DataTemplate>
+                                                                    <TextBlock TextWrapping="Wrap" FontFamily="Consolas" FontSize="12" Text="{Binding}" />
+                                                                </DataTemplate>
+                                                            </ItemsControl.ItemTemplate>
+                                                        </ItemsControl>
+                                                        <TextBlock TextWrapping="Wrap" Foreground="DarkRed" Text="{Binding Blocked}" />
+                                                    </StackPanel>
+                                                </Grid>
+                                            </Border>
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                                <Button HorizontalAlignment="Left" Padding="12,4" Content="Move selected projects…" Command="{Binding MoveProjectsCommand}"
+                                        ToolTip="Shows every move before anything is done." />
+                                <TextBlock TextWrapping="Wrap" Margin="0,6,0,12" Foreground="DarkRed" Text="{Binding ProjectsMessage}" />
                             </StackPanel>
                         </ScrollViewer>
                     </TabItem>
