@@ -79,6 +79,22 @@ public sealed class MainViewModel : ObservableObject
             opened.Add(page);
             Current = page;
         };
+        storage.PreviewRequested += (_, compression) =>
+        {
+            var page = preview(compression.Recommendation);
+            page.Finished += (_, _) =>
+            {
+                if (page.Execution is not null)
+                {
+                    compression.Removed(new HashSet<string>());
+                }
+
+                opened.Remove(page);
+                Current = storage;
+            };
+            opened.Add(page);
+            Current = page;
+        };
         organize.PreviewRequested += (_, move) =>
         {
             var page = preview(move.Recommendation);

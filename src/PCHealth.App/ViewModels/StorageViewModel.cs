@@ -38,14 +38,29 @@ public sealed class StorageViewModel : PageViewModel
     private readonly FindingsStore findings;
     private readonly IDiscovery discovery;
     private readonly Func<Recommendation, bool> isHidden;
+    private readonly CompressionEstimates? estimates;
+    private readonly Func<RecommendationBuilder>? builder;
+    private FolderEstimate? estimate;
+    private string? compressionMessage;
+    private bool estimating;
     private StorageSummary? shown;
     private FolderSize? current;
     private CancellationTokenSource? running;
     private string status = "";
 
-    public StorageViewModel(FindingsStore findings, IDiscovery discovery, DeclinedRecommendations? declines = null, DiscoveryProgressViewModel? progress = null)
+    public StorageViewModel(
+        FindingsStore findings,
+        IDiscovery discovery,
+        DeclinedRecommendations? declines = null,
+        DiscoveryProgressViewModel? progress = null,
+        CompressionEstimates? estimates = null,
+        Func<RecommendationBuilder>? builder = null)
         : base("Storage")
     {
+        this.estimates = estimates;
+        this.builder = builder;
+        EstimateCompressionCommand = new AsyncRelayCommand<StorageFolderViewModel>(EstimateAsync, _ => estimates is not null && !estimating && current is not null);
+        CompressCommand = new RelayCommand(Compress, () => estimate is not null);
         this.findings = findings;
         this.discovery = discovery;
         Progress = progress ?? new DiscoveryProgressViewModel();
@@ -114,6 +129,39 @@ public sealed class StorageViewModel : PageViewModel
 
     public IRelayCommand CancelCommand { get; }
 
+    /// <summary>Estimates compression for a folder in the list, or for the folder being looked at when none is given.</summary>
+    public IAsyncRelayCommand<StorageFolderViewModel> EstimateCompressionCommand { get; }
+
+    /// <summary>Takes the estimate shown to the preview; nothing is compressed before approval.</summary>
+    public IRelayCommand CompressCommand { get; }
+
+    /// <summary>Raised when the user wants to preview compressing the estimated folder.</summary>
+    public event EventHandler<ChosenRemoval>? PreviewRequested;
+
+    public bool HasEstimate => estimate is not null;
+
+    /// <summary>The estimate for the last folder the user asked about; always labeled as an estimate.</summary>
+    public IReadOnlyList<string> CompressionEstimate => estimate is not { Estimate: var e }
+        ? []
+        :
+        [
+            $"Compression estimate for {e.Folder}",
+            e.EligibleFiles == 0
+                ? "No file here can be compressed."
+                : $"About {SizeText.Bytes(e.Saving.Bytes)} could be saved ({e.SavingRatio:P0} of {SizeText.Bytes(e.EligibleBytes.Bytes)} in {Files(e.EligibleFiles)}). This is an estimate, not a measurement.",
+            $"How it was estimated: {e.Saving.Basis}.",
+            $"{Files(e.Skipped.Count)} left out: already compressed formats, files too small to gain, links or unreadable files.",
+            "Compressed files open as usual but take a little more processor time to read. When one is changed, Windows decompresses it and its saving is lost. "
+                + "Only Windows 10 or later reads them as compressed; copied elsewhere they are ordinary files.",
+            "Savings depend on the files: text and program data compress well, photos, music, video and archives hardly at all.",
+        ];
+
+    public string? CompressionMessage
+    {
+        get => compressionMessage;
+        private set => SetProperty(ref compressionMessage, value);
+    }
+
     internal static string? ReclaimableText(long bytes) =>
         bytes <= 0 ? null : $"About {SizeText.Bytes(bytes)} could be freed by the suggested actions (estimated, not guaranteed)";
 
@@ -174,6 +222,7 @@ public sealed class StorageViewModel : PageViewModel
         OnPropertyChanged(nameof(Reclaimable));
         OnPropertyChanged(nameof(Completeness));
         UpCommand.NotifyCanExecuteChanged();
+        EstimateCompressionCommand.NotifyCanExecuteChanged();
     }
 
     private long ReclaimableBelow(string folder) =>
@@ -190,6 +239,58 @@ public sealed class StorageViewModel : PageViewModel
         var root = Path.TrimEndingDirectorySeparator(folder);
         return path.Equals(root, StringComparison.OrdinalIgnoreCase)
             || (path.StartsWith(root, StringComparison.OrdinalIgnoreCase) && path.Length > root.Length && path[root.Length] is '\\' or '/');
+    }
+
+    private async Task EstimateAsync(StorageFolderViewModel? folder)
+    {
+        var path = folder?.Folder.FullPath ?? current?.FullPath;
+        if (path is null || estimates is null)
+        {
+            return;
+        }
+
+        estimating = true;
+        EstimateCompressionCommand.NotifyCanExecuteChanged();
+        CompressionMessage = $"Estimating {path}. Files are only read.";
+        try
+        {
+            estimate = await estimates.EstimateAsync(path, CancellationToken.None);
+            CompressionMessage = null;
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            estimate = null;
+            CompressionMessage = $"The estimate stopped: {ex.Message} Nothing was changed.";
+        }
+        finally
+        {
+            estimating = false;
+            OnPropertyChanged(nameof(HasEstimate));
+            OnPropertyChanged(nameof(CompressionEstimate));
+            EstimateCompressionCommand.NotifyCanExecuteChanged();
+            CompressCommand.NotifyCanExecuteChanged();
+        }
+    }
+
+    private void Compress()
+    {
+        if (estimate is null || builder is null)
+        {
+            return;
+        }
+
+        var choice = builder().ForCompression(estimate.Estimate, estimate.Files);
+        CompressionMessage = choice.Refusal;
+        if (choice.Recommendation is { } recommendation)
+        {
+            PreviewRequested?.Invoke(this, new ChosenRemoval(recommendation, _ =>
+            {
+                estimate = null;
+                OnPropertyChanged(nameof(HasEstimate));
+                OnPropertyChanged(nameof(CompressionEstimate));
+                CompressCommand.NotifyCanExecuteChanged();
+            }));
+        }
     }
 
     internal static string Files(long count) =>

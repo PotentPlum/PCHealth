@@ -1,7 +1,9 @@
 using System.IO;
 using Microsoft.Extensions.DependencyInjection;
 using PCHealth.App.ViewModels;
+using PCHealth.Core;
 using PCHealth.Execution;
+using PCHealth.Inventory.Compression;
 using PCHealth.Ledger;
 using PCHealth.Organization;
 using PCHealth.Policy;
@@ -24,12 +26,15 @@ internal static class TestServices
             s.AddSingleton(new ProtectionPolicy([]));
             s.AddSingleton<IOrganizeFolders>(new FixtureFolders(root));
             s.AddSingleton<IFolderPicker>(new FixturePicker());
+            s.AddSingleton<IChunkCompressor>(new DeflateChunks());
+            s.AddSingleton<IFileCompression>(new FakeCompression());
             s.AddSingleton(sp => new Restorer(
                 sp.GetRequiredService<TransactionLedger>(),
                 sp.GetRequiredService<QuarantineStore>(),
                 new PlainFileMover(),
                 sp.GetRequiredService<TimeProvider>(),
-                new FixtureRecycleBin()));
+                new FixtureRecycleBin(),
+                sp.GetRequiredService<IFileCompression>()));
         });
 
     internal sealed class PassThroughResolver : IPathResolver
@@ -38,6 +43,43 @@ internal static class TestServices
             System.IO.File.Exists(path) || Directory.Exists(path)
                 ? PathResolution.Resolved(path, System.IO.File.GetAttributes(path))
                 : PathResolution.Rejected(PathRejectionReason.NotFound, "Not found.");
+    }
+
+    /// <summary>Deflate in 8 KB chunks, standing in for XPRESS so estimates don't depend on the runner.</summary>
+    internal sealed class DeflateChunks : IChunkCompressor
+    {
+        public CompressionAlgorithm Algorithm => CompressionAlgorithm.Xpress8K;
+
+        public int ChunkBytes => 8192;
+
+        public int CompressedSize(ReadOnlySpan<byte> chunk)
+        {
+            using var output = new MemoryStream();
+            using (var deflate = new System.IO.Compression.DeflateStream(output, System.IO.Compression.CompressionLevel.Fastest, leaveOpen: true))
+            {
+                deflate.Write(chunk);
+            }
+
+            return (int)output.Length;
+        }
+    }
+
+    /// <summary>Compression as bookkeeping: a compressed file takes a quarter of its size on disk.</summary>
+    internal sealed class FakeCompression : IFileCompression
+    {
+        public HashSet<string> Compressed { get; } = [];
+
+        public string? CannotCompress(string path) => null;
+
+        public bool IsCompressed(string path) => Compressed.Contains(path);
+
+        public long SizeOnDisk(string path) => new FileInfo(path).Length / (IsCompressed(path) ? 4 : 1);
+
+        public long FreeSpace(string path) => long.MaxValue;
+
+        public void Compress(string path) => Compressed.Add(path);
+
+        public void Decompress(string path) => Compressed.Remove(path);
     }
 
     /// <summary>Desktop, Downloads and Documents as folders in the fixture.</summary>

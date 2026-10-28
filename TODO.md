@@ -163,13 +163,8 @@ Result: Mechanism decided: WOF XPRESS8K, not NTFS LZNT1 (D-030). `CompressionEst
 ### T-55 Compress and decompress through the gateway · `done` · W · deps: T-54
 Result: `CompressInPlace` operation (recovery `Decompress`, category `Compression`, `RecommendationBuilder.ForCompression`). The gateway checks NTFS, encryption, existing compression, placeholders and use right before each file, skips with a reason (also when not beneficial), and records size on disk before and after, so the observed bytes are measured. Undo decompresses files still compressed and refuses up front when free space is too small; interruptions are settled at startup. `WofCompression` implements it with WOF XPRESS8K. D-031; 7 portable tests and 2 Windows tests on the CI runner.
 
-### T-56 Compression in the app · `todo` · W · deps: T-55
-Refs: §5.3, §7 · area: src/PCHealth.App
-Done when:
-- On the Storage page, a folder offers "Estimate compression". The preview shows the estimate, the performance and compatibility trade-offs, and that savings depend on the files.
-- After approval, Activity shows the measured saving, and Undo is available.
-- The app never recommends compression on age alone.
-- Tests drive the view model.
+### T-56 Compression in the app · `done` · W · deps: T-55
+Result: The Storage page offers "Estimate compression" for each folder and for the folder being looked at. It shows the estimate with its sample and basis, the read and compatibility trade-offs, and that savings depend on the files. "Compress…" goes to the preview, which shows the estimated saving for the selected files. After approval the gateway compresses, and Activity shows "Compressed N items: X saved (measured)" with Undo. Compression is offered only when the user asks for an estimate, never from age. 2 view-model tests.
 
 ### Slice 7: Startup and background analysis (read-only)
 
