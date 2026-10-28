@@ -140,17 +140,8 @@ Result: 13 new rules (Chrome and Edge script caches, Firefox cache and startup c
 ### T-48 File triage suggestions · `done` · P · deps: —
 Result: New `PCHealth.Organization` project; `FileTriage` suggests installers, extracted archives (zip listing compared by path and size), disk images, screenshots, possible financial/tax and signed documents (name keywords, PDF and Office properties, PDF signature dictionary) and likely older versions, each with a confidence and evidence. Financial and signed are sensitive and never preselected. New `TriageCategory` exclusion kind. D-027; 14 new tests on a fixture tree.
 
-### T-49 Project detection · `todo` · P · deps: T-48
-Refs: §5.2 · area: src/PCHealth.Organization
-Done when:
-- Project roots are found from these manifests:
-  - `.sln`, `.slnx`, `*.csproj`
-  - `package.json`, `pyproject.toml`, `Cargo.toml`
-  - a `.git` folder
-  - creative project files: `.prproj`, `.aep`, `.blend`, `.als`, `.flp`, `.psd` with siblings
-- Each root shows its files, total measured size and last activity (newest modified time).
-- An inactive project is described as "not changed since …". It is never described as expendable, and nothing is recommended for removal on age alone.
-- Tests cover nested roots and a project inside a cloud-sync folder.
+### T-49 Project detection · `done` · P · deps: T-48
+Result: `ProjectDetector` finds roots from `.sln`/`.slnx`/`.csproj`, `package.json`, `pyproject.toml`, `Cargo.toml`, `.git`, and creative files (`.prproj`, `.aep`, `.blend`, `.als`, `.flp`, `.psd` with siblings), skipping manifests inside `node_modules`, `bin`, `obj` and similar. Each `DetectedProject` reports its files, measured size, last activity ("Not changed since …"), parent root, the sync service whose folder holds it, and its online-only files; it has no removal suggestion. 13 new tests, including nested roots and a OneDrive project.
 
 ### T-50 Dependency scanning · `todo` · P · deps: T-49
 Refs: §5.2, §9 "Correctness" · area: src/PCHealth.Organization
