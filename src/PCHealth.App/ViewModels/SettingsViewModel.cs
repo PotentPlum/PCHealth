@@ -23,6 +23,7 @@ public sealed class ExclusionItemViewModel
     public string Text => Exclusion.Kind switch
     {
         ExclusionKind.Category => $"Everything of the kind '{Exclusion.Value}'",
+        ExclusionKind.TriageCategory => $"Organize suggestions of the kind '{Exclusion.Value}'",
         ExclusionKind.Folder => $"Folder {Exclusion.Value} and everything in it",
         _ => $"File {Exclusion.Value}",
     };

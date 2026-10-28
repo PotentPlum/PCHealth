@@ -68,6 +68,7 @@ public class ExclusionListTests
 
         Assert.True(list.IsExcluded(FindingCategory.VersionCandidate));
         Assert.False(list.IsExcluded(FindingCategory.Cache));
+        Assert.False(list.IsExcluded(TriageCategory.SupersededFiles));
     }
 
     [Fact]
@@ -131,6 +132,7 @@ public class ExclusionListTests
         list.ExcludeFile(root.Resolve("a.txt"), Now, "keep this");
         list.ExcludeFolder(root.Resolve("Projects"), Now);
         list.ExcludeCategory(FindingCategory.AppResidue, Now);
+        list.ExcludeCategory(TriageCategory.Screenshots, Now);
 
         list.Save(file);
         var loaded = ExclusionList.Load(file);
@@ -138,6 +140,8 @@ public class ExclusionListTests
         Assert.Equal(list.Entries, loaded.Entries);
         Assert.True(loaded.IsExcluded(root.Resolve("Projects/x")));
         Assert.True(loaded.IsExcluded(FindingCategory.AppResidue));
+        Assert.True(loaded.IsExcluded(TriageCategory.Screenshots));
+        Assert.False(loaded.IsExcluded(TriageCategory.Installers));
         Assert.Contains("\"Category\"", File.ReadAllText(file));
         Assert.False(File.Exists(file + ".tmp"));
     }
@@ -156,6 +160,7 @@ public class ExclusionListTests
     [InlineData("{\"Version\": 1}")]
     [InlineData("{\"Version\": 1, \"Exclusions\": [{\"Kind\": \"Category\", \"Value\": \"Nope\", \"AddedUtc\": \"2026-01-01T00:00:00Z\"}]}")]
     [InlineData("{\"Version\": 1, \"Exclusions\": [{\"Kind\": \"Folder\", \"Value\": \"relative\", \"AddedUtc\": \"2026-01-01T00:00:00Z\"}]}")]
+    [InlineData("{\"Version\": 1, \"Exclusions\": [{\"Kind\": \"TriageCategory\", \"Value\": \"Cache\", \"AddedUtc\": \"2026-01-01T00:00:00Z\"}]}")]
     public void A_corrupt_file_is_reported_not_silently_ignored(string content)
     {
         using var root = new TempRoot();

@@ -11,10 +11,13 @@ public enum ExclusionKind
     /// <summary>The folder and everything below it.</summary>
     Folder,
     Category,
+
+    /// <summary>A file triage category (<see cref="TriageCategory"/>), e.g. screenshots (T-48).</summary>
+    TriageCategory,
 }
 
 /// <summary>One thing the user asked the product to leave alone (spec §3.2, §6.5).</summary>
-/// <param name="Value">A full path for files and folders, or a <see cref="FindingCategory"/> name.</param>
+/// <param name="Value">A full path for files and folders, or a <see cref="FindingCategory"/> or <see cref="TriageCategory"/> name.</param>
 public sealed record Exclusion(ExclusionKind Kind, string Value, DateTimeOffset AddedUtc, string? Note = null);
 
 /// <summary>A finding that an exclusion suppressed, and which exclusion did it.</summary>
@@ -54,11 +57,23 @@ public sealed class ExclusionList
         return Add(new Exclusion(ExclusionKind.Category, category.ToString(), nowUtc, note));
     }
 
+    public Exclusion ExcludeCategory(TriageCategory category, DateTimeOffset nowUtc, string? note = null)
+    {
+        if (!Enum.IsDefined(category))
+        {
+            throw new ArgumentOutOfRangeException(nameof(category));
+        }
+
+        return Add(new Exclusion(ExclusionKind.TriageCategory, category.ToString(), nowUtc, note));
+    }
+
     public bool Remove(Exclusion exclusion) => entries.RemoveAll(e => Same(e, exclusion)) > 0;
 
     public bool IsExcluded(string path) => MatchPath(path) is not null;
 
     public bool IsExcluded(FindingCategory category) => MatchCategory(category) is not null;
+
+    public bool IsExcluded(TriageCategory category) => MatchCategory(category) is not null;
 
     /// <summary>The exclusion covering <paramref name="path"/>, if any.</summary>
     public Exclusion? MatchPath(string path)
@@ -75,6 +90,9 @@ public sealed class ExclusionList
 
     public Exclusion? MatchCategory(FindingCategory category) =>
         entries.FirstOrDefault(e => e.Kind == ExclusionKind.Category && e.Value == category.ToString());
+
+    public Exclusion? MatchCategory(TriageCategory category) =>
+        entries.FirstOrDefault(e => e.Kind == ExclusionKind.TriageCategory && e.Value == category.ToString());
 
     /// <summary>
     /// Drops findings in an excluded category, and findings whose evidence names an excluded path. This is
@@ -133,7 +151,8 @@ public sealed class ExclusionList
         {
             if (!Enum.IsDefined(exclusion.Kind) || string.IsNullOrWhiteSpace(exclusion.Value)
                 || (exclusion.Kind == ExclusionKind.Category && !Enum.TryParse<FindingCategory>(exclusion.Value, out _))
-                || (exclusion.Kind != ExclusionKind.Category && !Path.IsPathFullyQualified(exclusion.Value)))
+                || (exclusion.Kind == ExclusionKind.TriageCategory && !Enum.TryParse<TriageCategory>(exclusion.Value, out _))
+                || (exclusion.Kind is ExclusionKind.File or ExclusionKind.Folder && !Path.IsPathFullyQualified(exclusion.Value)))
             {
                 throw new InvalidDataException($"'{filePath}' contains an invalid exclusion.");
             }
@@ -177,7 +196,7 @@ public sealed class ExclusionList
     }
 
     private static bool Same(Exclusion a, Exclusion b) =>
-        a.Kind == b.Kind && (a.Kind == ExclusionKind.Category ? a.Value == b.Value : PathComparer.Equals(a.Value, b.Value));
+        a.Kind == b.Kind && (a.Kind is ExclusionKind.File or ExclusionKind.Folder ? PathComparer.Equals(a.Value, b.Value) : a.Value == b.Value);
 
     private static IEnumerable<string> EvidencePaths(Finding finding) =>
         finding.Evidence.Select(e => e switch
