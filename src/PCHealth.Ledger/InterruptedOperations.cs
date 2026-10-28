@@ -25,7 +25,8 @@ public sealed class InterruptedOperations(TransactionLedger ledger, QuarantineSt
             var items = transaction.Items.Select((item, position) => transaction.Operation switch
             {
                 LedgerOperation.MoveToQuarantine => ResolveQuarantineMove(item, slots.GetValueOrDefault(position)),
-                LedgerOperation.Restore => ResolveRestore(item),
+                LedgerOperation.MoveToFolder => ResolveMove(item),
+                LedgerOperation.Restore => ResolveRestore(item, Restorer.PlaceOf(transaction)),
                 LedgerOperation.PurgeQuarantine => ResolvePurge(item),
                 _ => ResolveRecycle(item),
             }).ToArray();
@@ -84,21 +85,46 @@ public sealed class InterruptedOperations(TransactionLedger ledger, QuarantineSt
         }
     }
 
-    private static LedgerItem ResolveRestore(LedgerItem item)
+    /// <param name="place">Where the restored items came from, e.g. "in quarantine".</param>
+    private static LedgerItem ResolveRestore(LedgerItem item, string place)
     {
         if (item.Status is ItemStatus.Done or ItemStatus.Failed or ItemStatus.Skipped)
         {
             return item;
         }
 
-        var inQuarantine = item.RecoveryLocation is { } location && Restorer.Exists(location);
+        var notBack = item.RecoveryLocation is { } location && Restorer.Exists(location);
         var atOriginal = Restorer.Exists(item.OriginalPath);
-        return (inQuarantine, atOriginal) switch
+        return (notBack, atOriginal) switch
         {
             (false, true) => item with { Status = ItemStatus.Done, RecoveryLocation = null, After = Restorer.Observe(item.OriginalPath, item.IsDirectory) },
-            (true, false) => item with { Status = ItemStatus.Skipped, Error = "Interrupted before it moved back; it is still in quarantine." },
-            (true, true) => item with { Status = ItemStatus.Failed, Error = "Found both at the original path and in quarantine; both were left for you to check." },
-            _ => item with { Status = ItemStatus.Failed, Error = "Found neither at the original path nor in quarantine." },
+            (true, false) => item with { Status = ItemStatus.Skipped, Error = $"Interrupted before it moved back; it is still {place}." },
+            (true, true) => item with { Status = ItemStatus.Failed, Error = $"Found both at the original path and {place} ('{item.RecoveryLocation}'); both were left for you to check." },
+            _ => item with { Status = ItemStatus.Failed, Error = $"Found neither at the original path nor {place}." },
+        };
+    }
+
+    /// <summary>A move to a folder records its destination before acting, so the item is found at one of two paths.</summary>
+    private static LedgerItem ResolveMove(LedgerItem item)
+    {
+        if (item.Status is ItemStatus.Failed or ItemStatus.Skipped)
+        {
+            return item;
+        }
+
+        if (item.RecoveryLocation is null)
+        {
+            return item with { Status = ItemStatus.Failed, Error = "The destination was not recorded, so where it is could not be checked." };
+        }
+
+        var atDestination = Restorer.Exists(item.RecoveryLocation);
+        var atOriginal = Restorer.Exists(item.OriginalPath);
+        return (atDestination, atOriginal) switch
+        {
+            (true, false) => item with { Status = ItemStatus.Done, After = Restorer.Observe(item.RecoveryLocation, item.IsDirectory) },
+            (false, true) => item with { Status = ItemStatus.Skipped, Error = "Interrupted before it moved; it was left where it was." },
+            (true, true) => item with { Status = ItemStatus.Failed, Error = $"Found both at the original path and at '{item.RecoveryLocation}'; both were left for you to check." },
+            _ => item with { Status = ItemStatus.Failed, Error = $"Found neither at the original path nor at '{item.RecoveryLocation}'." },
         };
     }
 

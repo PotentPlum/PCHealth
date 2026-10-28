@@ -121,6 +121,37 @@ public sealed class UndoEndToEndTests : IDisposable
         Assert.Equal("b", File.ReadAllText(second));
     }
 
+    [Fact]
+    public void A_move_to_a_folder_refuses_a_junction_and_is_undone_by_handle()
+    {
+        var file = Create("Desktop/notes.txt", "notes");
+        File.SetLastWriteTimeUtc(file, Written);
+        var real = Directory.CreateDirectory(Path.Combine(canonical, "Real")).FullName;
+        var junction = Path.Combine(canonical, "Junction");
+        HandleMoveTests.Junction(junction, real);
+
+        var viaJunction = MoveTo(junction, file);
+        var refused = Gateway().Execute(viaJunction, viaJunction.Operations);
+
+        Assert.Contains("is a link or leads elsewhere", refused.Items.Single().Reason);
+        Assert.True(File.Exists(file));
+        Assert.Empty(Directory.EnumerateFileSystemEntries(real));
+
+        var archive = Directory.CreateDirectory(Path.Combine(canonical, "Archive")).FullName;
+        var recommendation = MoveTo(archive, file);
+        var moved = Gateway().Execute(recommendation, recommendation.Operations);
+
+        Assert.Equal(ExecutionStatus.Completed, moved.Status);
+        Assert.Equal("notes", File.ReadAllText(Path.Combine(archive, "notes.txt")));
+        Assert.Equal(Written, File.GetLastWriteTimeUtc(Path.Combine(archive, "notes.txt")));
+
+        var undo = Restorer().Restore(moved.TransactionId!.Value);
+
+        Assert.Equal(TransactionState.Verified, undo.Restore!.State);
+        Assert.Equal("notes", File.ReadAllText(file));
+        Assert.False(File.Exists(Path.Combine(archive, "notes.txt")));
+    }
+
     public void Dispose()
     {
         ledger.Dispose();
@@ -133,6 +164,14 @@ public sealed class UndoEndToEndTests : IDisposable
     private Restorer Restorer() => new(ledger, quarantine, new HandleMove());
 
     private static Recommendation Recommend(params string[] files) => Recommend(files, isDirectory: false);
+
+    private static Recommendation MoveTo(string destination, string file)
+    {
+        var info = new FileInfo(file);
+        return new RecommendationBuilder(new ProtectionPolicy([]), new ExclusionList())
+            .ForMove([new MoveCandidate(file, false, new MeasuredSize(info.Length), info.LastWriteTimeUtc)], destination, "You chose to tidy the desktop.")
+            .Recommendation!;
+    }
 
     private static Recommendation Recommend(string path, bool isDirectory) => Recommend([path], isDirectory);
 
@@ -196,6 +235,16 @@ public sealed class UndoEndToEndTests : IDisposable
             }
 
             inner.MoveToQuarantine(finalPath, destination, isDirectory);
+        }
+
+        public void MoveToFolder(string finalPath, string destination, bool isDirectory)
+        {
+            if (++moves == crashOnMove)
+            {
+                throw new SimulatedCrash();
+            }
+
+            inner.MoveToFolder(finalPath, destination, isDirectory);
         }
     }
 

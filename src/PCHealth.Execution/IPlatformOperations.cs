@@ -38,6 +38,13 @@ public interface IPlatformOperations
     /// <summary>Moves the item into <paramref name="destination"/> by handle, without following links (T-24).</summary>
     /// <exception cref="IOException">The item could not be moved; nothing changed.</exception>
     void MoveToQuarantine(string finalPath, string destination, bool isDirectory);
+
+    /// <summary>
+    /// Moves the item to <paramref name="destination"/> (a full path, the item's new name included) by handle, without
+    /// following links and never overwriting (T-51).
+    /// </summary>
+    /// <exception cref="IOException">The item could not be moved, or something exists at the destination; nothing changed.</exception>
+    void MoveToFolder(string finalPath, string destination, bool isDirectory);
 }
 
 /// <summary>An item meant for the Recycle Bin was deleted permanently instead. Reported to the user as such, never as recoverable.</summary>

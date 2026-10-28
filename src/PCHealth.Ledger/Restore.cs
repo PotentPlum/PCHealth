@@ -51,10 +51,10 @@ public sealed record RestoreResult(LedgerTransaction? Restore, RestoreSupport Su
 }
 
 /// <summary>
-/// Undoes transactions by operation type (spec §6.4). Quarantine moves are restored by the product, and so are Recycle
-/// Bin moves while the items are still in the Recycle Bin and a Recycle Bin is given. Each item goes back to its
-/// original path unless something now exists there, in which case it stays where it is. Every restore is itself a
-/// ledger transaction that follows the pending, applied, verified/failed states.
+/// Undoes transactions by operation type (spec §6.4). Quarantine moves and moves to a folder are restored by the
+/// product, and so are Recycle Bin moves while the items are still in the Recycle Bin and a Recycle Bin is given. Each
+/// item goes back to its original path unless something now exists there, in which case it stays where it is. Every
+/// restore is itself a ledger transaction that follows the pending, applied, verified/failed states.
 /// </summary>
 public sealed class Restorer(TransactionLedger ledger, QuarantineStore quarantine, IFileMover? mover = null, TimeProvider? clock = null, IRecycleBin? recycleBin = null)
 {
@@ -77,6 +77,14 @@ public sealed class Restorer(TransactionLedger ledger, QuarantineStore quarantin
         if (transaction.State == TransactionState.Pending)
         {
             return new(false, "This change has not finished. It is resolved when the app next starts.");
+        }
+
+        if (transaction.Operation == LedgerOperation.MoveToFolder)
+        {
+            var moved = MovedEntries(transaction).Count;
+            return moved == 0
+                ? new(false, "Nothing from this change is still where it was moved to: it was moved, renamed or deleted since.")
+                : new(true, $"{moved} items can be moved back where they were. An item is not moved back if something now exists at its original path.");
         }
 
         if (transaction.Operation == LedgerOperation.MoveToRecycleBin)
@@ -109,15 +117,20 @@ public sealed class Restorer(TransactionLedger ledger, QuarantineStore quarantin
             return new RestoreResult(null, support);
         }
 
-        var fromRecycleBin = original.Operation == LedgerOperation.MoveToRecycleBin;
-        var entries = fromRecycleBin ? RecycledEntries(original) : StoredEntries(original).Select(e => new Source(e.OriginalPath, e.IsDirectory, e.Before, e.ContentPath, e)).ToArray();
+        var entries = original.Operation switch
+        {
+            LedgerOperation.MoveToRecycleBin => RecycledEntries(original),
+            LedgerOperation.MoveToFolder => MovedEntries(original),
+            _ => StoredEntries(original).Select(e => new Source(e.OriginalPath, e.IsDirectory, e.Before, e.ContentPath, e)).ToArray(),
+        };
+        var place = Place(original.Operation);
         var record = new LedgerTransaction(
             Guid.NewGuid(),
             clock.GetUtcNow(),
             LedgerOperation.Restore,
             TransactionState.Pending,
             $"You asked to undo the change made on {original.CreatedUtc:u}.",
-            [fromRecycleBin ? "the item is still in the Recycle Bin" : "the item is still in quarantine", "nothing exists at the original path"],
+            [$"the item is still {place}", "nothing exists at the original path"],
             entries.Select(e => new LedgerItem(e.OriginalPath, e.IsDirectory, e.Before, RecoveryLocation: e.Location)).ToArray(),
             expectedBytes: null,
             observedBytes: null,
@@ -128,7 +141,12 @@ public sealed class Restorer(TransactionLedger ledger, QuarantineStore quarantin
         };
         ledger.Save(record);
 
-        var items = record.Items.Zip(entries, (item, entry) => fromRecycleBin ? RestoreRecycled(item, entry) : RestoreOne(item, entry)).ToArray();
+        var items = record.Items.Zip(entries, (item, entry) => original.Operation switch
+        {
+            LedgerOperation.MoveToRecycleBin => RestoreRecycled(item, entry),
+            LedgerOperation.MoveToFolder => MoveBack(item, entry),
+            _ => RestoreOne(item, entry),
+        }).ToArray();
         record = record with { State = TransactionState.Applied, Items = items };
         ledger.Save(record);
         return new RestoreResult(Complete(record), support);
@@ -143,7 +161,7 @@ public sealed class Restorer(TransactionLedger ledger, QuarantineStore quarantin
             State = done == record.Items.Count ? TransactionState.Verified : TransactionState.Failed,
             Outcome = done == record.Items.Count
                 ? $"{done} items are back at their original paths."
-                : $"{done} of {record.Items.Count} items are back; the others stay {(record.Checks.Any(c => c.Contains("Recycle Bin", StringComparison.Ordinal)) ? "in the Recycle Bin" : "in quarantine")}.",
+                : $"{done} of {record.Items.Count} items are back; the others stay {PlaceOf(record)}.",
         };
         ledger.Save(finished);
         return finished;
@@ -188,6 +206,51 @@ public sealed class Restorer(TransactionLedger ledger, QuarantineStore quarantin
         {
             return item with { Status = ItemStatus.Failed, Error = ex.Message };
         }
+    }
+
+    /// <summary>Moves an item back from the folder it was moved to; it stays there when something now exists at its original path.</summary>
+    private LedgerItem MoveBack(LedgerItem item, Source entry)
+    {
+        if (Exists(entry.OriginalPath))
+        {
+            return item with { Status = ItemStatus.Skipped, Error = "Something now exists at the original path, so the item stays where it was moved to." };
+        }
+
+        try
+        {
+            Directory.CreateDirectory(Path.GetDirectoryName(entry.OriginalPath)!);
+            mover.Move(entry.Location, entry.OriginalPath, entry.IsDirectory);
+            return item with { Status = ItemStatus.Done, RecoveryLocation = null, After = Observe(entry.OriginalPath, entry.IsDirectory) };
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or InvalidOperationException)
+        {
+            return item with { Status = ItemStatus.Failed, Error = ex.Message };
+        }
+    }
+
+    /// <summary>The items of a move to a folder that are still where they went, as the same kind of item.</summary>
+    private static IReadOnlyList<Source> MovedEntries(LedgerTransaction transaction) =>
+        transaction.Items
+            .Where(i => i.Status == ItemStatus.Done && i.RecoveryLocation is { } location
+                && (i.IsDirectory ? Directory.Exists(location) : File.Exists(location)) && new FileInfo(location).LinkTarget is null)
+            .Select(i => new Source(i.OriginalPath, i.IsDirectory, i.Before, i.RecoveryLocation!, null))
+            .ToArray();
+
+    /// <summary>Where the items of an operation wait to be put back, as words for the user.</summary>
+    internal static string Place(LedgerOperation operation) => operation switch
+    {
+        LedgerOperation.MoveToRecycleBin => "in the Recycle Bin",
+        LedgerOperation.MoveToFolder => "where it was moved to",
+        _ => "in quarantine",
+    };
+
+    /// <summary>The place a restore record's items come from, read from its first check.</summary>
+    internal static string PlaceOf(LedgerTransaction restore)
+    {
+        var check = restore.Checks.FirstOrDefault() ?? "";
+        return check.Contains("Recycle Bin", StringComparison.Ordinal) ? "in the Recycle Bin"
+            : check.Contains("moved to", StringComparison.Ordinal) ? "where they were moved to"
+            : "in quarantine";
     }
 
     /// <summary>The items of a Recycle Bin move that are still there.</summary>
@@ -242,6 +305,6 @@ public sealed class Restorer(TransactionLedger ledger, QuarantineStore quarantin
         return info.Exists ? new ItemMetadata(info.Length, info.LastWriteTimeUtc, info.CreationTimeUtc, info.Attributes) : null;
     }
 
-    /// <summary>Where an item to restore is now: a quarantine slot, or the Recycle Bin when <paramref name="Slot"/> is null.</summary>
+    /// <summary>Where an item to restore is now: a quarantine slot, or the Recycle Bin or a moved-to folder when <paramref name="Slot"/> is null.</summary>
     private sealed record Source(string OriginalPath, bool IsDirectory, ItemMetadata Before, string Location, QuarantineEntry? Slot);
 }

@@ -59,6 +59,9 @@ public enum RecoveryMethod
     None,
     RecycleBin,
     Quarantine,
+
+    /// <summary>Undo moves the items back from the folder they were moved to (T-51).</summary>
+    MoveBack,
 }
 
 /// <summary>Whether the change can be undone, how, until when, and with what limits.</summary>

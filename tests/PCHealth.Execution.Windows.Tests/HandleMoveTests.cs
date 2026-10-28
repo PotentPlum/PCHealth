@@ -142,7 +142,7 @@ public class HandleMoveTests
                 operations: [new ProposedOperation(OperationKind.MoveToQuarantine, folder, isDirectory: true, new MeasuredSize(2))]),
         ]).Recommendations.Single();
 
-    private static void Junction(string link, string target)
+    internal static void Junction(string link, string target)
     {
         using var process = Process.Start(new ProcessStartInfo("cmd.exe")
         {
@@ -190,6 +190,8 @@ public class HandleMoveTests
             swap();
             HandleMove.MoveByHandle(finalPath, destination, isDirectory);
         }
+
+        public void MoveToFolder(string finalPath, string destination, bool isDirectory) => throw new IOException("Not used here.");
     }
 
     /// <summary>A temp root whose paths are canonical (no 8.3 names), as the gateway's final paths are.</summary>

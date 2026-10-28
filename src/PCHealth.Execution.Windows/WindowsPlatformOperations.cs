@@ -83,6 +83,9 @@ public sealed class WindowsPlatformOperations : IPlatformOperations
     public void MoveToQuarantine(string finalPath, string destination, bool isDirectory) =>
         HandleMove.MoveByHandle(finalPath, destination, isDirectory);
 
+    public void MoveToFolder(string finalPath, string destination, bool isDirectory) =>
+        HandleMove.MoveByHandle(finalPath, destination, isDirectory);
+
     private static ulong VolumeSerial(string path)
     {
         var existing = Path.GetFullPath(path);

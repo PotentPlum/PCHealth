@@ -70,5 +70,7 @@ internal static class TestServices
         }
 
         public void MoveToQuarantine(string finalPath, string destination, bool isDirectory) => System.IO.File.Move(finalPath, destination);
+
+        public void MoveToFolder(string finalPath, string destination, bool isDirectory) => new PlainFileMover().Move(finalPath, destination, isDirectory);
     }
 }
