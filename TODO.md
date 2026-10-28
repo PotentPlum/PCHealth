@@ -157,13 +157,8 @@ Result: `ProjectArchive` marks projects whose newest file is older than a thresh
 
 ### Slice 6: Optional compression
 
-### T-54 Compression savings estimate · `todo` · W · deps: —
-Refs: §5.3, §6.1 · rule 9 · area: src/PCHealth.Execution.Windows (or a new Windows project), src/PCHealth.Core
-Done when:
-- The mechanism is decided and recorded as a new decision: WOF (XPRESS/LZX) versus NTFS LZNT1, the volume and file-type restrictions, and what happens when a compressed file is written.
-- For a selected folder, an estimate compresses a bounded sample in memory with the chosen algorithm. It skips already-compressed types and reports an `EstimatedSize` saving with its sample size. It is never presented as measured.
-- Discovery stays read-only, and files are not modified by the estimate.
-- Tests cover incompressible files, an empty folder and the sample bound.
+### T-54 Compression savings estimate · `done` · W · deps: —
+Result: Mechanism decided: WOF XPRESS8K, not NTFS LZNT1 (D-030). `CompressionEstimator` (Inventory) compresses a bounded sample in memory: 32 MB in total, at most 1 MB per file, chunks spread through each file. It skips already compressed formats, files under 4 KB and links, with reasons, and reports an `EstimatedSize` with its sample size and basis (`CompressionEstimate` in Core). `WofCompressor` uses the Windows Compression API's raw XPRESS Huffman. Files are only read. 6 portable tests (incompressible, empty folder, sample bound, nothing changed) and 3 Windows tests.
 
 ### T-55 Compress and decompress through the gateway · `todo` · W · deps: T-54
 Refs: §5.3, §6.3, §6.4 · area: src/PCHealth.Core, src/PCHealth.Execution, src/PCHealth.Execution.Windows
