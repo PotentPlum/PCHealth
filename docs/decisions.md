@@ -395,3 +395,11 @@ Running processes, open handles, services and scheduled tasks are checked by the
   - At most 2,000 events per log, newest first.
 - **Reliability Monitor:** read from `Win32_ReliabilityRecords` through the built-in WMI scripting COM object. Records that repeat an event already read from the logs are left out, so nothing shows twice.
 - **Read-only, and gaps are listed:** no log is cleared or written. A log or record that can't be read, or an event that can't be parsed, is listed as not read with the reason.
+
+## D-035 "When did it start?": possible explanations only
+**Accepted** (2026-10-28; T-61)
+
+- **Window:** 7 days before the chosen day and 1 day after. Everything the timeline holds in that window is shown, newest first.
+- **Highlighted:** updates installed or failed, apps installed or removed, drivers that did not load, and startup changes before the chosen day, closest first. Startup changes are new services (Service Control Manager 7045, added to the timeline for this).
+- **Wording rules, checked by tests:** every highlight starts "Possibly related" and the summary says they are "not proven causes". No text uses "caused", "root cause", "defective", "faulty", "bad driver" or "culprit". A driver that did not load is described as something that "can matter, or can be harmless". A driver is never judged by its age or signature.
+- **Nothing changes and nothing is downloaded:** the flow only reads the timeline (D-034). It lives on the Maintenance page next to the startup items it refers to.

@@ -54,6 +54,29 @@ public sealed class MaintenancePageTests : IDisposable
     }
 
     [Fact]
+    public async Task When_did_it_start_shows_the_week_before_and_highlights_changes_as_possible_explanations()
+    {
+        using var services = TestServices.Build(root);
+        var investigate = services.GetRequiredService<MaintenanceViewModel>().Investigate;
+        investigate.ChosenDate = TestServices.FakeTimelineSources.Day;
+
+        await investigate.ShowCommand.ExecuteAsync(null);
+
+        Assert.Equal(["editor.exe stopped working (faulting module unknown, exception unknown).", "Installed Old VPN Client 3.1.0."], investigate.Events.Select(e => e.Summary));
+        var install = investigate.Events[1];
+        Assert.True(install.IsHighlighted);
+        Assert.StartsWith("Possibly related (", install.Explanation);
+        Assert.False(investigate.Events[0].IsHighlighted);
+        Assert.StartsWith("1 change in the 7 days before", investigate.Summary);
+        Assert.EndsWith("Some logs could not be read, so this may be incomplete.", investigate.Summary);
+        Assert.Equal("System log: Reading System needs administrator rights.", Assert.Single(investigate.NotRead));
+        Assert.Contains("is not proof that it caused it", investigate.Explanation);
+
+        investigate.ChosenDate = TestServices.FakeTimelineSources.Day.AddDays(-19);
+        Assert.Equal(["Installed Ancient Tool 3.1.0."], investigate.Events.Select(e => e.Summary));
+    }
+
+    [Fact]
     public void The_page_says_what_it_reads_and_that_it_changes_nothing()
     {
         using var services = TestServices.Build(root);

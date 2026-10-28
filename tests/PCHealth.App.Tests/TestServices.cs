@@ -30,6 +30,7 @@ internal static class TestServices
             s.AddSingleton<IChunkCompressor>(new DeflateChunks());
             s.AddSingleton<IFileCompression>(new FakeCompression());
             s.AddSingleton<IStartupSources>(new FakeStartupSources());
+            s.AddSingleton<ITimelineSources>(new FakeTimelineSources());
             s.AddSingleton<Func<ResourceObserver>>(sp => () =>
             {
                 var clock = new ManualClock(DateTimeOffset.UtcNow);
@@ -120,6 +121,26 @@ internal static class TestServices
         public bool Exists(string path) => path.Contains("Chat", StringComparison.Ordinal);
 
         public Signature SignatureOf(string path) => new(SignatureState.Valid, "Chat Inc");
+    }
+
+    /// <summary>A week of fixture events: a VPN client installed, its driver failing, and a crash; the System log can't be read.</summary>
+    internal sealed class FakeTimelineSources : ITimelineSources
+    {
+        public static readonly DateTime Day = DateTime.Today.AddDays(-3);
+
+        public IReadOnlyList<string> Events(string channel, string query, int max) => channel == "System"
+            ? throw new UnauthorizedAccessException("Reading System needs administrator rights.")
+            : [Msi(Day.AddDays(-2), "Old VPN Client"), Crash(Day.AddHours(9)), Msi(Day.AddDays(-20), "Ancient Tool")];
+
+        public IReadOnlyList<ReliabilityRecord> ReliabilityRecords(int max) => [];
+
+        private static string Msi(DateTime local, string product) =>
+            $"<Event xmlns=\"http://schemas.microsoft.com/win/2004/08/events/event\"><System><Provider Name=\"MsiInstaller\" /><EventID>1033</EventID>"
+            + $"<TimeCreated SystemTime=\"{local.ToUniversalTime():o}\" /></System><EventData><Data>{product}</Data><Data>3.1.0</Data></EventData></Event>";
+
+        private static string Crash(DateTime local) =>
+            $"<Event xmlns=\"http://schemas.microsoft.com/win/2004/08/events/event\"><System><Provider Name=\"Application Error\" /><EventID>1000</EventID>"
+            + $"<TimeCreated SystemTime=\"{local.ToUniversalTime():o}\" /></System><EventData><Data Name=\"AppName\">editor.exe</Data></EventData></Event>";
     }
 
     /// <summary>The chat app uses 4 seconds of CPU over the window; the updater never runs.</summary>

@@ -75,9 +75,10 @@ public sealed class MaintenanceViewModel : PageViewModel
     private string boot = "Boot timing is read with the startup items.";
     private bool busy;
 
-    public MaintenanceViewModel(IStartupSources sources, Func<ResourceObserver> observer, Func<BootTiming> bootTiming)
+    public MaintenanceViewModel(IStartupSources sources, Func<ResourceObserver> observer, Func<BootTiming> bootTiming, InvestigateViewModel investigate)
         : base("Maintenance")
     {
+        Investigate = investigate;
         this.sources = sources;
         this.observer = observer;
         this.bootTiming = bootTiming;
@@ -85,6 +86,9 @@ public sealed class MaintenanceViewModel : PageViewModel
         ObserveCommand = new AsyncRelayCommand(ObserveAsync, () => !busy && Items.Count > 0);
         StopCommand = new RelayCommand(() => observing?.Cancel(), () => observing is not null);
     }
+
+    /// <summary>"When did it start?": the timeline around the day a slowdown began (T-61).</summary>
+    public InvestigateViewModel Investigate { get; }
 
     public ObservableCollection<MaintenanceItemViewModel> Items { get; } = [];
 

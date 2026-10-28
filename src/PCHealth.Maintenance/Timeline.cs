@@ -20,6 +20,9 @@ public enum TimelineKind
     AppInstalled,
     AppRemoved,
 
+    /// <summary>Something new set to start with Windows, e.g. a service that was installed.</summary>
+    StartupChange,
+
     /// <summary>A record from Reliability Monitor that no other source explains.</summary>
     ReliabilityRecord,
 }
@@ -58,7 +61,7 @@ public sealed class TimelineReader(ITimelineSources sources)
 
     public const string SystemQuery =
         "*[System[(Provider[@Name='Microsoft-Windows-Kernel-Power'] and EventID=41) or (Provider[@Name='EventLog'] and EventID=6008)"
-        + " or (Provider[@Name='Service Control Manager'] and EventID>=7000 and EventID<=7034)"
+        + " or (Provider[@Name='Service Control Manager'] and ((EventID>=7000 and EventID<=7034) or EventID=7045))"
         + " or (Provider[@Name='Microsoft-Windows-WindowsUpdateClient'] and (EventID=19 or EventID=20))]]";
 
     private static readonly HashSet<string> LogSources = new(StringComparer.OrdinalIgnoreCase)
@@ -139,6 +142,8 @@ public sealed class TimelineReader(ITimelineSources sources)
                 $"The PC restarted without shutting down cleanly{(StopCode(Named("BugcheckCode", 0)) is { } code ? $" (stop code {code})" : "")}."),
             ("EventLog", 6008) => (TimelineKind.UnexpectedShutdown, $"The previous shutdown at {Named("", 0)} {Named("", 1)} was unexpected.".Replace("  ", " ", StringComparison.Ordinal)),
             ("Service Control Manager", >= 7000 and <= 7034) => ServiceEvent(id, Named("param1", 0), Named("param2", 1)),
+            ("Service Control Manager", 7045) => (TimelineKind.StartupChange,
+                $"A service was installed: {Or(Named("ServiceName", 0), "not named")} ({Or(Named("ImagePath", 1), "program not named")}), start type {Or(Named("StartType", 3), "not given")}."),
             ("Microsoft-Windows-WindowsUpdateClient", 19) => (TimelineKind.UpdateInstalled, $"Windows Update installed {Or(Named("updateTitle", 0), "an update")}."),
             ("Microsoft-Windows-WindowsUpdateClient", 20) => (TimelineKind.UpdateFailed,
                 $"Windows Update could not install {Or(Named("updateTitle", 1), "an update")} (error {Or(Named("errorCode", 0), "unknown")})."),

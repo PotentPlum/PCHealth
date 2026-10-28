@@ -16,6 +16,7 @@ public sealed class TimelineTests
     [InlineData("update-failed.xml", "System", TimelineKind.UpdateFailed, "Windows Update could not install Security Intelligence Update (KB2267602) (error 0x80070643).")]
     [InlineData("msi-installed.xml", "Application", TimelineKind.AppInstalled, "Installed Old VPN Client 3.1.0.")]
     [InlineData("msi-removed.xml", "Application", TimelineKind.AppRemoved, "Removed Trial Suite.")]
+    [InlineData("service-installed.xml", "System", TimelineKind.StartupChange, "A service was installed: Old VPN Service (\"C:\\Program Files\\Old VPN\\vpnsvc.exe\"), start type auto start.")]
     public void Recorded_events_become_timeline_events(string file, string channel, TimelineKind kind, string summary)
     {
         var item = TimelineReader.FromEventXml(channel, Fixture(file))!;

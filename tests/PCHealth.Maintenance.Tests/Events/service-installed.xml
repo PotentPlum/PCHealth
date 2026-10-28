@@ -1,0 +1,4 @@
+<Event xmlns="http://schemas.microsoft.com/win/2004/08/events/event">
+  <System><Provider Name="Service Control Manager" /><EventID Qualifiers="16384">7045</EventID><TimeCreated SystemTime="2026-10-23T18:31:00Z" /></System>
+  <EventData><Data Name="ServiceName">Old VPN Service</Data><Data Name="ImagePath">"C:\Program Files\Old VPN\vpnsvc.exe"</Data><Data Name="ServiceType">user mode service</Data><Data Name="StartType">auto start</Data><Data Name="AccountName">LocalSystem</Data></EventData>
+</Event>
