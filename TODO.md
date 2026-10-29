@@ -194,12 +194,15 @@ Done when:
 - `docs/privacy.md` lists the new local data (the inventory snapshot) and what the helper and the maintenance features read.
 - The Settings stored-data list and Clear cover the new files.
 
-### T-63 Second release · `todo` · U · deps: T-62
+### T-63 Second release · `doing (cloud, 2026-10-28)` · U · deps: T-62
 Refs: D-009 · CLAUDE.md "CI and releases"
 Done when:
 - The user asks for v0.2.0.
 - The tag is pushed from a green `main`.
 - The second PC updates to it through the app.
+
+Released on the user's request on 2026-10-28, before T-62 (blocked on T-39): v0.2.0 was tagged by the Release workflow from `main` at 7ae97ad after CI passed there. The GitHub Release has the installer, MSI, portable zip and full and delta update packages.
+Next: the user updates the second PC through Updates, checks the Organize, Storage compression and Maintenance pages there, and sets this to `done`.
 
 ---
 
